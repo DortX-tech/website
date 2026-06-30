@@ -1,0 +1,316 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
+import { Linkedin, Mail, ArrowUpRight, ArrowRight, Sparkles, Plus } from "lucide-react";
+import MagneticButton from "@/components/MagneticButton";
+import { CONTACT } from "@/data/site";
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL;
+function fullPhoto(p) {
+  if (!p) return null;
+  if (p.startsWith("http")) return p;
+  if (p.startsWith("/api/")) return `${BACKEND_BASE}${p}`;
+  return p;
+}
+
+/* —————————————————— Hero —————————————————— */
+function Hero() {
+  return (
+    <section className="relative pt-40 pb-16 overflow-hidden">
+      <div className="absolute inset-0 bg-grid opacity-40"/>
+      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-[#1E6BFF]/15 blur-[100px]"/>
+      <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF]">— The team behind DortX</div>
+        <h1 className="font-display text-[44px] sm:text-[68px] lg:text-[84px] leading-[0.98] font-semibold mt-6 max-w-4xl">
+          Engineers, designers <br/>
+          and builders — <span className="italic font-normal text-[#4D8BFF]">united</span> by craft.
+        </h1>
+      </div>
+    </section>
+  );
+}
+
+/* —————————————————— Philosophy intro —————————————————— */
+function Philosophy() {
+  return (
+    <section className="relative py-20">
+      <div className="max-w-5xl mx-auto px-6 lg:px-8">
+        <motion.p
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="font-display text-[26px] sm:text-[36px] lg:text-[42px] leading-[1.25] font-medium"
+        >
+          Our strength isn't measured by years on a resume. It's measured by
+          <span className="text-[#4D8BFF]"> curiosity</span>, by
+          <span className="text-[#4D8BFF]"> commitment</span>, by how often we
+          choose to learn over to look right — and by our shared
+          <span className="text-[#4D8BFF]"> passion</span> for building software that genuinely helps a business.
+        </motion.p>
+
+        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            "Continuous Learning",
+            "Engineering Excellence",
+            "Collaboration",
+            "Customer Commitment",
+          ].map((v, i) => (
+            <motion.div
+              key={v}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.06 }}
+              className="glass rounded-2xl p-5"
+            >
+              <div className="text-[10.5px] uppercase tracking-[0.16em] text-[#6B7385] mb-2">Value 0{i + 1}</div>
+              <div className="font-display text-white text-[16px] font-semibold">{v}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* —————————————————— Initials / photo avatar —————————————————— */
+function Avatar({ name, photo, size = 120, big = false }) {
+  const initials = name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <div className="relative rounded-2xl overflow-hidden border border-white/10" style={{ width: "100%", aspectRatio: big ? "1 / 1.05" : "1 / 1" }}>
+      {/* Always render the gradient + glow as a background so transparent / loading
+          photos still feel premium. */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0F1830] via-[#0A0F1C] to-[#16204A]"/>
+      <div className="absolute inset-0 bg-grid opacity-25"/>
+      <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-[#1E6BFF]/25 blur-3xl"/>
+      <div className="absolute -bottom-12 -left-8 w-36 h-36 rounded-full bg-[#4D8BFF]/15 blur-3xl"/>
+
+      {photo ? (
+        <img
+          src={photo}
+          alt={`${name} — DortX team`}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          draggable={false}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div
+            className="font-display font-semibold gradient-text"
+            style={{ fontSize: big ? 140 : size * 0.6, lineHeight: 1 }}
+          >
+            {initials}
+          </div>
+        </div>
+      )}
+
+      <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#05080F] to-transparent"/>
+    </div>
+  );
+}
+
+/* —————————————————— Leadership —————————————————— */
+function Leadership({ team }) {
+  const leader = team.find((m) => m.leadership) || team[0];
+  if (!leader) return null;
+  return (
+    <section className="relative py-20">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— Leadership</div>
+        <h2 className="font-display text-[34px] sm:text-[48px] leading-[1.05] font-medium max-w-3xl">
+          The person who started DortX.
+        </h2>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.6 }}
+          className="mt-12 grid lg:grid-cols-12 gap-10 items-start"
+        >
+          <div className="lg:col-span-5">
+            <div className="relative max-w-md">
+              <div className="absolute -inset-3 bg-[#1E6BFF]/20 blur-2xl rounded-3xl pointer-events-none"/>
+              <div className="relative">
+                <Avatar name={leader.name} photo={fullPhoto(leader.photo)} big />
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-7">
+            <div className="text-[12px] uppercase tracking-[0.16em] text-[#4D8BFF]">Founder · CEO</div>
+            <h3 className="font-display text-[44px] sm:text-[56px] font-semibold leading-tight mt-3">{leader.name}</h3>
+            <div className="text-[14.5px] text-[#C9D2E0] mt-2">{leader.role}</div>
+
+            <p className="mt-7 text-[16.5px] text-[#C9D2E0] leading-[1.75] max-w-2xl">
+              {leader.bio} The conviction behind DortX is straightforward: small, focused teams can deliver software that genuinely changes how a business runs — when they care enough to start with the business question, not the technology choice.
+            </p>
+
+            <div className="mt-8 grid sm:grid-cols-2 gap-2.5 max-w-lg">
+              {(leader.responsibilities || []).map((r) => (
+                <div key={r} className="flex items-center gap-2.5 text-[13.5px] text-[#9AA3B8]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4D8BFF]"/> {r}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex items-center gap-2">
+              <a href={leader.linkedin || "#"} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
+                <Linkedin size={14}/>
+              </a>
+              <a href={`mailto:${leader.email_address || CONTACT.founder}`} aria-label="Email" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
+                <Mail size={14}/>
+              </a>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* —————————————————— Member card with expand-on-hover —————————————————— */
+function MemberCard({ member, index }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ delay: index * 0.05, duration: 0.5 }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onMouseMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+        e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+      }}
+      className="spotlight relative group rounded-2xl border border-white/8 bg-white/[0.02] p-5 overflow-hidden"
+      data-testid={`team-card-${member.name.toLowerCase()}`}
+    >
+      {/* subtle floating gradient */}
+      <div className="absolute -top-16 -right-12 w-44 h-44 rounded-full bg-[#1E6BFF]/10 blur-3xl pointer-events-none group-hover:bg-[#1E6BFF]/20 transition-all duration-500"/>
+
+      <div className="relative">
+        <Avatar name={member.name} photo={fullPhoto(member.photo)} />
+      </div>
+
+      <div className="relative mt-5">
+        <div className="font-display text-[20px] font-semibold text-white">{member.name}</div>
+        <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF] mt-1.5">{member.role}</div>
+        <p className="mt-3 text-[13.5px] text-[#9AA3B8] leading-relaxed line-clamp-3">{member.bio}</p>
+
+        {/* Expertise pill */}
+        <div className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/4 border border-white/8 text-[11px] text-[#C9D2E0]">
+          <Sparkles size={10} className="text-[#4D8BFF]"/> {member.expertise}
+        </div>
+
+        {/* Hover panel — responsibilities */}
+        <AnimatePresence>
+          {hover && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-5 pt-4 border-t border-white/8">
+                <div className="text-[10.5px] uppercase tracking-[0.16em] text-[#6B7385] mb-3">Responsibilities</div>
+                <ul className="space-y-1.5">
+                  {member.responsibilities.map((r) => (
+                    <li key={r} className="flex items-center gap-2 text-[12.5px] text-[#C9D2E0]">
+                      <Plus size={11} className="text-[#4D8BFF]"/> {r}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="mt-5 flex items-center gap-2">
+          <a href="#" aria-label="LinkedIn" className="w-8 h-8 rounded-full bg-white/4 border border-white/8 flex items-center justify-center text-[#9AA3B8] hover:text-white hover:border-[#1E6BFF]/40 transition">
+            <Linkedin size={12}/>
+          </a>
+          <a href={`mailto:${member.name.toLowerCase()}@dortx.com`} aria-label="Email" className="w-8 h-8 rounded-full bg-white/4 border border-white/8 flex items-center justify-center text-[#9AA3B8] hover:text-white hover:border-[#1E6BFF]/40 transition">
+            <Mail size={12}/>
+          </a>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* —————————————————— Team grid —————————————————— */
+function TheTeam({ team }) {
+  const others = team.filter((m) => !m.leadership);
+  return (
+    <section className="relative py-20">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="flex items-end justify-between gap-6 mb-10 flex-wrap">
+          <div>
+            <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— The team</div>
+            <h2 className="font-display text-[34px] sm:text-[48px] leading-[1.05] font-medium max-w-2xl">
+              The people you'll actually work with.
+            </h2>
+          </div>
+          <div className="text-[13.5px] text-[#9AA3B8] max-w-sm">
+            Hover any card to see what each person owns at DortX.
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {others.map((m, i) => <MemberCard key={m.id || m.name} member={m} index={i}/>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* —————————————————— CTA —————————————————— */
+function CTA() {
+  return (
+    <section className="relative py-24">
+      <div className="max-w-5xl mx-auto px-6 lg:px-8">
+        <div className="relative rounded-3xl border border-white/10 overflow-hidden p-10 lg:p-14">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0A1430] via-[#05080F] to-[#0A1430]"/>
+          <div className="absolute -top-24 -right-16 w-80 h-80 rounded-full bg-[#1E6BFF]/20 blur-[60px]"/>
+          <div className="relative grid lg:grid-cols-2 gap-8 items-center">
+            <div>
+              <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-4">— Want to join us?</div>
+              <h3 className="font-display text-[28px] sm:text-[40px] leading-[1.1] font-semibold">
+                We grow slowly, and only with the right people.
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <MagneticButton><Link to="/careers" className="btn-primary">See open roles <ArrowUpRight size={15}/></Link></MagneticButton>
+              <Link to="/contact" className="btn-ghost">Talk to us <ArrowRight size={15}/></Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function Team() {
+  const [team, setTeam] = useState([]);
+  useEffect(() => {
+    axios.get(`${API}/team`)
+      .then((r) => setTeam(r.data.items || []))
+      .catch(() => setTeam([]));
+  }, []);
+  return (
+    <div data-testid="team-page">
+      <Hero />
+      <Philosophy />
+      <Leadership team={team} />
+      <TheTeam team={team} />
+      <CTA />
+    </div>
+  );
+}
