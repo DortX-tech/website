@@ -30,3 +30,17 @@ npm run build
 cd backend
 python -m uvicorn server:app --host 0.0.0.0 --port 8000
 ```
+
+Required backend environment variables for production:
+
+- `MONGO_URL`
+- `DB_NAME`
+- `JWT_SECRET`
+- `JWT_ALGORITHM`
+- `JWT_EXPIRE_MINUTES`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL` (optional, defaults to `gpt-4o-mini`)
+- `UPLOAD_DIR`
+- `CORS_ORIGINS`

@@ -1,4 +1,4 @@
-"""DortX Backend - FastAPI + MongoDB + JWT + Claude AI Chatbot."""
+"""DortX Backend - FastAPI + MongoDB + JWT + OpenAI chatbot."""
 import asyncio
 import json
 import os
@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 import bcrypt
 import jwt as pyjwt
-from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
+from openai import AsyncOpenAI
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -30,7 +30,7 @@ JWT_ALGORITHM = os.environ['JWT_ALGORITHM']
 JWT_EXPIRE_MINUTES = int(os.environ['JWT_EXPIRE_MINUTES'])
 ADMIN_EMAIL = os.environ['ADMIN_EMAIL']
 ADMIN_PASSWORD = os.environ['ADMIN_PASSWORD']
-EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 UPLOAD_DIR = Path(os.environ['UPLOAD_DIR'])
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -634,7 +634,7 @@ Tone & honesty rules:
 
 
 def ai_service_configured() -> bool:
-    key = (EMERGENT_LLM_KEY or "").strip().lower()
+    key = (OPENAI_API_KEY or "").strip().lower()
     return bool(key) and key not in {"dummy-key", "dummy", "changeme", "change-me", "test"}
 
 
@@ -811,11 +811,7 @@ async def chat_stream(req: ChatRequest):
 
         return StreamingResponse(fallback_event_gen(), media_type="text/event-stream")
 
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=req.session_id,
-        system_message=DORTX_SYSTEM,
-    ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+    openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     prompt = build_user_prompt(req, stored_history)
 
     # Persist user message
@@ -834,13 +830,21 @@ async def chat_stream(req: ChatRequest):
         try:
             for attempt in range(2):
                 try:
-                    async for ev in chat.stream_message(UserMessage(text=prompt)):
-                        if isinstance(ev, TextDelta):
+                    stream = await openai_client.chat.completions.create(
+                        model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+                        messages=[
+                            {"role": "system", "content": DORTX_SYSTEM},
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=0.4,
+                        stream=True,
+                    )
+                    async for chunk in stream:
+                        delta = chunk.choices[0].delta.content if chunk.choices else None
+                        if delta:
                             delivered = True
-                            full.append(ev.content)
-                            yield sse_data(ev.content)
-                        elif isinstance(ev, StreamDone):
-                            break
+                            full.append(delta)
+                            yield sse_data(delta)
                     if full:
                         break
                 except Exception:
@@ -885,11 +889,7 @@ async def chat_sync(req: ChatRequest):
         })
         return {"reply": reply, "source": "local_fallback"}
 
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=req.session_id,
-        system_message=DORTX_SYSTEM,
-    ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+    openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     prompt = build_user_prompt(req, stored_history)
 
     await db.chat_messages.insert_one({
@@ -900,11 +900,19 @@ async def chat_sync(req: ChatRequest):
     for attempt in range(2):
         try:
             async def collect_reply():
-                async for ev in chat.stream_message(UserMessage(text=prompt)):
-                    if isinstance(ev, TextDelta):
-                        parts.append(ev.content)
-                    elif isinstance(ev, StreamDone):
-                        break
+                stream = await openai_client.chat.completions.create(
+                    model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+                    messages=[
+                        {"role": "system", "content": DORTX_SYSTEM},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.4,
+                    stream=True,
+                )
+                async for chunk in stream:
+                    delta = chunk.choices[0].delta.content if chunk.choices else None
+                    if delta:
+                        parts.append(delta)
             await asyncio.wait_for(collect_reply(), timeout=40)
             if parts:
                 break
