@@ -6,7 +6,7 @@ import { Linkedin, Mail, ArrowUpRight, ArrowRight, Sparkles, Plus } from "lucide
 import MagneticButton from "@/components/MagneticButton";
 import { CONTACT, TEAM } from "@/data/site";
 
-const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND_BASE}/api`;
 function fullPhoto(p) {
   if (!p) return null;

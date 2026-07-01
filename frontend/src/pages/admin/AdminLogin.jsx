@@ -5,7 +5,7 @@ import axios from "axios";
 import { LogIn, Lock, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
 
 export default function AdminLogin() {
   const nav = useNavigate();

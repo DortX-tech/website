@@ -4,7 +4,7 @@ import { CheckCircle2, Loader2, Mail, MessageSquare, Phone } from "lucide-react"
 import axios from "axios";
 import { CONTACT } from "@/data/site";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Contact() {

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Send, LayoutDashboard, Inbox, FileText, UserCog } from "lucide-react";
 import Logo from "@/components/Logo";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
 const STATUSES = ["all", "new", "contacted", "qualified", "won", "lost"];
 const STATUS_COLOR = {
   new: "bg-blue-500/15 text-blue-300 border-blue-500/30",

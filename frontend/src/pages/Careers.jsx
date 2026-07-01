@@ -4,7 +4,7 @@ import { Heart, Coffee, Rocket, Globe, CheckCircle2 } from "lucide-react";
 import axios from "axios";
 import SectionHeader from "@/components/SectionHeader";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
 
 const CULTURE = [
   { i: Heart, t: "Care for the craft", d: "Code reviews, design critiques, written docs — done with kindness and high standards." },
