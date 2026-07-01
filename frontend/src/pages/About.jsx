@@ -11,7 +11,7 @@ function Hero() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], [0, -80]);
   return (
-    <section ref={ref} className="relative pt-40 pb-20 overflow-hidden">
+    <section ref={ref} className="relative pt-32 pb-12 overflow-hidden">
       <div className="absolute inset-0 bg-grid opacity-40"/>
       <div className="absolute -top-32 left-1/3 w-[500px] h-[500px] rounded-full bg-[#1E6BFF]/20 blur-[80px]"/>
       <motion.div style={{ y }} className="relative max-w-7xl mx-auto px-6 lg:px-8">
@@ -21,7 +21,7 @@ function Hero() {
           <span className="italic font-normal text-[#4D8BFF]">business</span> behind the software.
         </h1>
         <p className="mt-9 text-[18px] sm:text-[21px] text-[#9AA3B8] max-w-2xl leading-[1.55]">
-          DortX is a young technology company built by people who genuinely love engineering. We're small on purpose, ambitious by nature, and quietly serious about the quality of what we ship.
+          DortX is a technology company focused on delivering high-quality AI, software, IoT, and automation solutions. We believe great software and connected systems are built through thoughtful engineering, attention to detail, and a commitment to delivering reliable solutions on time.
         </p>
       </motion.div>
     </section>
@@ -31,7 +31,7 @@ function Hero() {
 /* — Why we started — */
 function Story() {
   return (
-    <section className="relative py-28">
+    <section className="relative py-20">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-8">— Why we started DortX</div>
         <h2 className="font-display text-[36px] sm:text-[52px] leading-[1.05] font-medium max-w-3xl">
@@ -39,7 +39,7 @@ function Story() {
           we always wished existed.
         </h2>
 
-        <div className="mt-14 grid lg:grid-cols-12 gap-10">
+        <div className="mt-10 grid lg:grid-cols-12 gap-8 lg:gap-10">
           <div className="lg:col-span-7 space-y-7 text-[16.5px] text-[#C9D2E0] leading-[1.85]">
             <p>
               DortX started with a simple frustration. Too often, businesses invest in software and get back something that no one really enjoys using — slow products, dashboards nobody opens, AI experiments that never reach production.
@@ -73,7 +73,7 @@ function MissionVision() {
     { label: "Vision",  body: VISION },
   ];
   return (
-    <section className="relative py-28">
+    <section className="relative py-20">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-2 gap-px bg-white/8 rounded-3xl overflow-hidden">
         {blocks.map((b, i) => (
           <motion.div
@@ -82,7 +82,7 @@ function MissionVision() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="bg-[#070B17] p-10 lg:p-14"
+            className="bg-[#070B17] p-8 lg:p-10"
           >
             <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-8">— {b.label}</div>
             <p className="font-display text-[24px] sm:text-[32px] leading-[1.25] font-medium text-white">{b.body}</p>
@@ -104,14 +104,14 @@ function Beliefs() {
     { t: "Your problem comes before our preferences", d: "Our tech stack is opinionated, but never religious. The right tool for your problem wins every time." },
   ];
   return (
-    <section className="relative py-28">
+    <section className="relative py-20">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— What makes us different</div>
         <h2 className="font-display text-[36px] sm:text-[52px] leading-[1.05] font-medium max-w-3xl">
           Six things we genuinely believe.
         </h2>
 
-        <div className="mt-14 divide-y divide-white/8">
+        <div className="mt-10 divide-y divide-white/8">
           {items.map((x, i) => (
             <motion.div
               key={i}
@@ -135,14 +135,14 @@ function Beliefs() {
 /* — Values — */
 function ValuesGrid() {
   return (
-    <section className="relative py-28">
+    <section className="relative py-20">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— Our values</div>
         <h2 className="font-display text-[36px] sm:text-[52px] leading-[1.05] font-medium max-w-3xl">
           The principles we hire, build <br/> and communicate by.
         </h2>
 
-        <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {VALUES.map((v, i) => (
             <motion.div
               key={v.t}
@@ -171,7 +171,7 @@ function ValuesGrid() {
 /* — Where we are going — */
 function Future() {
   return (
-    <section className="relative py-28">
+    <section className="relative py-20">
       <div className="max-w-5xl mx-auto px-6 lg:px-8 text-center">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-8">— Where we're going</div>
         <h2 className="font-display text-[40px] sm:text-[60px] leading-[1.05] font-medium">

@@ -5,11 +5,11 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://dortx-main.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://www.dortxtech.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "admin@dortx.com"
-ADMIN_PASSWORD = "Admin@DortX2026"
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "thrisha@dortxtech.com")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "change-this-password")
 
 
 @pytest.fixture(scope="session")

@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>/about</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>/services</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>/portfolio</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>/process</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>/technologies</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>/team</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>/careers</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>/faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>/contact</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.dortxtech.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://www.dortxtech.com/about</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.dortxtech.com/services</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.dortxtech.com/portfolio</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.dortxtech.com/process</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.dortxtech.com/technologies</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.dortxtech.com/team</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.dortxtech.com/careers</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.dortxtech.com/faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://www.dortxtech.com/contact</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.dortxtech.com/privacy-policy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://www.dortxtech.com/terms-and-conditions</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

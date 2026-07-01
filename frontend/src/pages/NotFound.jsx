@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <section className="min-h-[70vh] flex items-center justify-center px-6">
+    <section className="pt-32 pb-20 flex items-center justify-center px-6">
       <div className="text-center">
         <div className="font-display text-[120px] sm:text-[180px] leading-none gradient-text font-semibold">404</div>
         <h2 className="font-display text-[26px] mt-4">This page took a detour.</h2>

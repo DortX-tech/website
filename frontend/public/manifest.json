@@ -1,0 +1,18 @@
+{
+  "short_name": "DortX",
+  "name": "DortX Technologies",
+  "description": "AI, automation and software development services for businesses worldwide.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#05080F",
+  "background_color": "#05080F",
+  "icons": [
+    {
+      "src": "/dortx-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

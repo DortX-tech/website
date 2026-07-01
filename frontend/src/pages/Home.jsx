@@ -2,12 +2,12 @@ import { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion";
 import * as Lucide from "lucide-react";
-import { ArrowUpRight, ArrowRight, Sparkles, Code2, Brain, BarChart3, TrendingUp, ShieldCheck, Plus, Quote } from "lucide-react";
+import { ArrowUpRight, ArrowRight, Sparkles, Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck, Plus, Quote } from "lucide-react";
 import MagneticButton from "@/components/MagneticButton";
 import useMouseParallax from "@/hooks/useMouseParallax";
 import { WINGS, PROCESS_STEPS, TECH_GROUPS, INDUSTRIES, FAQS, TEAM } from "@/data/site";
 
-const WingIcons = { Code2, Brain, BarChart3, TrendingUp, ShieldCheck };
+const WingIcons = { Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck };
 
 /* ========================================================================
    01. HERO — cinematic, mouse-parallax, magnetic CTAs, animated orbs
@@ -21,7 +21,7 @@ function Hero() {
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   return (
-    <section ref={ref} className="relative min-h-[100vh] flex items-center pt-28 overflow-hidden">
+    <section ref={ref} className="relative pt-32 pb-14 overflow-hidden">
       {/* Background grid */}
       <div className="absolute inset-0 bg-grid opacity-40"/>
       {/* Animated gradient orbs (mouse-responsive) */}
@@ -92,7 +92,7 @@ function Hero() {
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}
               className="mt-8 text-[17px] sm:text-[20px] text-[#9AA3B8] max-w-xl leading-[1.55]"
             >
-              DortX is a small, passionate studio that designs, ships and looks after the AI, software and growth systems modern businesses depend on.
+              DortX builds high-quality AI solutions, software, and automation systems that solve real business problems. Every project is engineered with precision, tested thoroughly, and delivered on time.
             </motion.p>
 
             <motion.div
@@ -150,11 +150,11 @@ function Hero() {
         {/* Bottom strip — values */}
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }}
-          className="mt-20 pt-8 border-t border-white/8 grid grid-cols-2 sm:grid-cols-4 gap-6"
+          className="mt-10 pt-6 border-t border-white/8 grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-6"
         >
           {[
             { k: "Team", v: "Small & focused" },
-            { k: "Service wings", v: "Five disciplines" },
+            { k: "Service wings", v: "Six disciplines" },
             { k: "Engagement", v: "Outcome-led" },
             { k: "IP ownership", v: "100% yours" },
           ].map((x, i) => (
@@ -179,7 +179,7 @@ function WhyExist() {
   const op2 = useTransform(scrollYProgress, [0.4, 0.7], [0.2, 1]);
 
   return (
-    <section ref={ref} className="relative py-32 lg:py-48">
+    <section ref={ref} className="relative py-20 lg:py-24">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-10">— Why we exist</div>
 
@@ -187,7 +187,7 @@ function WhyExist() {
           We kept seeing the same pattern.
         </motion.p>
 
-        <div className="grid lg:grid-cols-2 gap-x-16 gap-y-10 mt-14">
+        <div className="grid lg:grid-cols-2 gap-x-16 gap-y-8 mt-10">
           <motion.p style={{ opacity: op2 }} className="text-[17px] sm:text-[19px] text-[#C9D2E0] leading-[1.7]">
             Companies investing heavily in software — and getting back generic outputs. Slow products. Dashboards no one opens. AI experiments that never see production. Marketing money that disappears into the void.
           </motion.p>
@@ -196,7 +196,7 @@ function WhyExist() {
           </motion.p>
         </div>
 
-        <div className="mt-16 flex items-center gap-6">
+        <div className="mt-10 flex items-center gap-6">
           <div className="h-px flex-1 bg-gradient-to-r from-[#1E6BFF]/40 to-transparent"/>
           <Link to="/about" className="text-[13px] text-[#C9D2E0] hover:text-white flex items-center gap-2">
             Read the full story <ArrowRight size={14}/>
@@ -219,7 +219,7 @@ function Problems() {
   ];
 
   return (
-    <section className="relative py-28">
+    <section className="relative py-16">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="grid lg:grid-cols-12 gap-10">
           <div className="lg:col-span-5 lg:sticky lg:top-32 self-start">
@@ -268,19 +268,19 @@ function Problems() {
    ======================================================================== */
 function Approach() {
   return (
-    <section className="relative py-32">
+    <section className="relative py-20">
       <div className="absolute inset-0 hair-diag opacity-40"/>
       <div className="relative max-w-6xl mx-auto px-6 lg:px-8 text-center">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-6">— Our approach</div>
         <h2 className="font-display text-[36px] sm:text-[52px] lg:text-[64px] leading-[1.05] font-medium max-w-4xl mx-auto">
-          One small team. <span className="text-[#4D8BFF]">Five disciplines.</span> <br className="hidden sm:block"/>
+          One small team. <span className="text-[#4D8BFF]">Six disciplines.</span> <br className="hidden sm:block"/>
           Working as a single system.
         </h2>
-        <p className="mt-7 text-[17px] text-[#9AA3B8] max-w-2xl mx-auto leading-relaxed">
-          Most agencies separate engineering, design, AI, growth and security into different silos. We don't. They reinforce each other — so we run them as one practice, on one project, with one team.
+        <p className="mt-5 text-[17px] text-[#9AA3B8] max-w-2xl mx-auto leading-relaxed">
+          Most agencies separate engineering, design, AI, growth, industrial automation and security into different silos. We don't. They reinforce each other - so we run them as one practice, on one project, with one team.
         </p>
 
-        <div className="mt-14 relative h-[260px] sm:h-[320px]">
+        <div className="mt-10 relative h-[260px] sm:h-[320px]">
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 320" preserveAspectRatio="xMidYMid meet">
             <defs>
               <radialGradient id="cg" cx="50%" cy="50%" r="50%">
@@ -289,8 +289,8 @@ function Approach() {
               </radialGradient>
             </defs>
             <circle cx="400" cy="160" r="120" fill="url(#cg)"/>
-            {[0, 1, 2, 3, 4].map((i) => {
-              const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+            {WINGS.map((_, i) => {
+              const a = (i / WINGS.length) * Math.PI * 2 - Math.PI / 2;
               const x = 400 + Math.cos(a) * 120;
               const y = 160 + Math.sin(a) * 120;
               return (
@@ -300,9 +300,8 @@ function Approach() {
               );
             })}
           </svg>
-          {[0, 1, 2, 3, 4].map((i) => {
-            const a = (i / 5) * 360 - 90;
-            const w = WINGS[i];
+          {WINGS.map((w, i) => {
+            const a = (i / WINGS.length) * 360 - 90;
             return (
               <motion.div
                 key={i}
@@ -332,7 +331,7 @@ function Approach() {
 }
 
 /* ========================================================================
-   05. WINGS — five disciplines, each in a unique row layout (not a grid)
+   05. WINGS — six disciplines, each in a unique row layout (not a grid)
    ======================================================================== */
 function WingRow({ wing, index }) {
   const Icon = WingIcons[wing.icon] || Sparkles;
@@ -341,7 +340,7 @@ function WingRow({ wing, index }) {
   const inView = useInView(ref, { once: true, amount: 0.3 });
 
   return (
-    <div ref={ref} id={wing.id} className="relative py-20 lg:py-28 scroll-mt-32">
+    <div ref={ref} id={wing.id} className="relative py-14 lg:py-20 scroll-mt-32">
       <div className={`absolute ${isReverse ? "right-0" : "left-0"} top-0 rail-num`}>
         {wing.number}
       </div>
@@ -401,8 +400,8 @@ function WingRow({ wing, index }) {
 function Wings() {
   return (
     <section className="relative">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-8 pt-24">
-        <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The five wings</div>
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-8 pt-16">
+        <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The six wings</div>
         <h2 className="font-display text-[36px] sm:text-[52px] lg:text-[64px] leading-[1.05] font-semibold max-w-4xl">
           Each wing is a focused practice <br/>
           in its own right.
@@ -424,19 +423,19 @@ function ProcessTimeline() {
   const lineH = useSpring(useTransform(scrollYProgress, [0, 1], ["0%", "100%"]), { stiffness: 60, damping: 18 });
 
   return (
-    <section ref={ref} className="relative py-32">
+    <section ref={ref} className="relative py-20">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— How we deliver</div>
         <h2 className="font-display text-[36px] sm:text-[52px] lg:text-[60px] leading-[1.05] font-semibold max-w-3xl">
           Seven steps. Predictable delivery. <span className="gradient-text">Zero surprises.</span>
         </h2>
 
-        <div className="relative mt-16 pl-12 sm:pl-20">
+        <div className="relative mt-10 pl-12 sm:pl-20">
           {/* Track */}
           <div className="absolute left-3 sm:left-7 top-0 bottom-0 w-px bg-white/8"/>
           <motion.div style={{ height: lineH }} className="absolute left-3 sm:left-7 top-0 w-px bg-gradient-to-b from-[#1E6BFF] via-[#4D8BFF] to-transparent"/>
 
-          <div className="space-y-12">
+          <div className="space-y-9">
             {PROCESS_STEPS.map((s, i) => {
               const Icon = Lucide[s.icon] || Sparkles;
               return (
@@ -476,8 +475,8 @@ function TechMarquee() {
   const row1 = [...all, ...all];
   const row2 = [...all.reverse(), ...all];
   return (
-    <section className="relative py-28">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-12">
+    <section className="relative py-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-8">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The stack</div>
         <h2 className="font-display text-[36px] sm:text-[52px] lg:text-[60px] leading-[1.05] font-semibold max-w-3xl">
           Modern, polyglot, <br/>chosen for <span className="gradient-text">fit</span>.
@@ -508,9 +507,9 @@ function TechMarquee() {
    ======================================================================== */
 function TeamTeaser() {
   return (
-    <section className="relative py-28">
+    <section className="relative py-16">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex items-end justify-between gap-6 mb-10">
+        <div className="flex items-end justify-between gap-6 mb-8">
           <div>
             <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The team</div>
             <h2 className="font-display text-[34px] sm:text-[46px] leading-[1.05] font-semibold max-w-2xl">
@@ -558,7 +557,7 @@ function TeamTeaser() {
    ======================================================================== */
 function Industries() {
   return (
-    <section className="relative py-28">
+    <section className="relative py-16">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <div className="max-w-2xl">
           <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— Industries we empower</div>
@@ -570,7 +569,7 @@ function Industries() {
           </p>
         </div>
 
-        <div className="mt-12 flex flex-wrap gap-2">
+        <div className="mt-8 flex flex-wrap gap-2">
           {INDUSTRIES.map((ind, i) => (
             <motion.span
               key={ind.name}
@@ -607,7 +606,7 @@ function FAQTeaser() {
   const [open, setOpen] = useState(0);
   const list = FAQS.slice(0, 6);
   return (
-    <section className="relative py-28">
+    <section className="relative py-16">
       <div className="max-w-5xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-10">
         <div className="lg:col-span-4">
           <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— FAQ</div>
@@ -637,22 +636,22 @@ function FAQTeaser() {
    ======================================================================== */
 function FinalCTA() {
   return (
-    <section className="relative py-32">
+    <section className="relative py-20">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        <div className="relative rounded-3xl overflow-hidden border border-white/10 p-10 lg:p-20">
+        <div className="relative rounded-3xl overflow-hidden border border-white/10 p-8 lg:p-10">
           <div className="absolute inset-0 bg-gradient-to-br from-[#0A1430] via-[#05080F] to-[#0A1430]"/>
           <div className="absolute inset-0 bg-grid opacity-30"/>
           <div className="absolute -top-32 -right-24 w-[480px] h-[480px] rounded-full bg-[#1E6BFF]/20 blur-[80px]"/>
 
           <div className="relative">
-            <Quote className="text-[#4D8BFF] mb-6" size={28}/>
+            <Quote className="text-[#4D8BFF] mb-4" size={28}/>
             <h3 className="font-display text-[36px] sm:text-[56px] lg:text-[68px] leading-[1.02] font-semibold max-w-3xl">
               Have a problem worth <span className="italic font-normal text-[#4D8BFF]">solving</span>?
             </h3>
-            <p className="mt-6 text-[17px] text-[#9AA3B8] max-w-xl leading-relaxed">
+            <p className="mt-5 text-[17px] text-[#9AA3B8] max-w-xl leading-relaxed">
               Tell us about your business and what you're trying to change. We reply within one working day — usually faster — and we mean it.
             </p>
-            <div className="mt-10 flex flex-wrap items-center gap-3">
+            <div className="mt-7 flex flex-wrap items-center gap-3">
               <MagneticButton strength={16}>
                 <Link to="/contact" data-testid="cta-start-conversation" className="btn-primary !py-4 !px-7 text-[15px]">
                   Start a conversation <ArrowUpRight size={17}/>

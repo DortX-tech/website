@@ -5,7 +5,7 @@ import axios from "axios";
 import { LogIn, Lock, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
 
 export default function AdminLogin() {
   const nav = useNavigate();
@@ -37,7 +37,7 @@ export default function AdminLogin() {
       <div className="absolute inset-0 bg-radial-glow"/>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative w-full max-w-md glass-strong rounded-2xl p-8">
         <div className="flex items-center justify-between mb-8">
-          <Logo height={72} variant="full"/>
+          <Logo height={52}/>
           <div className="text-[11px] uppercase tracking-[0.16em] text-[#4D8BFF]">Admin</div>
         </div>
         <h1 className="font-display text-[28px] font-semibold">Welcome back</h1>

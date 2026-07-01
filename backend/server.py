@@ -1,10 +1,12 @@
 """DortX Backend - FastAPI + MongoDB + JWT + Claude AI Chatbot."""
+import asyncio
+import json
 import os
 import uuid
 import logging
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from fastapi.security import OAuth2PasswordBearer
@@ -55,6 +57,7 @@ class LeadCreate(BaseModel):
     company: Optional[str] = Field(None, max_length=200)
     email: EmailStr
     phone: Optional[str] = Field(None, max_length=30)
+    subject: Optional[str] = Field(None, max_length=200)
     service: Optional[str] = Field(None, max_length=100)
     budget: Optional[str] = Field(None, max_length=50)
     description: str = Field(..., min_length=10, max_length=5000)
@@ -89,6 +92,23 @@ class TokenResponse(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str
     message: str
+    visitor_name: Optional[str] = None
+    selected_service: Optional[str] = None
+    history: List[Dict[str, str]] = Field(default_factory=list)
+
+
+class ChatLeadCreate(BaseModel):
+    session_id: str
+    name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
+    requirements: str = Field(..., min_length=10, max_length=5000)
+    company: Optional[str] = Field(None, max_length=200)
+    phone: Optional[str] = Field(None, max_length=30)
+    country: Optional[str] = Field(None, max_length=100)
+    budget: Optional[str] = Field(None, max_length=50)
+    project_type: Optional[str] = Field(None, max_length=100)
+    timeline: Optional[str] = Field(None, max_length=100)
+    preferred_contact_method: Optional[str] = Field(None, max_length=80)
 
 
 class CareerApplication(BaseModel):
@@ -168,36 +188,61 @@ async def get_current_admin(token: Optional[str] = Depends(oauth2_scheme)) -> di
 
 
 SEED_TEAM = [
-    {"name": "Thrisha", "role": "CEO, Founder & Founding Engineer", "leadership": True,
+    {"name": "Thrisha J C", "role": "Founder & CEO | Founding Engineer", "leadership": True,
      "bio": "Founded DortX with a conviction that small, focused teams can deliver software that actually changes how a business runs. Sets the company's vision and stays close to every line of architecture.",
-     "expertise": "Engineering Leadership · Product Strategy · System Architecture",
-     "responsibilities": ["Company vision", "Technical architecture", "Software engineering", "Product strategy"], "order": 0},
-    {"name": "Kavya", "role": "Full Stack Developer", "leadership": False,
-     "bio": "Builds end-to-end web and mobile experiences — from clean, accessible interfaces to dependable APIs. Cares deeply about details that users never notice and developers always do.",
-     "expertise": "Web & Mobile Development",
-     "responsibilities": ["Frontend development", "Backend development", "API integration", "Application development"], "order": 1},
-    {"name": "Mallikaarjun", "role": "AI & Autonomous Systems Engineer", "leadership": False,
-     "bio": "Designs and ships AI agents, automation workflows and machine-learning systems that move from notebooks into real production environments — measured by outcomes, not demos.",
-     "expertise": "AI Engineering · Agentic Systems",
-     "responsibilities": ["AI solutions", "AI agents", "Automation", "Machine learning"], "order": 2},
-    {"name": "Lalith", "role": "Data Engineer & Automation Architect", "leadership": False,
-     "bio": "Designs the data pipelines, warehouses and automation flows that turn scattered information into clear, dependable signals for the business.",
-     "expertise": "Data Engineering · BI · Workflow Automation",
-     "responsibilities": ["Data engineering", "Analytics", "Business intelligence", "Workflow automation"], "order": 3},
-    {"name": "Chandana", "role": "Creative Head", "leadership": False,
-     "bio": "Shapes the visual and experiential identity of DortX — translating product strategy into interfaces, brand systems and design language people connect with.",
-     "expertise": "Product Design · Brand Identity",
-     "responsibilities": ["UI/UX design", "Brand identity", "Visual design", "Creative direction"], "order": 4},
-    {"name": "Venu", "role": "Chief Marketing Officer", "leadership": False,
-     "bio": "Owns brand, growth and go-to-market at DortX — making sure the businesses we can help the most actually find us, understand us and choose to work with us.",
+     "expertise": "Engineering Leadership | Product Strategy | System Architecture",
+     "responsibilities": ["Company vision", "Technical architecture", "Software engineering", "Product strategy"],
+     "photo": "/team/thrisha.jpeg",
+     "linkedin": "https://www.linkedin.com/in/thrishajc05", "email_address": "thrisha@dortxtech.com", "order": 0},
+    {"name": "Venu P K", "role": "Co-Founder | Chief Marketing Officer", "leadership": False,
+     "bio": "Owns brand, growth and go-to-market at DortX - making sure the businesses we can help the most actually find us, understand us and choose to work with us.",
      "expertise": "Brand & Growth Marketing",
-     "responsibilities": ["Digital growth", "Marketing strategy", "SEO", "Performance marketing", "Brand development"], "order": 5},
-    {"name": "Anusha", "role": "Software Developer", "leadership": False,
-     "bio": "Works across application features, quality and testing — focused on shipping software that's not just functional, but genuinely pleasant for the people using it.",
-     "expertise": "Application Development · Quality",
-     "responsibilities": ["Software development", "Application features", "Quality improvements", "Testing support"], "order": 6},
+     "responsibilities": ["Digital growth", "Marketing strategy", "SEO", "Performance marketing", "Brand development"],
+     "photo": "/team/venu-pk.jpeg",
+     "linkedin": "https://www.linkedin.com/in/venupk", "order": 1},
+    {"name": "Mallikarjun", "role": "Chief Technology Officer (CTO) | AI & Autonomous Systems Engineer", "leadership": False,
+     "bio": "Designs and ships AI agents, automation workflows and machine-learning systems that move from notebooks into real production environments - measured by outcomes, not demos.",
+     "expertise": "AI Engineering | Agentic Systems",
+     "responsibilities": ["AI solutions", "AI agents", "Automation", "Machine learning"],
+     "photo": "/team/mallikaarjun.jpeg",
+     "linkedin": "https://www.linkedin.com/in/mallikarjun25", "order": 2},
+    {"name": "Lalith S", "role": "Chief Product Officer (CPO) | Data Engineer & Automation Architect", "leadership": False,
+     "bio": "Designs the data pipelines, warehouses and automation flows that turn scattered information into clear, dependable signals for the business.",
+     "expertise": "Data Engineering | BI | Workflow Automation",
+     "responsibilities": ["Data engineering", "Analytics", "Business intelligence", "Workflow automation"],
+     "photo": "/team/lalith-s.jpeg",
+     "linkedin": "https://www.linkedin.com/in/lalithanju", "order": 3},
+    {"name": "Anusha R", "role": "Software Developer", "leadership": False,
+     "bio": "Works across application features, quality and testing - focused on shipping software that's not just functional, but genuinely pleasant for the people using it.",
+     "expertise": "Application Development | Quality",
+     "responsibilities": ["Software development", "Application features", "Quality improvements", "Testing support"],
+     "photo": "/team/anusha-r.jpeg",
+     "linkedin": "https://www.linkedin.com/in/anusha-r-a82307260", "order": 4},
+    {"name": "Chandana", "role": "Creative Head", "leadership": False,
+     "bio": "Shapes the visual and experiential identity of DortX - translating product strategy into interfaces, brand systems and design language people connect with.",
+     "expertise": "Product Design | Brand Identity",
+     "responsibilities": ["UI/UX design", "Brand identity", "Visual design", "Creative direction"],
+     "photo": "/team/chandana.jpeg",
+     "linkedin": "https://www.linkedin.com/in/chandana-39379636b/", "order": 5},
+    {"name": "Kavyashree", "role": "Full Stack Developer", "leadership": False,
+     "bio": "Builds end-to-end web and mobile experiences - from clean, accessible interfaces to dependable APIs. Cares deeply about details that users never notice and developers always do.",
+     "expertise": "Web & Mobile Development",
+     "responsibilities": ["Frontend development", "Backend development", "API integration", "Application development"],
+     "photo": "/team/kavyashree.jpeg",
+     "linkedin": "https://www.linkedin.com/in/kavyashree2005", "order": 6},
 ]
 
+TEAM_PROFILE_UPDATES = {
+    "Venu P K": {"linkedin": "https://www.linkedin.com/in/venupk"},
+}
+
+
+def apply_team_profile_updates(items: List[dict]) -> List[dict]:
+    for item in items:
+        updates = TEAM_PROFILE_UPDATES.get(item.get("name"))
+        if updates:
+            item.update(updates)
+    return items
 
 # --- Startup: seed admin ---
 @app.on_event("startup")
@@ -217,8 +262,9 @@ async def startup():
             await db.admins.update_one({"email": ADMIN_EMAIL}, {"$set": {"password": hash_password(ADMIN_PASSWORD)}})
     # Seed team if empty
     if await db.team_members.count_documents({}) == 0:
-        docs = [{**m, "id": str(uuid.uuid4()), "photo": None, "linkedin": None,
-                 "email_address": None, "created_at": now_iso(), "updated_at": now_iso()} for m in SEED_TEAM]
+        docs = [{**m, "id": str(uuid.uuid4()),
+                 "linkedin": m.get("linkedin"), "email_address": m.get("email_address"),
+                 "created_at": now_iso(), "updated_at": now_iso()} for m in SEED_TEAM]
         await db.team_members.insert_many(docs)
         logger.info(f"Seeded {len(docs)} team members")
 
@@ -244,7 +290,7 @@ async def health():
 async def create_lead(payload: LeadCreate):
     lead = Lead(**payload.model_dump())
     await db.leads.insert_one(lead.model_dump())
-    logger.info(f"New lead: {lead.email} - {lead.service}")
+    logger.info(f"New lead: {lead.email} - {lead.subject or lead.service or 'Contact form'}")
     return lead
 
 
@@ -255,6 +301,7 @@ async def create_lead_with_file(
     description: str = Form(...),
     company: Optional[str] = Form(None),
     phone: Optional[str] = Form(None),
+    subject: Optional[str] = Form(None),
     service: Optional[str] = Form(None),
     budget: Optional[str] = Form(None),
     timeline: Optional[str] = Form(None),
@@ -273,7 +320,7 @@ async def create_lead_with_file(
 
     lead = Lead(
         name=name, email=email, description=description, company=company,
-        phone=phone, service=service, budget=budget, timeline=timeline,
+        phone=phone, subject=subject, service=service, budget=budget, timeline=timeline,
         file_name=file_name, file_path=file_path,
     )
     await db.leads.insert_one(lead.model_dump())
@@ -431,13 +478,13 @@ async def delete_subscriber(sub_id: str, admin: dict = Depends(get_current_admin
 @api.get("/team")
 async def list_team_public():
     items = await db.team_members.find({}, {"_id": 0}).sort("order", 1).to_list(length=200)
-    return {"items": items}
+    return {"items": apply_team_profile_updates(items)}
 
 
 @api.get("/admin/team")
 async def list_team_admin(admin: dict = Depends(get_current_admin)):
     items = await db.team_members.find({}, {"_id": 0}).sort("order", 1).to_list(length=200)
-    return {"items": items}
+    return {"items": apply_team_profile_updates(items)}
 
 
 @api.post("/admin/team", status_code=201)
@@ -505,52 +552,271 @@ async def serve_team_photo(fid: str):
     return FileResponse(path)
 
 
+@api.post("/chat/lead", status_code=201)
+async def create_chat_lead(payload: ChatLeadCreate):
+    details = [
+        f"Country: {payload.country or 'Not provided'}",
+        f"Project Type: {payload.project_type or 'Not provided'}",
+        f"Preferred Contact: {payload.preferred_contact_method or 'Not provided'}",
+        "",
+        "Requirements:",
+        payload.requirements,
+    ]
+    lead = Lead(
+        name=payload.name,
+        company=payload.company,
+        email=payload.email,
+        phone=payload.phone,
+        subject="AI chat qualified lead",
+        service=payload.project_type,
+        budget=payload.budget,
+        timeline=payload.timeline,
+        description="\n".join(details),
+    )
+    await db.leads.insert_one(lead.model_dump())
+    await db.chat_messages.insert_one({
+        "session_id": payload.session_id,
+        "role": "system",
+        "content": f"Lead captured: {lead.email}",
+        "created_at": now_iso(),
+        "lead_id": lead.id,
+    })
+    logger.info(f"New chat lead: {lead.email} - {lead.service or 'Project'}")
+    return {"success": True, "id": lead.id}
+
+
 # --- AI Chatbot (DortX AI) ---
 DORTX_SYSTEM = """You are DortX AI, the friendly and professional virtual assistant of DortX.
 
 About DortX:
 - Tagline: "Empowering Business Through Technology"
+- Contact: support@dortxtech.com, founder thrisha@dortxtech.com, phone +91 81509 90329.
 - Philosophy: We do not sell technology. We solve business problems using intelligent technology.
-- DortX helps businesses digitally transform through AI, software engineering, automation, data intelligence and digital growth.
+- DortX helps businesses digitally transform through AI, software engineering, automation, data intelligence and digital growth, IoT and industrial automation.
 
-Our 5 Service Wings:
-1. Software Development — Websites, Web Apps, Mobile Apps, UI/UX Design, Custom ERP/CRM/HRMS, Cloud & DevOps.
-2. Cognitive Automation & AI — AI Chatbots & Agents, Workflow Automation, Custom AI Applications, AI Integration.
-3. Data Intelligence — BI Dashboards, Data Analytics, Predictive Analytics, Reporting & Visualization.
-4. Strategic Growth — SEO, Performance Marketing, Growth Analytics, Brand Transformation.
-5. Continuity & Security — App Maintenance, Cybersecurity, Technical Support, Performance Optimization.
+Our 6 Service Wings:
+1. Software Development â€” Websites, Web Apps, Mobile Apps, UI/UX Design, Custom ERP/CRM/HRMS, Cloud & DevOps.
+2. Cognitive Automation & AI â€” AI Chatbots & Agents, Workflow Automation, Custom AI Applications, AI Integration.
+3. Data Intelligence â€” BI Dashboards, Data Analytics, Predictive Analytics, Reporting & Visualization.
+4. Strategic Growth - SEO, Performance Marketing, Growth Analytics, Brand Transformation.
+5. IoT & Industrial Automation - Industrial IoT, Smart Factory Solutions, Machine Monitoring, Predictive Maintenance, PLC Programming, SCADA, HMI, Embedded Systems, Robotics, Custom Firmware, Sensor Integration, PCB Design and Hardware Integration.
+6. Continuity & Security - App Maintenance, Cybersecurity, Technical Support, Performance Optimization.
 
-Our Process: Requirement Analysis → Planning → UI/UX → Development → Testing → Deployment → Maintenance.
+Our Process: Requirement Analysis â†’ Planning â†’ UI/UX â†’ Development â†’ Testing â†’ Deployment â†’ Maintenance.
 
-Technologies we use: React, Next.js, TypeScript, Tailwind, Node.js, Java Spring Boot, Python, FastAPI, MongoDB, MySQL, PostgreSQL, AWS, Azure, GCP, Docker, Kubernetes, OpenAI, Claude, Gemini, LangChain, and more.
+Technologies we use: React, Next.js, TypeScript, Tailwind, Node.js, Java Spring Boot, Python, FastAPI, MongoDB, MySQL, PostgreSQL, AWS, Azure, GCP, Docker, Kubernetes, OpenAI, Claude, Gemini, LangChain, Arduino, ESP32, STM32, Raspberry Pi, PLC, SCADA, HMI, MQTT, Modbus, OPC UA, industrial sensors, edge computing and more.
 
 Team Members (current):
-- Thrisha — CEO, Founder & Founding Engineer
-- Kavya — Full Stack Developer
-- Mallikaarjun — AI & Autonomous Systems Engineer
-- Lalith — Data Engineer & Automation Architect
-- Chandana — Creative Head
-- Venu — Chief Marketing Officer
-- Anusha — Software Developer
+- Thrisha J C - Founder & CEO | Founding Engineer
+- Venu P K - Co-Founder | Chief Marketing Officer
+- Mallikarjun - Chief Technology Officer (CTO) | AI & Autonomous Systems Engineer
+- Lalith S - Chief Product Officer (CPO) | Data Engineer & Automation Architect
+- Anusha R - Software Developer
+- Chandana - Creative Head
+- Kavyashree - Full Stack Developer
+Assistant behavior:
+- Behave like an experienced AI business consultant, not a scripted FAQ bot.
+- Keep conversational memory from the current session and refer to the visitor by name when known.
+- Ask one clear follow-up question when the next step is ambiguous.
+- Use Markdown, bullets, short tables and code blocks when helpful.
+- Help with DortX, services, portfolio, technologies, pricing guidance, process, AI, automation, IoT, industrial automation, embedded systems, robotics, hardware, software engineering, web/mobile/cloud, APIs, CRM, ERP, SaaS, business consulting, security and digital transformation.
+- When buying intent appears, help qualify the project naturally: name, company, email, phone, country, budget, project type, timeline, requirements, preferred contact method.
+- Recommend DortX services when relevant, but do not be pushy.
 
 Tone & honesty rules:
-- DortX is a young, focused technology company — do not invent years of experience, client lists, awards or fake statistics.
+- DortX is a young, focused technology company â€” do not invent years of experience, client lists, awards or fake statistics.
 - Speak with warmth and clarity, never marketing buzzwords like "cutting-edge", "world-class", "revolutionary".
-- Be concise (2–4 short paragraphs max).
+- Be concise by default, but give detailed step-by-step answers when the visitor asks for depth.
 - If asked about pricing or timelines, explain it depends on scope and politely guide the visitor to the Contact page.
-- If asked something outside DortX context, gently redirect back to how DortX can help.
+- If asked something outside DortX context, answer briefly if it is a general software/business topic, then connect it back to how DortX can help.
 - End answers about services with a soft CTA like: "Want a tailored proposal? Visit our Contact page." when appropriate.
 """
+
+
+def ai_service_configured() -> bool:
+    key = (EMERGENT_LLM_KEY or "").strip().lower()
+    return bool(key) and key not in {"dummy-key", "dummy", "changeme", "change-me", "test"}
+
+
+def sse_data(text: str) -> str:
+    return f"data: {json.dumps(text)}\n\n"
+
+
+async def recent_chat_context(session_id: str, limit: int = 10) -> List[Dict[str, str]]:
+    try:
+        cursor = db.chat_messages.find(
+            {"session_id": session_id},
+            {"_id": 0, "role": 1, "content": 1},
+        ).sort("created_at", -1).limit(limit)
+        rows = await cursor.to_list(length=limit)
+        return list(reversed(rows))
+    except Exception:
+        logger.exception("Could not load chat history")
+        return []
+
+
+def compact_history(history: List[Dict[str, str]], limit: int = 8) -> str:
+    cleaned = []
+    for item in (history or [])[-limit:]:
+        role = str(item.get("role", ""))[:20]
+        content = str(item.get("content", "")).strip()
+        if role in {"user", "assistant"} and content:
+            cleaned.append(f"{role}: {content[:900]}")
+    return "\n".join(cleaned)
+
+
+def build_user_prompt(req: ChatRequest, stored_history: List[Dict[str, str]]) -> str:
+    context_lines = []
+    if req.visitor_name:
+        context_lines.append(f"Visitor name: {req.visitor_name}")
+    if req.selected_service:
+        context_lines.append(f"Selected service interest: {req.selected_service}")
+    merged_history = compact_history(stored_history + (req.history or []), limit=10)
+    if merged_history:
+        context_lines.append("Recent conversation:\n" + merged_history)
+    context = "\n\n".join(context_lines)
+    if context:
+        return f"{context}\n\nVisitor's latest message:\n{req.message}"
+    return req.message
+
+
+def local_dortx_reply(message: str, visitor_name: Optional[str] = None, selected_service: Optional[str] = None) -> str:
+    """Useful deterministic DortX consultant fallback when the external AI provider is unavailable."""
+    text = (message or "").lower()
+    name_part = f"{visitor_name}, " if visitor_name else ""
+    service_hint = f"\n\nSince you're interested in **{selected_service}**, I can tailor the next steps around that." if selected_service else ""
+
+    if any(word in text for word in ["contact", "email", "phone", "call", "reach"]):
+        return (
+            f"{name_part}you can reach DortX here:\n\n"
+            "- **Project enquiries:** support@dortxtech.com\n"
+            "- **Founder:** thrisha@dortxtech.com\n"
+            "- **Phone:** +91 81509 90329\n\n"
+            "If you share your project type, timeline and budget range, I can help you prepare a crisp enquiry before you contact the team."
+        )
+    if any(word in text for word in ["price", "pricing", "cost", "budget", "quote", "proposal"]):
+        return (
+            f"{name_part}pricing depends on scope, complexity, integrations and delivery timeline. As a practical guide:\n\n"
+            "| Project type | What affects cost |\n"
+            "|---|---|\n"
+            "| Website | pages, animations, CMS, content, SEO |\n"
+            "| Web/mobile app | roles, workflows, dashboards, APIs |\n"
+            "| AI agent/chatbot | knowledge sources, integrations, guardrails, analytics |\n"
+            "| Automation | systems involved, approvals, error handling |\n\n"
+            "The best next step is a short discovery call so DortX can estimate accurately instead of guessing."
+        )
+    if any(word in text for word in ["portfolio", "case stud", "work", "project"]):
+        return (
+            f"{name_part}DortX presents portfolio work honestly as launch work and selected case studies. We do not invent client lists or inflated metrics.\n\n"
+            "If you tell me the kind of solution you want to build, I can map it to the closest DortX service wing and explain what a similar delivery plan would look like."
+        )
+    if any(word in text for word in ["process", "timeline", "how do you work", "delivery"]):
+        return (
+            f"{name_part}DortX usually works in this flow:\n\n"
+            "1. **Requirement analysis** - clarify the business goal and users.\n"
+            "2. **Planning** - scope, milestones, architecture and risks.\n"
+            "3. **UI/UX** - screens, flows and interaction details.\n"
+            "4. **Development** - frontend, backend, AI, integrations or automation.\n"
+            "5. **Testing** - functional, responsive, performance and security checks.\n"
+            "6. **Deployment** - cloud setup, release and monitoring.\n"
+            "7. **Maintenance** - improvements, support and scaling.\n\n"
+            "Timelines depend on scope, but the team keeps milestones transparent."
+        )
+    if any(word in text for word in ["technology", "technologies", "stack", "react", "python", "java", "cloud"]):
+        return (
+            f"{name_part}DortX chooses technology around the business problem, not trends. Common stacks include:\n\n"
+            "- **Frontend:** React, Next.js, TypeScript, Tailwind\n"
+            "- **Backend:** Python/FastAPI, Node.js, Java Spring Boot\n"
+            "- **Data:** MongoDB, MySQL, PostgreSQL, BI dashboards\n"
+            "- **Cloud/DevOps:** AWS, Azure, GCP, Docker, Kubernetes\n"
+            "- **AI:** OpenAI, Claude, Gemini, LangChain, agent workflows\n"
+            "- **IoT/Industrial:** Arduino, ESP32, STM32, Raspberry Pi, PLC, SCADA, HMI, MQTT, Modbus, OPC UA, industrial sensors and edge computing\n\n"
+            "If you share your target platform and users, I can suggest a sensible architecture."
+        )
+    if any(word in text for word in ["iot", "iiot", "industrial", "plc", "scada", "hmi", "arduino", "esp32", "stm32", "raspberry", "robot", "robotics", "sensor", "pcb", "mqtt", "modbus", "opc", "machine monitoring", "predictive maintenance", "smart factory"]):
+        return (
+            f"{name_part}yes. DortX can help with **IoT and industrial automation** solutions that connect devices, machines and business systems.\n\n"
+            "Typical capabilities include:\n\n"
+            "- Industrial IoT and smart factory systems\n"
+            "- Machine monitoring, predictive maintenance and energy monitoring\n"
+            "- PLC programming, SCADA, HMI and process automation\n"
+            "- Embedded systems with Arduino, ESP32, STM32 and Raspberry Pi\n"
+            "- Sensor integration, custom firmware, smart devices and robotics\n"
+            "- PCB design, prototypes and hardware integration\n\n"
+            "The business value is usually reduced downtime, real-time visibility, better operational efficiency and scalable industrial systems."
+        )
+    if any(word in text for word in ["ai", "automation", "agent", "chatbot", "workflow"]):
+        return (
+            f"{name_part}yes. DortX can help with **AI agents, AI chatbots, workflow automation, custom AI applications and integrations**.\n\n"
+            "A production AI solution should usually include:\n\n"
+            "- a clear business outcome\n"
+            "- trusted knowledge sources\n"
+            "- tool/API integrations\n"
+            "- guardrails and escalation paths\n"
+            "- analytics and continuous improvement\n\n"
+            f"The goal is practical automation that reaches production, not just a demo.{service_hint}"
+        )
+    if any(word in text for word in ["software", "website", "app", "mobile", "erp", "crm", "development"]):
+        return (
+            f"{name_part}DortX builds websites, web apps, mobile apps, UI/UX systems, internal tools and custom ERP/CRM/HRMS platforms.\n\n"
+            "A good starting point is to define:\n\n"
+            "- who will use it\n"
+            "- what workflow it improves\n"
+            "- what systems it must connect to\n"
+            "- what success should look like after launch\n\n"
+            "Share those details and I can help shape the first scope."
+        )
+    if any(word in text for word in ["service", "offer", "do you do", "what do you"]):
+        return (
+            f"{name_part}DortX has six service wings:\n\n"
+            "1. **Software Development** - websites, apps, ERP/CRM/HRMS, UI/UX, cloud.\n"
+            "2. **Cognitive Automation & AI** - AI agents, chatbots, workflow automation, AI integrations.\n"
+            "3. **Data Intelligence** - dashboards, analytics, reporting, predictive insights.\n"
+            "4. **Strategic Growth** - SEO, performance marketing, growth analytics, brand transformation.\n"
+            "5. **IoT & Industrial Automation** - IIoT, smart factories, PLC/SCADA/HMI, embedded systems, robotics and hardware prototypes.\n"
+            "6. **Continuity & Security** - maintenance, cybersecurity, support and optimization.\n\n"
+            "Tell me what you are trying to improve, and I will point you to the right path."
+        )
+    return (
+        f"{name_part}DortX helps businesses solve problems with intelligent technology across software development, AI and automation, data intelligence, digital growth, IoT and industrial automation, and ongoing support.\n\n"
+        "Tell me what you are trying to build, automate or improve. I can help you think through the solution, likely technology choices, timeline considerations and the right DortX service wing."
+    )
 
 
 @api.post("/chat/stream")
 async def chat_stream(req: ChatRequest):
     """Server-Sent Events stream for the DortX AI chatbot."""
+    stored_history = await recent_chat_context(req.session_id)
+    if not ai_service_configured():
+        reply = local_dortx_reply(req.message, req.visitor_name, req.selected_service)
+        await db.chat_messages.insert_one({
+            "session_id": req.session_id,
+            "role": "user",
+            "content": req.message,
+            "created_at": now_iso(),
+            "visitor_name": req.visitor_name,
+            "selected_service": req.selected_service,
+        })
+        await db.chat_messages.insert_one({
+            "session_id": req.session_id,
+            "role": "assistant",
+            "content": reply,
+            "created_at": now_iso(),
+            "source": "local_fallback",
+        })
+
+        async def fallback_event_gen():
+            yield sse_data(reply)
+            yield "event: done\ndata: [DONE]\n\n"
+
+        return StreamingResponse(fallback_event_gen(), media_type="text/event-stream")
+
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
         session_id=req.session_id,
         system_message=DORTX_SYSTEM,
     ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+    prompt = build_user_prompt(req, stored_history)
 
     # Persist user message
     await db.chat_messages.insert_one({
@@ -558,21 +824,35 @@ async def chat_stream(req: ChatRequest):
         "role": "user",
         "content": req.message,
         "created_at": now_iso(),
+        "visitor_name": req.visitor_name,
+        "selected_service": req.selected_service,
     })
 
     async def event_gen():
         full = []
+        delivered = False
         try:
-            async for ev in chat.stream_message(UserMessage(text=req.message)):
-                if isinstance(ev, TextDelta):
-                    full.append(ev.content)
-                    # SSE format
-                    yield f"data: {ev.content}\n\n"
-                elif isinstance(ev, StreamDone):
+            for attempt in range(2):
+                try:
+                    async for ev in chat.stream_message(UserMessage(text=prompt)):
+                        if isinstance(ev, TextDelta):
+                            delivered = True
+                            full.append(ev.content)
+                            yield sse_data(ev.content)
+                        elif isinstance(ev, StreamDone):
+                            break
+                    if full:
+                        break
+                except Exception:
+                    logger.exception("Chat stream error on attempt %s", attempt + 1)
+                    if attempt == 0 and not delivered:
+                        await asyncio.sleep(0.8)
+                        continue
                     break
-        except Exception as e:
-            logger.exception("Chat stream error")
-            yield f"data: [Sorry, I had a hiccup. Please try again.]\n\n"
+            if not full:
+                fallback = local_dortx_reply(req.message, req.visitor_name, req.selected_service)
+                full.append(fallback)
+                yield sse_data(fallback)
         finally:
             # Persist assistant reply
             await db.chat_messages.insert_one({
@@ -593,25 +873,52 @@ async def chat_stream(req: ChatRequest):
 @api.post("/chat")
 async def chat_sync(req: ChatRequest):
     """Non-streaming fallback (used if SSE blocked)."""
+    stored_history = await recent_chat_context(req.session_id)
+    if not ai_service_configured():
+        reply = local_dortx_reply(req.message, req.visitor_name, req.selected_service)
+        await db.chat_messages.insert_one({
+            "session_id": req.session_id, "role": "user", "content": req.message, "created_at": now_iso(),
+            "visitor_name": req.visitor_name, "selected_service": req.selected_service,
+        })
+        await db.chat_messages.insert_one({
+            "session_id": req.session_id, "role": "assistant", "content": reply, "created_at": now_iso(), "source": "local_fallback",
+        })
+        return {"reply": reply, "source": "local_fallback"}
+
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
         session_id=req.session_id,
         system_message=DORTX_SYSTEM,
     ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+    prompt = build_user_prompt(req, stored_history)
 
     await db.chat_messages.insert_one({
         "session_id": req.session_id, "role": "user", "content": req.message, "created_at": now_iso(),
+        "visitor_name": req.visitor_name, "selected_service": req.selected_service,
     })
     parts = []
-    try:
-        async for ev in chat.stream_message(UserMessage(text=req.message)):
-            if isinstance(ev, TextDelta):
-                parts.append(ev.content)
-            elif isinstance(ev, StreamDone):
+    for attempt in range(2):
+        try:
+            async def collect_reply():
+                async for ev in chat.stream_message(UserMessage(text=prompt)):
+                    if isinstance(ev, TextDelta):
+                        parts.append(ev.content)
+                    elif isinstance(ev, StreamDone):
+                        break
+            await asyncio.wait_for(collect_reply(), timeout=40)
+            if parts:
                 break
-    except Exception:
-        logger.exception("Chat sync error")
-        raise HTTPException(500, "Chat temporarily unavailable")
+        except Exception:
+            logger.exception("Chat sync error on attempt %s", attempt + 1)
+            if attempt == 0:
+                await asyncio.sleep(0.8)
+                continue
+    if not parts:
+        reply = local_dortx_reply(req.message, req.visitor_name, req.selected_service)
+        await db.chat_messages.insert_one({
+            "session_id": req.session_id, "role": "assistant", "content": reply, "created_at": now_iso(), "source": "local_fallback",
+        })
+        return {"reply": reply, "source": "local_fallback"}
     reply = "".join(parts)
     await db.chat_messages.insert_one({
         "session_id": req.session_id, "role": "assistant", "content": reply, "created_at": now_iso(),
@@ -629,3 +936,4 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+

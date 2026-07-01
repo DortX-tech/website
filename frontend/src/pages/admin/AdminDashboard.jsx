@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { motion } from "framer-motion";
-import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, TrendingUp, Briefcase, Send, LayoutDashboard, Inbox, FileText } from "lucide-react";
+import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Send, LayoutDashboard, Inbox, FileText, UserCog } from "lucide-react";
 import Logo from "@/components/Logo";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
 const STATUSES = ["all", "new", "contacted", "qualified", "won", "lost"];
 const STATUS_COLOR = {
   new: "bg-blue-500/15 text-blue-300 border-blue-500/30",
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
       <header className="border-b border-white/8 sticky top-0 z-40 glass-strong">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Logo height={32} variant="mark"/>
+            <Logo height={24}/>
             <span className="text-[11px] uppercase tracking-[0.16em] text-[#4D8BFF] hidden sm:block">Admin Console</span>
           </div>
           <div className="flex items-center gap-2">

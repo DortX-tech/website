@@ -5,7 +5,7 @@ import { TECH_GROUPS } from "@/data/site";
 export default function Technologies() {
   return (
     <div data-testid="technologies-page">
-      <section className="pt-36 pb-12 relative">
+      <section className="pt-32 pb-10 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
@@ -19,7 +19,7 @@ export default function Technologies() {
         </div>
       </section>
 
-      <section className="py-16">
+      <section className="py-14">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 grid md:grid-cols-2 lg:grid-cols-4 gap-5">
           {TECH_GROUPS.map((g, i) => (
             <motion.div

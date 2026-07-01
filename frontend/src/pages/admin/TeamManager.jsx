@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Plus, Trash2, Upload, Crown, X, Save, Image as ImageIcon } from "lucide-react";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const API = `${BACKEND_BASE}/api`;
 
 function api() {
   const token = localStorage.getItem("dortx-admin-token");

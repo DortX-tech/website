@@ -1,12 +1,11 @@
 import { motion } from "framer-motion";
 import * as Lucide from "lucide-react";
-import SectionHeader from "@/components/SectionHeader";
 import { PROCESS_STEPS } from "@/data/site";
 
 export default function Process() {
   return (
     <div data-testid="process-page">
-      <section className="pt-36 pb-12 relative">
+      <section className="pt-32 pb-10 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
@@ -15,15 +14,15 @@ export default function Process() {
             A disciplined seven-step <span className="gradient-text">delivery process</span>.
           </h1>
           <p className="mt-6 text-[17px] text-[#9AA3B8] max-w-2xl leading-relaxed">
-            From the first conversation to long-term maintenance — here's exactly how we work, what you'll see, and when.
+            From the first conversation to long-term maintenance, we keep delivery transparent, quality-focused, and on schedule. Quality isn't something we promise at the end - it's how we build from day one.
           </p>
         </div>
       </section>
 
-      <section className="py-16">
+      <section className="py-14">
         <div className="max-w-5xl mx-auto px-6 lg:px-8 relative">
           <div className="absolute left-7 lg:left-1/2 lg:-translate-x-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[#1E6BFF]/30 to-transparent"/>
-          <div className="space-y-10">
+          <div className="space-y-8 lg:space-y-10">
             {PROCESS_STEPS.map((s, i) => {
               const Icon = Lucide[s.icon] || Lucide.Sparkles;
               const left = i % 2 === 0;
@@ -34,7 +33,7 @@ export default function Process() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.4 }}
                   transition={{ duration: 0.5 }}
-                  className={`relative lg:grid lg:grid-cols-2 gap-12 items-center`}
+                  className={`relative lg:grid lg:grid-cols-2 gap-10 items-center`}
                 >
                   <div className={`pl-20 lg:pl-0 ${left ? "lg:pr-12 lg:text-right" : "lg:col-start-2 lg:pl-12"}`}>
                     <div className="font-display text-[#243049] text-[44px] leading-none">{s.num}</div>

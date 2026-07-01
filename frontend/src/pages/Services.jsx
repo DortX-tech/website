@@ -8,21 +8,21 @@ import { WINGS } from "@/data/site";
 export default function Services() {
   return (
     <div data-testid="services-page">
-      <section className="pt-36 pb-12 relative">
+      <section className="pt-32 pb-10 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Services</div>
           <h1 className="font-display text-[44px] sm:text-[60px] lg:text-[72px] leading-[1.02] font-semibold mt-4 max-w-4xl">
-            Five service wings — <span className="gradient-text">built to compound</span>.
+            Six service wings - <span className="gradient-text">built to compound</span>.
           </h1>
           <p className="mt-6 text-[17px] text-[#9AA3B8] max-w-2xl leading-relaxed">
-            From product engineering to AI agents, dashboards, growth and security — every wing reinforces the others. Use one. Or use them as a system.
+            From product engineering to AI agents, dashboards, growth, industrial automation and security - every wing reinforces the others. Use one. Or use them as a system.
           </p>
         </div>
       </section>
 
-      <section className="py-12">
+      <section className="py-10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 space-y-8">
           {WINGS.map((w, idx) => {
             const Icon = Lucide[w.icon] || Lucide.Sparkles;
@@ -34,7 +34,7 @@ export default function Services() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.15 }}
                 transition={{ duration: 0.6 }}
-                className="card-glow p-8 lg:p-12 scroll-mt-24"
+                className="card-glow p-6 lg:p-10 scroll-mt-24"
               >
                 <div className="grid lg:grid-cols-12 gap-10">
                   <div className="lg:col-span-5">
@@ -66,8 +66,8 @@ export default function Services() {
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="max-w-5xl mx-auto px-6 lg:px-8 glass rounded-3xl p-10 lg:p-14 text-center">
+      <section className="py-16">
+        <div className="max-w-5xl mx-auto px-6 lg:px-8 glass rounded-3xl p-8 lg:p-12 text-center">
           <SectionHeader align="center" eyebrow="Get started" title="Not sure where to begin?" subtitle="Tell us the business problem. We'll recommend the wing — or the combination — that fits best." />
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link to="/contact" className="btn-primary">Talk to us <ArrowUpRight size={16}/></Link>

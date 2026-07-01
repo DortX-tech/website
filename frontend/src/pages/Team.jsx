@@ -4,10 +4,10 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { Linkedin, Mail, ArrowUpRight, ArrowRight, Sparkles, Plus } from "lucide-react";
 import MagneticButton from "@/components/MagneticButton";
-import { CONTACT } from "@/data/site";
+import { CONTACT, TEAM } from "@/data/site";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const API = `${BACKEND_BASE}/api`;
 function fullPhoto(p) {
   if (!p) return null;
   if (p.startsWith("http")) return p;
@@ -18,7 +18,7 @@ function fullPhoto(p) {
 /* —————————————————— Hero —————————————————— */
 function Hero() {
   return (
-    <section className="relative pt-40 pb-16 overflow-hidden">
+    <section className="relative pt-32 pb-8 overflow-hidden">
       <div className="absolute inset-0 bg-grid opacity-40"/>
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-[#1E6BFF]/15 blur-[100px]"/>
       <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
@@ -35,7 +35,7 @@ function Hero() {
 /* —————————————————— Philosophy intro —————————————————— */
 function Philosophy() {
   return (
-    <section className="relative py-20">
+    <section className="relative py-12">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
         <motion.p
           initial={{ opacity: 0, y: 24 }}
@@ -51,7 +51,7 @@ function Philosophy() {
           <span className="text-[#4D8BFF]"> passion</span> for building software that genuinely helps a business.
         </motion.p>
 
-        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             "Continuous Learning",
             "Engineering Excellence",
@@ -115,13 +115,19 @@ function Avatar({ name, photo, size = 120, big = false }) {
 /* —————————————————— Leadership —————————————————— */
 function Leadership({ team }) {
   const leader = team.find((m) => m.leadership) || team[0];
+  const leadershipDetails = [
+    "Engineering Leadership",
+    "Software Architecture",
+    "Product Strategy",
+    "AI Solutions",
+  ];
   if (!leader) return null;
   return (
-    <section className="relative py-20">
+    <section className="relative py-12">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— Leadership</div>
+        <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">FOUNDER</div>
         <h2 className="font-display text-[34px] sm:text-[48px] leading-[1.05] font-medium max-w-3xl">
-          The person who started DortX.
+          Thrisha J C
         </h2>
 
         <motion.div
@@ -129,10 +135,10 @@ function Leadership({ team }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.6 }}
-          className="mt-12 grid lg:grid-cols-12 gap-10 items-start"
+          className="mt-8 grid lg:grid-cols-12 gap-8 lg:gap-10 items-start"
         >
           <div className="lg:col-span-5">
-            <div className="relative max-w-md">
+            <div className="relative max-w-[24rem]">
               <div className="absolute -inset-3 bg-[#1E6BFF]/20 blur-2xl rounded-3xl pointer-events-none"/>
               <div className="relative">
                 <Avatar name={leader.name} photo={fullPhoto(leader.photo)} big />
@@ -141,27 +147,27 @@ function Leadership({ team }) {
           </div>
 
           <div className="lg:col-span-7">
-            <div className="text-[12px] uppercase tracking-[0.16em] text-[#4D8BFF]">Founder · CEO</div>
-            <h3 className="font-display text-[44px] sm:text-[56px] font-semibold leading-tight mt-3">{leader.name}</h3>
-            <div className="text-[14.5px] text-[#C9D2E0] mt-2">{leader.role}</div>
+            <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF]">{leader.role}</div>
 
-            <p className="mt-7 text-[16.5px] text-[#C9D2E0] leading-[1.75] max-w-2xl">
-              {leader.bio} The conviction behind DortX is straightforward: small, focused teams can deliver software that genuinely changes how a business runs — when they care enough to start with the business question, not the technology choice.
+            <p className="mt-6 text-[16.5px] text-[#C9D2E0] leading-[1.7] max-w-2xl">
+              DortX was founded with a simple belief: technology should solve real business problems, not create more complexity. As Founder & CEO, Thrisha leads the company's vision, product strategy, software architecture, and engineering, ensuring every solution is practical, scalable, and built for long-term business value.
             </p>
 
-            <div className="mt-8 grid sm:grid-cols-2 gap-2.5 max-w-lg">
-              {(leader.responsibilities || []).map((r) => (
+            <div className="mt-7 grid sm:grid-cols-2 gap-2.5 max-w-lg">
+              {leadershipDetails.map((r) => (
                 <div key={r} className="flex items-center gap-2.5 text-[13.5px] text-[#9AA3B8]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#4D8BFF]"/> {r}
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 flex items-center gap-2">
-              <a href={leader.linkedin || "#"} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
-                <Linkedin size={14}/>
-              </a>
-              <a href={`mailto:${leader.email_address || CONTACT.founder}`} aria-label="Email" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
+            <div className="mt-7 flex items-center gap-2">
+              {leader.linkedin && (
+                <a href={leader.linkedin} target="_blank" rel="noopener noreferrer" aria-label="View LinkedIn" title="View LinkedIn" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
+                  <Linkedin size={14}/>
+                </a>
+              )}
+              <a href={`mailto:${leader.email_address || CONTACT.founder}`} aria-label="Email Founder" title="Email Founder" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
                 <Mail size={14}/>
               </a>
             </div>
@@ -221,7 +227,7 @@ function MemberCard({ member, index }) {
               <div className="mt-5 pt-4 border-t border-white/8">
                 <div className="text-[10.5px] uppercase tracking-[0.16em] text-[#6B7385] mb-3">Responsibilities</div>
                 <ul className="space-y-1.5">
-                  {member.responsibilities.map((r) => (
+                  {(member.responsibilities || []).map((r) => (
                     <li key={r} className="flex items-center gap-2 text-[12.5px] text-[#C9D2E0]">
                       <Plus size={11} className="text-[#4D8BFF]"/> {r}
                     </li>
@@ -233,12 +239,16 @@ function MemberCard({ member, index }) {
         </AnimatePresence>
 
         <div className="mt-5 flex items-center gap-2">
-          <a href="#" aria-label="LinkedIn" className="w-8 h-8 rounded-full bg-white/4 border border-white/8 flex items-center justify-center text-[#9AA3B8] hover:text-white hover:border-[#1E6BFF]/40 transition">
-            <Linkedin size={12}/>
-          </a>
-          <a href={`mailto:${member.name.toLowerCase()}@dortx.com`} aria-label="Email" className="w-8 h-8 rounded-full bg-white/4 border border-white/8 flex items-center justify-center text-[#9AA3B8] hover:text-white hover:border-[#1E6BFF]/40 transition">
-            <Mail size={12}/>
-          </a>
+          {member.linkedin && (
+            <a href={member.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${member.name} LinkedIn`} className="w-8 h-8 rounded-full bg-white/4 border border-white/8 flex items-center justify-center text-[#9AA3B8] hover:text-white hover:border-[#1E6BFF]/40 transition">
+              <Linkedin size={12}/>
+            </a>
+          )}
+          {member.email_address && (
+            <a href={`mailto:${member.email_address}`} aria-label={`${member.name} Email`} className="w-8 h-8 rounded-full bg-white/4 border border-white/8 flex items-center justify-center text-[#9AA3B8] hover:text-white hover:border-[#1E6BFF]/40 transition">
+              <Mail size={12}/>
+            </a>
+          )}
         </div>
       </div>
     </motion.div>
@@ -249,9 +259,9 @@ function MemberCard({ member, index }) {
 function TheTeam({ team }) {
   const others = team.filter((m) => !m.leadership);
   return (
-    <section className="relative py-20">
+    <section className="relative py-12">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex items-end justify-between gap-6 mb-10 flex-wrap">
+        <div className="flex items-end justify-between gap-6 mb-7 flex-wrap">
           <div>
             <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— The team</div>
             <h2 className="font-display text-[34px] sm:text-[48px] leading-[1.05] font-medium max-w-2xl">
@@ -274,14 +284,14 @@ function TheTeam({ team }) {
 /* —————————————————— CTA —————————————————— */
 function CTA() {
   return (
-    <section className="relative py-24">
+    <section className="relative py-14">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
-        <div className="relative rounded-3xl border border-white/10 overflow-hidden p-10 lg:p-14">
+        <div className="relative rounded-3xl border border-white/10 overflow-hidden p-8 lg:p-10">
           <div className="absolute inset-0 bg-gradient-to-br from-[#0A1430] via-[#05080F] to-[#0A1430]"/>
           <div className="absolute -top-24 -right-16 w-80 h-80 rounded-full bg-[#1E6BFF]/20 blur-[60px]"/>
           <div className="relative grid lg:grid-cols-2 gap-8 items-center">
             <div>
-              <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-4">— Want to join us?</div>
+              <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-4">Want to join us</div>
               <h3 className="font-display text-[28px] sm:text-[40px] leading-[1.1] font-semibold">
                 We grow slowly, and only with the right people.
               </h3>
@@ -298,11 +308,19 @@ function CTA() {
 }
 
 export default function Team() {
-  const [team, setTeam] = useState([]);
+  const [team, setTeam] = useState(TEAM);
   useEffect(() => {
+    let active = true;
     axios.get(`${API}/team`)
-      .then((r) => setTeam(r.data.items || []))
-      .catch(() => setTeam([]));
+      .then((r) => {
+        if (!active) return;
+        const items = r.data.items || [];
+        setTeam(items.length ? items : TEAM);
+      })
+      .catch(() => {
+        if (active) setTeam(TEAM);
+      });
+    return () => { active = false; };
   }, []);
   return (
     <div data-testid="team-page">

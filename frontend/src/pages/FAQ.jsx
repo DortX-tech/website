@@ -8,7 +8,7 @@ export default function FAQ() {
   const [open, setOpen] = useState(0);
   return (
     <div data-testid="faq-page">
-      <section className="pt-36 pb-12 relative">
+      <section className="pt-32 pb-10 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">

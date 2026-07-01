@@ -4,7 +4,7 @@ import { Heart, Coffee, Rocket, Globe, CheckCircle2 } from "lucide-react";
 import axios from "axios";
 import SectionHeader from "@/components/SectionHeader";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
 
 const CULTURE = [
   { i: Heart, t: "Care for the craft", d: "Code reviews, design critiques, written docs — done with kindness and high standards." },
@@ -36,7 +36,7 @@ export default function Careers() {
 
   return (
     <div data-testid="careers-page">
-      <section className="pt-36 pb-12 relative">
+      <section className="pt-32 pb-10 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
@@ -50,7 +50,7 @@ export default function Careers() {
         </div>
       </section>
 
-      <section className="py-16">
+      <section className="py-14">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <SectionHeader eyebrow="Culture" title="Why people stay." />
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -65,22 +65,22 @@ export default function Careers() {
         </div>
       </section>
 
-      <section className="py-16">
+      <section className="py-14">
         <div className="max-w-5xl mx-auto px-6 lg:px-8">
           <SectionHeader eyebrow="Open positions" title="No active roles — but we're always listening." subtitle="Send us your story. If there's a fit, we'll find a way to talk." />
         </div>
       </section>
 
-      <section className="pb-24">
+      <section className="pb-16">
         <div className="max-w-3xl mx-auto px-6 lg:px-8">
           {done ? (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-10 text-center">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-8 sm:p-10 text-center">
               <CheckCircle2 className="mx-auto text-[#22c55e] mb-4" size={40}/>
               <h3 className="font-display text-[26px] font-semibold">Application received</h3>
               <p className="mt-3 text-[15px] text-[#9AA3B8]">Thanks for reaching out. We read every application and reply within a week.</p>
             </motion.div>
           ) : (
-            <form onSubmit={submit} data-testid="careers-form" className="glass rounded-2xl p-8 space-y-4">
+            <form onSubmit={submit} data-testid="careers-form" className="glass rounded-2xl p-6 sm:p-7 space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <input data-testid="career-name" required placeholder="Full name *" className={input} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/>
                 <input data-testid="career-email" required type="email" placeholder="Email *" className={input} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}/>

@@ -30,7 +30,7 @@ export default function Navbar() {
         <div className={`flex items-center justify-between gap-6 rounded-full px-4 lg:px-6 py-3 transition-all ${
           scrolled ? "glass-strong" : "glass"
         }`}>
-          <Logo height={42} variant="mark" />
+          <Logo height={32} />
 
           <nav className="hidden lg:flex items-center gap-1" data-testid="desktop-nav">
             {NAV_LINKS.map((l) => (
