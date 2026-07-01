@@ -7,6 +7,25 @@ import { CONTACT } from "@/data/site";
 const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const formatBackendError = (detail) => {
+  if (!detail) return "Could not send your message. Please try again.";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        const location = Array.isArray(item?.loc) ? item.loc.filter((part) => part !== "body").join(".") : "";
+        const message = item?.msg || item?.message || JSON.stringify(item);
+        return location ? `${location}: ${message}` : message;
+      })
+      .join(" ");
+  }
+  if (typeof detail === "object") {
+    return detail.message || detail.msg || JSON.stringify(detail);
+  }
+  return String(detail);
+};
+
 export default function Contact() {
   const [form, setForm] = useState({
     name: "",
@@ -54,11 +73,14 @@ export default function Contact() {
         email: form.email.trim(),
         phone: form.phone.trim() || null,
         subject: form.subject.trim() || null,
+        service: null,
+        budget: null,
         description: form.description.trim(),
+        timeline: null,
       }, { timeout: 15000 });
       setDone(true);
     } catch (error) {
-      setErr(error.response?.data?.detail?.toString() || "Could not send your message. Please try again.");
+      setErr(formatBackendError(error.response?.data?.detail));
     } finally {
       setBusy(false);
     }
