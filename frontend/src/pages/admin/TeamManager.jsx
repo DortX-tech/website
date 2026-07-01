@@ -23,21 +23,47 @@ const blank = {
   linkedin: "", email_address: "", order: 100,
 };
 
+function toArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function safeInitials(name = "") {
+  return String(name)
+    .split(" ")
+    .filter(Boolean)
+    .map((s) => s?.[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export default function TeamManager() {
   const [items, setItems] = useState([]);
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const load = async () => {
-    const { data } = await api().get("/admin/team");
-    setItems(data.items || []);
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api().get("/admin/team");
+      setItems(toArray(data?.items));
+    } catch (e) {
+      setItems([]);
+      setError("Team data could not be loaded. Showing empty results.");
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, []);
 
-  const open = (m = blank) => setEditing({ ...blank, ...m, responsibilities: [...(m.responsibilities || [])] });
+  const open = (m = blank) => setEditing({ ...blank, ...(m ?? {}), responsibilities: toArray(m?.responsibilities) });
   const close = () => setEditing(null);
 
   const save = async () => {
+    if (!editing) return;
     setBusy(true);
     try {
       if (editing.id) {
@@ -51,6 +77,7 @@ export default function TeamManager() {
   };
 
   const remove = async (id) => {
+    if (!id) return;
     if (!window.confirm("Delete this team member?")) return;
     await api().delete(`/admin/team/${id}`);
     await load();
@@ -61,47 +88,63 @@ export default function TeamManager() {
     setBusy(true);
     try {
       const { data } = await api().post("/admin/team/upload-photo", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      setEditing((s) => ({ ...s, photo: data.url }));
+      setEditing((s) => ({ ...(s ?? blank), photo: data?.url ?? null }));
     } finally { setBusy(false); }
   };
 
-  const setField = (k, v) => setEditing((s) => ({ ...s, [k]: v }));
-  const setResp = (idx, v) => setEditing((s) => ({ ...s, responsibilities: s.responsibilities.map((r, i) => i === idx ? v : r) }));
-  const addResp = () => setEditing((s) => ({ ...s, responsibilities: [...s.responsibilities, ""] }));
-  const removeResp = (i) => setEditing((s) => ({ ...s, responsibilities: s.responsibilities.filter((_, k) => k !== i) }));
+  const setField = (k, v) => setEditing((s) => ({ ...(s ?? blank), [k]: v }));
+  const setResp = (idx, v) => setEditing((s) => ({ ...(s ?? blank), responsibilities: toArray(s?.responsibilities).map((r, i) => i === idx ? v : r) }));
+  const addResp = () => setEditing((s) => ({ ...(s ?? blank), responsibilities: [...toArray(s?.responsibilities), ""] }));
+  const removeResp = (i) => setEditing((s) => ({ ...(s ?? blank), responsibilities: toArray(s?.responsibilities).filter((_, k) => k !== i) }));
 
   const input = "w-full bg-white/4 border border-white/10 rounded-xl px-3.5 py-2.5 text-[13.5px] focus:outline-none focus:border-[#1E6BFF]/60";
+  const safeItems = toArray(items);
 
   return (
     <div className="mt-6" data-testid="team-panel">
       <div className="flex items-center justify-between mb-5">
-        <div className="text-[13px] text-[#9AA3B8]">{items.length} member{items.length === 1 ? "" : "s"}</div>
+        <div className="text-[13px] text-[#9AA3B8]">{safeItems.length} member{safeItems.length === 1 ? "" : "s"}</div>
         <button data-testid="add-team-member" onClick={() => open()} className="btn-primary !py-2 !px-4 !text-[12.5px]"><Plus size={13}/> Add member</button>
       </div>
+      {error && (
+        <div className="mb-4 glass rounded-xl px-4 py-3 text-[13px] text-amber-200 border border-amber-500/20">
+          {error}
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((m) => (
-          <div key={m.id} className="glass rounded-2xl p-5 relative group" data-testid={`team-row-${m.id}`}>
+        {loading && (
+          <div className="glass rounded-2xl p-5 text-[13px] text-[#6B7385] sm:col-span-2 lg:col-span-3 text-center">
+            Loading team members...
+          </div>
+        )}
+        {!loading && safeItems.length === 0 && (
+          <div className="glass rounded-2xl p-5 text-[13px] text-[#6B7385] sm:col-span-2 lg:col-span-3 text-center">
+            No team members yet.
+          </div>
+        )}
+        {!loading && safeItems.map((m, index) => (
+          <div key={m?.id ?? index} className="glass rounded-2xl p-5 relative group" data-testid={`team-row-${m?.id ?? index}`}>
             <div className="flex gap-4">
               <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-[#0F1830] to-[#0A0F1C] flex items-center justify-center shrink-0">
-                {m.photo ? (
-                  <img src={fullPhoto(m.photo)} alt={m.name} className="w-full h-full object-cover"/>
+                {m?.photo ? (
+                  <img src={fullPhoto(m.photo)} alt={m?.name || "Team member"} className="w-full h-full object-cover"/>
                 ) : (
-                  <div className="font-display font-semibold gradient-text text-[20px]">{m.name.split(" ").map(s => s[0]).join("").slice(0, 2)}</div>
+                  <div className="font-display font-semibold gradient-text text-[20px]">{safeInitials(m?.name)}</div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <div className="font-display text-white text-[15px] font-semibold truncate">{m.name}</div>
-                  {m.leadership && <Crown size={11} className="text-amber-400 shrink-0"/>}
+                  <div className="font-display text-white text-[15px] font-semibold truncate">{m?.name || "Unnamed member"}</div>
+                  {m?.leadership && <Crown size={11} className="text-amber-400 shrink-0"/>}
                 </div>
-                <div className="text-[12px] text-[#4D8BFF] mt-0.5 truncate">{m.role}</div>
-                <div className="text-[11.5px] text-[#6B7385] mt-1">Order: {m.order} · Resp: {(m.responsibilities || []).length}</div>
+                <div className="text-[12px] text-[#4D8BFF] mt-0.5 truncate">{m?.role || "-"}</div>
+                <div className="text-[11.5px] text-[#6B7385] mt-1">Order: {m?.order ?? 100} · Resp: {toArray(m?.responsibilities).length}</div>
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <button data-testid={`edit-${m.id}`} onClick={() => open(m)} className="flex-1 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 text-[12px]">Edit</button>
-              <button data-testid={`delete-${m.id}`} onClick={() => remove(m.id)} className="px-3 py-1.5 rounded-full border border-red-500/30 text-red-300 hover:bg-red-500/10 text-[12px]"><Trash2 size={11}/></button>
+              <button data-testid={`edit-${m?.id ?? index}`} onClick={() => open(m)} className="flex-1 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 text-[12px]">Edit</button>
+              <button data-testid={`delete-${m?.id ?? index}`} onClick={() => remove(m?.id)} className="px-3 py-1.5 rounded-full border border-red-500/30 text-red-300 hover:bg-red-500/10 text-[12px]"><Trash2 size={11}/></button>
             </div>
           </div>
         ))}
@@ -155,13 +198,13 @@ export default function TeamManager() {
                 <button onClick={addResp} className="text-[12px] text-[#4D8BFF] hover:text-white"><Plus size={12} className="inline"/> Add</button>
               </div>
               <div className="space-y-2">
-                {editing.responsibilities.map((r, i) => (
+                {toArray(editing?.responsibilities).map((r, i) => (
                   <div key={i} className="flex gap-2">
                     <input className={input} value={r} onChange={(e) => setResp(i, e.target.value)}/>
                     <button onClick={() => removeResp(i)} className="px-3 rounded-full border border-white/10 hover:bg-white/5"><Trash2 size={12}/></button>
                   </div>
                 ))}
-                {editing.responsibilities.length === 0 && <div className="text-[12px] text-[#6B7385]">No responsibilities yet.</div>}
+                {toArray(editing?.responsibilities).length === 0 && <div className="text-[12px] text-[#6B7385]">No responsibilities yet.</div>}
               </div>
             </div>
 

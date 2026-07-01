@@ -18,6 +18,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsAndConditions from "@/pages/TermsAndConditions";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminErrorBoundary from "@/pages/admin/AdminErrorBoundary";
 import NotFound from "@/pages/NotFound";
 
 function ScrollToTop() {
@@ -48,8 +49,8 @@ export default function App() {
     <BrowserRouter>
       <ScrollToTop />
       <Routes>
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+        <Route path="/admin/login" element={<AdminErrorBoundary><AdminLogin /></AdminErrorBoundary>} />
+        <Route path="/admin" element={<AdminErrorBoundary><RequireAdmin><AdminDashboard /></RequireAdmin></AdminErrorBoundary>} />
 
         <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
         <Route path="/about" element={<PublicLayout><About /></PublicLayout>} />

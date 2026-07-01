@@ -7,6 +7,19 @@ import Logo from "@/components/Logo";
 
 const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
 
+function getErrorMessage(error) {
+  const detail = error?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => item?.msg ?? item?.message ?? JSON.stringify(item))
+      .filter(Boolean)
+      .join(" ");
+  }
+  if (detail && typeof detail === "object") return detail?.msg ?? detail?.message ?? "Login failed";
+  return "Login failed";
+}
+
 export default function AdminLogin() {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
@@ -25,7 +38,7 @@ export default function AdminLogin() {
       localStorage.setItem("dortx-admin-email", data.email);
       nav("/admin", { replace: true });
     } catch (e) {
-      setErr(e.response?.data?.detail || "Login failed");
+      setErr(getErrorMessage(e));
     } finally {
       setBusy(false);
     }
