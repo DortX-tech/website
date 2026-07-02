@@ -4,8 +4,7 @@ import { motion } from "framer-motion";
 import axios from "axios";
 import { LogIn, Lock, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
-
-const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
+import { API_URL } from "@/config/api";
 
 function getErrorMessage(error) {
   const detail = error?.response?.data?.detail;
@@ -33,10 +32,10 @@ export default function AdminLogin() {
     e.preventDefault();
     setBusy(true); setErr("");
     try {
-      const { data } = await axios.post(`${API}/auth/login`, { email, password });
+      const { data } = await axios.post(`${API_URL}/auth/login`, { email, password });
       localStorage.setItem("dortx-admin-token", data.access_token);
-      localStorage.setItem("dortx-admin-email", data.email);
-      localStorage.setItem("dortx-admin-name", data.name || "DortX Admin");
+      localStorage.setItem("dortx-admin-email", data.email || email);
+      localStorage.setItem("dortx-admin-name", data.name || data.email || "Admin");
       if (data.avatar) {
         localStorage.setItem("dortx-admin-avatar", data.avatar);
       } else {

@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, Copy, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import axios from "axios";
 import Logo from "./Logo";
-
-const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
+import { API_URL } from "@/config/api";
 
 const SERVICE_OPTIONS = [
   "AI Agents",
@@ -267,7 +266,7 @@ export default function Chatbot() {
       history: recentHistory,
     };
 
-    const response = await fetch(`${API}/chat/stream`, {
+    const response = await fetch(`${API_URL}/chat/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -309,7 +308,7 @@ export default function Chatbot() {
   };
 
   const requestSyncReply = async (message) => {
-    const { data } = await axios.post(`${API}/chat`, {
+    const { data } = await axios.post(`${API_URL}/chat`, {
       session_id: sid(),
       message,
       visitor_name: memory.name,
@@ -362,7 +361,7 @@ export default function Chatbot() {
       `Preferred contact: ${lead.preferred_contact_method || "Not provided"}`,
     ].filter(Boolean).join("\n");
 
-    await axios.post(`${API}/chat/lead`, {
+    await axios.post(`${API_URL}/chat/lead`, {
       session_id: sid(),
       name: memory.name || lead.name || "Website visitor",
       company: lead.company || undefined,

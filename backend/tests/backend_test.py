@@ -5,7 +5,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://api.dortxtech.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://dortx-backend.onrender.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "thrisha@dortxtech.com")

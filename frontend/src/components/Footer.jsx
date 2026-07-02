@@ -4,8 +4,8 @@ import { Mail, Phone, ArrowUpRight, CheckCircle2, Linkedin, Send } from "lucide-
 import axios from "axios";
 import Logo from "./Logo";
 import { CONTACT, SOCIALS } from "@/data/site";
+import { API_URL } from "@/config/api";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
 const SocialIconMap = { Linkedin };
 
 export default function Footer() {
@@ -18,7 +18,7 @@ export default function Footer() {
     if (!email || busy) return;
     setBusy(true);
     try {
-      await axios.post(`${API}/newsletter/subscribe`, { email, source: "footer" });
+      await axios.post(`${API_URL}/newsletter/subscribe`, { email, source: "footer" });
       setDone(true);
       setEmail("");
     } catch (err) {

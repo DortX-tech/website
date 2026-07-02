@@ -5,8 +5,8 @@ import { motion } from "framer-motion";
 import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Send, LayoutDashboard, Inbox, FileText, UserCog } from "lucide-react";
 import Logo from "@/components/Logo";
 import TeamManager from "@/pages/admin/TeamManager";
+import { API_URL } from "@/config/api";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
 const STATUSES = ["all", "new", "contacted", "qualified", "won", "lost"];
 const APPLICATION_STATUSES = ["new", "reviewing", "shortlisted", "rejected", "hired"];
 const STATUS_COLOR = {
@@ -40,14 +40,22 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(next) ? next : fallback;
 }
 
-function readListResponse(response, name, { paginated = false } = {}) {
+function readListResponse(response, name, { paginated = false, keys = [] } = {}) {
   const data = response?.data;
-  if (!data || !Array.isArray(data.items)) {
+  const nested = data?.data && typeof data.data === "object" ? data.data : null;
+  const candidates = [
+    data?.items,
+    nested?.items,
+    ...keys.map((key) => data?.[key]),
+    ...keys.map((key) => nested?.[key]),
+  ];
+  const items = candidates.find(Array.isArray);
+  if (!Array.isArray(items)) {
     throw new Error(`${name} response must include an items array`);
   }
   return {
-    items: data.items,
-    total: paginated ? toNumber(data.total, data.items.length) : toNumber(data.total, data.items.length),
+    items,
+    total: paginated ? toNumber(data?.total ?? nested?.total, items.length) : toNumber(data?.total ?? nested?.total, items.length),
   };
 }
 
@@ -97,7 +105,11 @@ function formatDate(value, mode = "date") {
 
 function api() {
   const token = localStorage.getItem("dortx-admin-token") ?? "";
-  return axios.create({ baseURL: API, headers: { Authorization: `Bearer ${token}` } });
+  return axios.create({ baseURL: API_URL, headers: { Authorization: `Bearer ${token}` } });
+}
+
+function isUnauthorized(result) {
+  return result?.status === "rejected" && result.reason?.response?.status === 401;
 }
 
 function downloadBlob(blob, filename) {
@@ -147,37 +159,15 @@ export default function AdminDashboard() {
     setBusy(true);
     setError("");
     try {
-      const [me, a, l, apps, subs] = await Promise.all([
+      const [me, analytics, leadResponse, applicationResponse, subscriberResponse] = await Promise.allSettled([
         api().get("/auth/me"),
         api().get("/admin/analytics"),
         api().get(`/admin/leads?status=${status}&q=${encodeURIComponent(q)}&page=${page}&limit=20`),
         api().get("/admin/applications"),
         api().get("/admin/newsletter"),
       ]);
-      const leadData = readListResponse(l, "Leads", { paginated: true });
-      const applicationData = readListResponse(apps, "Applications");
-      const subscriberData = readListResponse(subs, "Newsletter");
-      const profile = {
-        name: me?.data?.name || "DortX Admin",
-        email: me?.data?.email || localStorage.getItem("dortx-admin-email") || "",
-        avatar: me?.data?.avatar || "",
-      };
 
-      setAdmin(profile);
-      localStorage.setItem("dortx-admin-name", profile.name);
-      localStorage.setItem("dortx-admin-email", profile.email);
-      if (profile.avatar) {
-        localStorage.setItem("dortx-admin-avatar", profile.avatar);
-      } else {
-        localStorage.removeItem("dortx-admin-avatar");
-      }
-      setStats(readAnalyticsResponse(a));
-      setLeads(leadData.items);
-      setTotal(leadData.total);
-      setApplications(applicationData.items);
-      setSubscribers(subscriberData.items);
-    } catch (e) {
-      if (e?.response?.status === 401) {
+      if ([me, analytics, leadResponse, applicationResponse, subscriberResponse].some(isUnauthorized)) {
         localStorage.removeItem("dortx-admin-token");
         localStorage.removeItem("dortx-admin-name");
         localStorage.removeItem("dortx-admin-email");
@@ -185,12 +175,79 @@ export default function AdminDashboard() {
         nav("/admin/login");
         return;
       }
-      setStats(EMPTY_STATS);
-      setLeads([]);
-      setTotal(0);
-      setApplications([]);
-      setSubscribers([]);
-      setError(getBackendError(e));
+
+      const errors = [];
+
+      if (me.status === "fulfilled") {
+        const profile = {
+          name: me.value?.data?.name || me.value?.data?.email || "Admin",
+          email: me.value?.data?.email || localStorage.getItem("dortx-admin-email") || "",
+          avatar: me.value?.data?.avatar || "",
+        };
+        setAdmin(profile);
+        localStorage.setItem("dortx-admin-name", profile.name);
+        localStorage.setItem("dortx-admin-email", profile.email);
+        if (profile.avatar) {
+          localStorage.setItem("dortx-admin-avatar", profile.avatar);
+        } else {
+          localStorage.removeItem("dortx-admin-avatar");
+        }
+      } else {
+        setAdmin((current) => ({
+          name: current.name || current.email || "Admin",
+          email: current.email || localStorage.getItem("dortx-admin-email") || "",
+          avatar: current.avatar || "",
+        }));
+        errors.push(`Profile: ${getBackendError(me.reason, "Could not load admin profile.")}`);
+      }
+
+      if (analytics.status === "fulfilled") {
+        try {
+          setStats(readAnalyticsResponse(analytics.value));
+        } catch (error) {
+          errors.push(`Analytics: ${error.message}`);
+        }
+      } else {
+        errors.push(`Analytics: ${getBackendError(analytics.reason, "Could not load analytics.")}`);
+      }
+
+      if (leadResponse.status === "fulfilled") {
+        try {
+          const leadData = readListResponse(leadResponse.value, "Leads", { paginated: true, keys: ["leads"] });
+          setLeads(leadData.items);
+          setTotal(leadData.total);
+        } catch (error) {
+          errors.push(`Leads: ${error.message}`);
+        }
+      } else {
+        errors.push(`Leads: ${getBackendError(leadResponse.reason, "Could not load leads.")}`);
+      }
+
+      if (applicationResponse.status === "fulfilled") {
+        try {
+          const applicationData = readListResponse(applicationResponse.value, "Applications", { keys: ["applications"] });
+          setApplications(applicationData.items);
+        } catch (error) {
+          errors.push(`Applications: ${error.message}`);
+        }
+      } else {
+        errors.push(`Applications: ${getBackendError(applicationResponse.reason, "Could not load applications.")}`);
+      }
+
+      if (subscriberResponse.status === "fulfilled") {
+        try {
+          const subscriberData = readListResponse(subscriberResponse.value, "Newsletter", { keys: ["subscribers", "newsletter"] });
+          setSubscribers(subscriberData.items);
+        } catch (error) {
+          errors.push(`Newsletter: ${error.message}`);
+        }
+      } else {
+        errors.push(`Newsletter: ${getBackendError(subscriberResponse.reason, "Could not load newsletter subscribers.")}`);
+      }
+
+      setError(errors.join(" "));
+    } catch (e) {
+      setError(getBackendError(e, "Unexpected admin dashboard error."));
     } finally {
       setBusy(false);
     }

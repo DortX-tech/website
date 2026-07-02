@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, Mail, MessageSquare, Phone } from "lucide-react";
 import axios from "axios";
 import { CONTACT } from "@/data/site";
+import { API_URL } from "@/config/api";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const formatBackendError = (detail) => {
@@ -67,7 +67,7 @@ export default function Contact() {
     setBusy(true);
     setErr("");
     try {
-      await axios.post(`${API}/leads`, {
+      await axios.post(`${API_URL}/leads`, {
         name: form.name.trim(),
         company: form.company.trim() || null,
         email: form.email.trim(),

@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Plus, Trash2, Upload, Crown, X, Save, Image as ImageIcon } from "lucide-react";
-
-const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com";
-const API = `${BACKEND_BASE}/api`;
+import { API_URL, BACKEND_URL } from "@/config/api";
 
 function api() {
   const token = localStorage.getItem("dortx-admin-token");
-  return axios.create({ baseURL: API, headers: { Authorization: `Bearer ${token}` } });
+  return axios.create({ baseURL: API_URL, headers: { Authorization: `Bearer ${token}` } });
 }
 
 function fullPhoto(p) {
   if (!p) return null;
   if (p.startsWith("http")) return p;
-  if (p.startsWith("/api/")) return `${BACKEND_BASE}${p}`;
+  if (p.startsWith("/api/")) return `${BACKEND_URL}${p}`;
   return p;
 }
 

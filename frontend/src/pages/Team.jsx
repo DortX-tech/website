@@ -5,13 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Linkedin, Mail, ArrowUpRight, ArrowRight, Sparkles, Plus } from "lucide-react";
 import MagneticButton from "@/components/MagneticButton";
 import { CONTACT, TEAM } from "@/data/site";
+import { API_URL, BACKEND_URL } from "@/config/api";
 
-const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com";
-const API = `${BACKEND_BASE}/api`;
 function fullPhoto(p) {
   if (!p) return null;
   if (p.startsWith("http")) return p;
-  if (p.startsWith("/api/")) return `${BACKEND_BASE}${p}`;
+  if (p.startsWith("/api/")) return `${BACKEND_URL}${p}`;
   return p;
 }
 
@@ -311,7 +310,7 @@ export default function Team() {
   const [team, setTeam] = useState(TEAM);
   useEffect(() => {
     let active = true;
-    axios.get(`${API}/team`)
+    axios.get(`${API_URL}/team`)
       .then((r) => {
         if (!active) return;
         const items = r.data.items || [];

@@ -3,8 +3,7 @@ import { motion } from "framer-motion";
 import { Heart, Coffee, Rocket, Globe, CheckCircle2, Briefcase } from "lucide-react";
 import axios from "axios";
 import SectionHeader from "@/components/SectionHeader";
-
-const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
+import { API_URL } from "@/config/api";
 
 const CULTURE = [
   { i: Heart, t: "Care for the craft", d: "Code reviews, design critiques, and written docs are handled with kindness and high standards." },
@@ -24,7 +23,7 @@ export default function Careers() {
     setBusy(true);
     setErr("");
     try {
-      await axios.post(`${API}/careers/apply`, form);
+      await axios.post(`${API_URL}/careers/apply`, form);
       setDone(true);
     } catch (e) {
       setErr(e.response?.data?.detail || "Could not submit your application. Please try again.");
