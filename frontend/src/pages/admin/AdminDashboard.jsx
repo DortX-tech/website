@@ -8,14 +8,28 @@ import TeamManager from "@/pages/admin/TeamManager";
 
 const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
 const STATUSES = ["all", "new", "contacted", "qualified", "won", "lost"];
+const APPLICATION_STATUSES = ["new", "reviewing", "shortlisted", "rejected", "hired"];
 const STATUS_COLOR = {
   new: "bg-blue-500/15 text-blue-300 border-blue-500/30",
   contacted: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   qualified: "bg-violet-500/15 text-violet-300 border-violet-500/30",
   won: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   lost: "bg-red-500/15 text-red-300 border-red-500/30",
+  reviewing: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  shortlisted: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  rejected: "bg-red-500/15 text-red-300 border-red-500/30",
+  hired: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
 };
-const EMPTY_STATS = { total_leads: 0, by_status: {}, by_service: [], applications: 0, subscribers: 0 };
+const EMPTY_STATS = {
+  total_leads: 0,
+  by_status: {},
+  by_service: [],
+  applications: 0,
+  subscribers: 0,
+  current_month_leads: 0,
+  previous_month_leads: 0,
+  monthly_growth: 0,
+};
 
 function toArray(value) {
   return Array.isArray(value) ? value : [];
@@ -49,7 +63,29 @@ function readAnalyticsResponse(response) {
     by_service: Array.isArray(data.by_service) ? data.by_service : [],
     applications: toNumber(data.applications),
     subscribers: toNumber(data.subscribers),
+    current_month_leads: toNumber(data.current_month_leads),
+    previous_month_leads: toNumber(data.previous_month_leads),
+    monthly_growth: toNumber(data.monthly_growth),
   };
+}
+
+function getBackendError(error, fallback = "Unable to load admin data.") {
+  const detail = error?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const message = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        const location = Array.isArray(item?.loc) ? item.loc.filter((part) => part !== "body").join(".") : "";
+        const text = item?.msg ?? item?.message ?? JSON.stringify(item);
+        return location ? `${location}: ${text}` : text;
+      })
+      .filter(Boolean)
+      .join(" ");
+    return message || fallback;
+  }
+  if (detail && typeof detail === "object") return detail.message ?? detail.msg ?? JSON.stringify(detail);
+  return error?.message || fallback;
 }
 
 function formatDate(value, mode = "date") {
@@ -62,6 +98,15 @@ function formatDate(value, mode = "date") {
 function api() {
   const token = localStorage.getItem("dortx-admin-token") ?? "";
   return axios.create({ baseURL: API, headers: { Authorization: `Bearer ${token}` } });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function StatCard({ icon: Icon, label, value, accent = "#4D8BFF" }) {
@@ -80,6 +125,11 @@ function StatCard({ icon: Icon, label, value, accent = "#4D8BFF" }) {
 export default function AdminDashboard() {
   const nav = useNavigate();
   const [tab, setTab] = useState("leads");
+  const [admin, setAdmin] = useState(() => ({
+    name: localStorage.getItem("dortx-admin-name") || "DortX Admin",
+    email: localStorage.getItem("dortx-admin-email") || "",
+    avatar: localStorage.getItem("dortx-admin-avatar") || "",
+  }));
   const [stats, setStats] = useState(EMPTY_STATS);
   const [leads, setLeads] = useState([]);
   const [total, setTotal] = useState(0);
@@ -88,6 +138,7 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
   const [applications, setApplications] = useState([]);
   const [subscribers, setSubscribers] = useState([]);
   const [error, setError] = useState("");
@@ -96,7 +147,8 @@ export default function AdminDashboard() {
     setBusy(true);
     setError("");
     try {
-      const [a, l, apps, subs] = await Promise.all([
+      const [me, a, l, apps, subs] = await Promise.all([
+        api().get("/auth/me"),
         api().get("/admin/analytics"),
         api().get(`/admin/leads?status=${status}&q=${encodeURIComponent(q)}&page=${page}&limit=20`),
         api().get("/admin/applications"),
@@ -105,7 +157,20 @@ export default function AdminDashboard() {
       const leadData = readListResponse(l, "Leads", { paginated: true });
       const applicationData = readListResponse(apps, "Applications");
       const subscriberData = readListResponse(subs, "Newsletter");
+      const profile = {
+        name: me?.data?.name || "DortX Admin",
+        email: me?.data?.email || localStorage.getItem("dortx-admin-email") || "",
+        avatar: me?.data?.avatar || "",
+      };
 
+      setAdmin(profile);
+      localStorage.setItem("dortx-admin-name", profile.name);
+      localStorage.setItem("dortx-admin-email", profile.email);
+      if (profile.avatar) {
+        localStorage.setItem("dortx-admin-avatar", profile.avatar);
+      } else {
+        localStorage.removeItem("dortx-admin-avatar");
+      }
       setStats(readAnalyticsResponse(a));
       setLeads(leadData.items);
       setTotal(leadData.total);
@@ -114,6 +179,9 @@ export default function AdminDashboard() {
     } catch (e) {
       if (e?.response?.status === 401) {
         localStorage.removeItem("dortx-admin-token");
+        localStorage.removeItem("dortx-admin-name");
+        localStorage.removeItem("dortx-admin-email");
+        localStorage.removeItem("dortx-admin-avatar");
         nav("/admin/login");
         return;
       }
@@ -122,7 +190,7 @@ export default function AdminDashboard() {
       setTotal(0);
       setApplications([]);
       setSubscribers([]);
-      setError("Admin data could not be loaded. Showing empty results.");
+      setError(getBackendError(e));
     } finally {
       setBusy(false);
     }
@@ -132,6 +200,9 @@ export default function AdminDashboard() {
 
   const logout = () => {
     localStorage.removeItem("dortx-admin-token");
+    localStorage.removeItem("dortx-admin-name");
+    localStorage.removeItem("dortx-admin-email");
+    localStorage.removeItem("dortx-admin-avatar");
     nav("/admin/login");
   };
 
@@ -152,12 +223,45 @@ export default function AdminDashboard() {
 
   const exportCsv = async () => {
     const res = await api().get("/admin/leads/export.csv", { responseType: "blob" });
-    const url = URL.createObjectURL(res.data);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "dortx_leads.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(res.data, "dortx_leads.csv");
+  };
+
+  const updateApplicationStatus = async (id, s) => {
+    if (!id) return;
+    await api().patch(`/admin/applications/${id}/status`, { status: s });
+    fetchAll();
+    if (selectedApplication?.id === id) setSelectedApplication({ ...selectedApplication, status: s });
+  };
+
+  const removeApplication = async (id) => {
+    if (!id) return;
+    if (!window.confirm("Delete this application permanently?")) return;
+    await api().delete(`/admin/applications/${id}`);
+    setSelectedApplication(null);
+    fetchAll();
+  };
+
+  const downloadResume = async (id) => {
+    if (!id) return;
+    const res = await api().get(`/admin/applications/${id}/resume`, { responseType: "blob" });
+    downloadBlob(res.data, "resume");
+  };
+
+  const exportApplications = async () => {
+    const res = await api().get("/admin/applications/export.csv", { responseType: "blob" });
+    downloadBlob(res.data, "dortx_applications.csv");
+  };
+
+  const removeSubscriber = async (id) => {
+    if (!id) return;
+    if (!window.confirm("Delete this subscriber?")) return;
+    await api().delete(`/admin/newsletter/${id}`);
+    fetchAll();
+  };
+
+  const exportNewsletter = async () => {
+    const res = await api().get("/admin/newsletter/export.csv", { responseType: "blob" });
+    downloadBlob(res.data, "dortx_newsletter.csv");
   };
 
   const safeLeads = toArray(leads) ?? [];
@@ -169,6 +273,8 @@ export default function AdminDashboard() {
   const subscribersCount = safeSubscribers?.length ?? 0;
   const servicesCount = safeServices?.length ?? 0;
   const selectedStatusClass = STATUS_COLOR[selected?.status] ?? STATUS_COLOR.new;
+  const selectedApplicationStatusClass = STATUS_COLOR[selectedApplication?.status] ?? STATUS_COLOR.new;
+  const adminInitial = (admin.name || admin.email || "A").slice(0, 1).toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#05080F] noise" data-testid="admin-dashboard">
@@ -179,7 +285,15 @@ export default function AdminDashboard() {
             <span className="text-[11px] uppercase tracking-[0.16em] text-[#4D8BFF] hidden sm:block">Admin Console</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[12.5px] text-[#9AA3B8] hidden md:block">{localStorage.getItem("dortx-admin-email") ?? ""}</span>
+            <div className="hidden md:flex items-center gap-2 pr-2">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center text-[12px] font-semibold text-white">
+                {admin.avatar ? <img src={admin.avatar} alt={admin.name || "Admin"} className="w-full h-full object-cover"/> : adminInitial}
+              </div>
+              <div className="leading-tight">
+                <div className="text-[12.5px] text-white">{admin.name || "DortX Admin"}</div>
+                <div className="text-[11.5px] text-[#9AA3B8]">{admin.email || "admin"}</div>
+              </div>
+            </div>
             <Link to="/" className="btn-ghost !py-2 !px-3 !text-[12.5px]">View site</Link>
             <button onClick={logout} data-testid="admin-logout" className="btn-ghost !py-2 !px-3 !text-[12.5px]"><LogOut size={13}/> Logout</button>
           </div>
@@ -290,73 +404,98 @@ export default function AdminDashboard() {
         {tab === "team" && <TeamManager />}
 
         {tab === "applications" && (
-          <div className="mt-6 glass rounded-2xl overflow-hidden" data-testid="applications-panel">
-            <div className="overflow-x-auto">
-              <table className="w-full text-[13.5px]">
-                <thead className="bg-white/[0.03] text-[#9AA3B8] text-left">
-                  <tr>
-                    <th className="px-5 py-3 font-medium">Name</th>
-                    <th className="px-5 py-3 font-medium">Email</th>
-                    <th className="px-5 py-3 font-medium hidden md:table-cell">Position</th>
-                    <th className="px-5 py-3 font-medium hidden lg:table-cell">Applied</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/8">
-                  {busy && (
-                    <tr><td colSpan={4} className="px-5 py-10 text-center text-[#6B7385]">Loading applications...</td></tr>
-                  )}
-                  {applicationsCount === 0 && !busy && (
-                    <tr><td colSpan={4} className="px-5 py-10 text-center text-[#6B7385]">No applications yet.</td></tr>
-                  )}
-                  {!busy && safeApplications.map((a, index) => (
-                    <tr key={a?.id ?? index} className="hover:bg-white/[0.03]">
-                      <td className="px-5 py-3 text-white font-medium">{a?.name || "-"}</td>
-                      <td className="px-5 py-3 text-[#C9D2E0]">{a?.email || "-"}</td>
-                      <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{a?.position || "-"}</td>
-                      <td className="px-5 py-3 text-[#6B7385] hidden lg:table-cell">{formatDate(a?.created_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <>
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              <button onClick={fetchAll} className="btn-ghost !py-2.5"><RefreshCw size={14}/> Refresh</button>
+              <button onClick={exportApplications} className="btn-primary !py-2.5"><Download size={14}/> Export CSV</button>
             </div>
-          </div>
+            <div className="mt-4 glass rounded-2xl overflow-hidden" data-testid="applications-panel">
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13.5px]">
+                  <thead className="bg-white/[0.03] text-[#9AA3B8] text-left">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Name</th>
+                      <th className="px-5 py-3 font-medium">Email</th>
+                      <th className="px-5 py-3 font-medium hidden md:table-cell">Phone</th>
+                      <th className="px-5 py-3 font-medium hidden md:table-cell">Position</th>
+                      <th className="px-5 py-3 font-medium">Status</th>
+                      <th className="px-5 py-3 font-medium hidden lg:table-cell">Applied</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/8">
+                    {busy && (
+                      <tr><td colSpan={6} className="px-5 py-10 text-center text-[#6B7385]">Loading applications...</td></tr>
+                    )}
+                    {applicationsCount === 0 && !busy && (
+                      <tr><td colSpan={6} className="px-5 py-10 text-center text-[#6B7385]">No applications yet.</td></tr>
+                    )}
+                    {!busy && safeApplications.map((a, index) => (
+                      <tr key={a?.id ?? index} onClick={() => setSelectedApplication(a ?? {})} className="hover:bg-white/[0.03] cursor-pointer transition">
+                        <td className="px-5 py-3 text-white font-medium">{a?.name || "-"}</td>
+                        <td className="px-5 py-3 text-[#C9D2E0]">{a?.email || "-"}</td>
+                        <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{a?.phone || "-"}</td>
+                        <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{a?.position || "-"}</td>
+                        <td className="px-5 py-3">
+                          <span className={`text-[11px] px-2.5 py-1 rounded-full border ${STATUS_COLOR[a?.status] ?? STATUS_COLOR.new}`}>{a?.status || "new"}</span>
+                        </td>
+                        <td className="px-5 py-3 text-[#6B7385] hidden lg:table-cell">{formatDate(a?.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
 
         {tab === "newsletter" && (
-          <div className="mt-6 glass rounded-2xl overflow-hidden" data-testid="newsletter-panel">
-            <div className="overflow-x-auto">
-              <table className="w-full text-[13.5px]">
-                <thead className="bg-white/[0.03] text-[#9AA3B8] text-left">
-                  <tr>
-                    <th className="px-5 py-3 font-medium">Email</th>
-                    <th className="px-5 py-3 font-medium hidden md:table-cell">Source</th>
-                    <th className="px-5 py-3 font-medium hidden lg:table-cell">Subscribed</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/8">
-                  {busy && (
-                    <tr><td colSpan={3} className="px-5 py-10 text-center text-[#6B7385]">Loading subscribers...</td></tr>
-                  )}
-                  {subscribersCount === 0 && !busy && (
-                    <tr><td colSpan={3} className="px-5 py-10 text-center text-[#6B7385]">No subscribers yet.</td></tr>
-                  )}
-                  {!busy && safeSubscribers.map((s, index) => (
-                    <tr key={s?.id ?? index} className="hover:bg-white/[0.03]">
-                      <td className="px-5 py-3 text-white">{s?.email || "-"}</td>
-                      <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{s?.source || "-"}</td>
-                      <td className="px-5 py-3 text-[#6B7385] hidden lg:table-cell">{formatDate(s?.created_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <>
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              <button onClick={fetchAll} className="btn-ghost !py-2.5"><RefreshCw size={14}/> Refresh</button>
+              <button onClick={exportNewsletter} className="btn-primary !py-2.5"><Download size={14}/> Export CSV</button>
             </div>
-          </div>
+            <div className="mt-4 glass rounded-2xl overflow-hidden" data-testid="newsletter-panel">
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13.5px]">
+                  <thead className="bg-white/[0.03] text-[#9AA3B8] text-left">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Email</th>
+                      <th className="px-5 py-3 font-medium hidden md:table-cell">Source</th>
+                      <th className="px-5 py-3 font-medium hidden lg:table-cell">Subscribed</th>
+                      <th className="px-5 py-3 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/8">
+                    {busy && (
+                      <tr><td colSpan={4} className="px-5 py-10 text-center text-[#6B7385]">Loading subscribers...</td></tr>
+                    )}
+                    {subscribersCount === 0 && !busy && (
+                      <tr><td colSpan={4} className="px-5 py-10 text-center text-[#6B7385]">No subscribers yet.</td></tr>
+                    )}
+                    {!busy && safeSubscribers.map((s, index) => (
+                      <tr key={s?.id ?? index} className="hover:bg-white/[0.03]">
+                        <td className="px-5 py-3 text-white">{s?.email || "-"}</td>
+                        <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{s?.source || "-"}</td>
+                        <td className="px-5 py-3 text-[#6B7385] hidden lg:table-cell">{formatDate(s?.created_at)}</td>
+                        <td className="px-5 py-3 text-right">
+                          <button onClick={() => removeSubscriber(s?.id)} className="px-3 py-1.5 rounded-full border border-red-500/30 text-red-300 hover:bg-red-500/10 text-[12px]"><Trash2 size={11} className="inline mr-1"/>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
 
         {tab === "analytics" && (
           <div className="mt-6 grid lg:grid-cols-2 gap-4" data-testid="analytics-panel">
             <div className="glass rounded-2xl p-6">
-              <div className="font-display text-[15px] text-white font-semibold mb-4">Leads by status</div>
+              <div className="font-display text-[15px] text-white font-semibold">Leads by status</div>
+              <div className="mb-4 mt-1 text-[12.5px] text-[#9AA3B8]">
+                Monthly growth: {stats?.monthly_growth ?? 0}% ({stats?.current_month_leads ?? 0} this month)
+              </div>
               <div className="space-y-2.5">
                 {STATUSES.filter((x) => x !== "all").map((s) => {
                   const c = stats?.by_status?.[s] ?? 0;
@@ -411,6 +550,7 @@ export default function AdminDashboard() {
               <Info l="Company" v={selected?.company}/>
               <Info l="Phone" v={selected?.phone}/>
               <Info l="Service" v={selected?.service}/>
+              <Info l="Subject" v={selected?.subject}/>
               <Info l="Budget" v={selected?.budget}/>
               <Info l="Timeline" v={selected?.timeline}/>
               <Info l="Created" v={formatDate(selected?.created_at, "datetime")}/>
@@ -429,6 +569,52 @@ export default function AdminDashboard() {
                 </button>
               ))}
               <button onClick={() => remove(selected?.id)} data-testid="delete-lead" className="ml-auto px-3 py-1.5 rounded-full text-[12px] border border-red-500/30 text-red-300 hover:bg-red-500/10"><Trash2 size={12} className="inline mr-1"/>Delete</button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {selectedApplication && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={() => setSelectedApplication(null)} className="fixed inset-0 z-50 bg-black/60 backdrop-blur flex items-end sm:items-center justify-center p-4">
+          <motion.div initial={{ y: 30, scale: 0.98 }} animate={{ y: 0, scale: 1 }} onClick={(e) => e.stopPropagation()} className="glass-strong rounded-2xl max-w-2xl w-full p-7 max-h-[85vh] overflow-y-auto" data-testid="application-detail-modal">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="font-display text-[22px] font-semibold text-white">{selectedApplication?.name || "Application"}</div>
+                {selectedApplication?.email ? (
+                  <a href={`mailto:${selectedApplication.email}`} className="text-[13.5px] text-[#4D8BFF]">{selectedApplication.email}</a>
+                ) : (
+                  <div className="text-[13.5px] text-[#6B7385]">No email provided</div>
+                )}
+              </div>
+              <span className={`text-[11px] px-2.5 py-1 rounded-full border ${selectedApplicationStatusClass}`}>{selectedApplication?.status || "new"}</span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4 mt-6 text-[13.5px]">
+              <Info l="Phone" v={selectedApplication?.phone}/>
+              <Info l="Position" v={selectedApplication?.position}/>
+              <Info l="Experience" v={selectedApplication?.experience}/>
+              <Info l="LinkedIn" v={selectedApplication?.linkedin}/>
+              <Info l="GitHub" v={selectedApplication?.github}/>
+              <Info l="Portfolio" v={selectedApplication?.portfolio}/>
+              <Info l="Applied" v={formatDate(selectedApplication?.created_at, "datetime")}/>
+            </div>
+            <div className="mt-5">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-[#6B7385] mb-2">Cover letter</div>
+              <p className="text-[14px] text-[#C9D2E0] whitespace-pre-wrap leading-relaxed">{selectedApplication?.cover_letter || "-"}</p>
+            </div>
+            <div className="mt-7 flex flex-wrap gap-2">
+              {APPLICATION_STATUSES.map((s) => (
+                <button key={s} onClick={() => updateApplicationStatus(selectedApplication?.id, s)} className={`px-3 py-1.5 rounded-full text-[12px] border ${selectedApplication?.status === s ? STATUS_COLOR[s] : "border-white/10 text-[#9AA3B8] hover:bg-white/5"}`}>
+                  {s}
+                </button>
+              ))}
+              {(selectedApplication?.resume_file_path || selectedApplication?.file_path || selectedApplication?.resume_url) && (
+                selectedApplication?.resume_url ? (
+                  <a href={selectedApplication.resume_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-full text-[12px] border border-white/10 text-[#9AA3B8] hover:bg-white/5"><Download size={12} className="inline mr-1"/>Resume</a>
+                ) : (
+                  <button onClick={() => downloadResume(selectedApplication?.id)} className="px-3 py-1.5 rounded-full text-[12px] border border-white/10 text-[#9AA3B8] hover:bg-white/5"><Download size={12} className="inline mr-1"/>Resume</button>
+                )
+              )}
+              <button onClick={() => removeApplication(selectedApplication?.id)} className="ml-auto px-3 py-1.5 rounded-full text-[12px] border border-red-500/30 text-red-300 hover:bg-red-500/10"><Trash2 size={12} className="inline mr-1"/>Delete</button>
             </div>
           </motion.div>
         </motion.div>

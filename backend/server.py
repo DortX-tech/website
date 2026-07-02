@@ -78,6 +78,10 @@ class LeadStatusUpdate(BaseModel):
     status: str
 
 
+class ApplicationStatusUpdate(BaseModel):
+    status: str
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -87,6 +91,8 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     email: str
+    name: Optional[str] = None
+    avatar: Optional[str] = None
 
 
 class ChatRequest(BaseModel):
@@ -118,6 +124,12 @@ class CareerApplication(BaseModel):
     position: str = Field(..., max_length=200)
     experience: Optional[str] = None
     portfolio: Optional[str] = None
+    linkedin: Optional[str] = None
+    github: Optional[str] = None
+    resume: Optional[str] = None
+    resume_url: Optional[str] = None
+    resume_file_name: Optional[str] = None
+    resume_file_path: Optional[str] = None
     cover_letter: str = Field(..., min_length=20, max_length=5000)
 
 
@@ -251,6 +263,8 @@ async def startup():
     if not existing:
         await db.admins.insert_one({
             "id": str(uuid.uuid4()),
+            "name": "DortX Admin",
+            "avatar": None,
             "email": ADMIN_EMAIL,
             "password": hash_password(ADMIN_PASSWORD),
             "role": "super_admin",
@@ -258,6 +272,13 @@ async def startup():
         })
         logger.info(f"Seeded admin: {ADMIN_EMAIL}")
     else:
+        profile_update = {}
+        if not existing.get("name"):
+            profile_update["name"] = "DortX Admin"
+        if "avatar" not in existing:
+            profile_update["avatar"] = None
+        if profile_update:
+            await db.admins.update_one({"email": ADMIN_EMAIL}, {"$set": profile_update})
         if not existing.get("password", "").startswith("$2"):
             await db.admins.update_one({"email": ADMIN_EMAIL}, {"$set": {"password": hash_password(ADMIN_PASSWORD)}})
     # Seed team if empty
@@ -363,7 +384,7 @@ async def login(payload: LoginRequest):
     if not admin or not verify_password(payload.password, admin["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_token(admin["email"])
-    return TokenResponse(access_token=token, email=admin["email"])
+    return TokenResponse(access_token=token, email=admin["email"], name=admin.get("name") or "DortX Admin", avatar=admin.get("avatar"))
 
 
 @api.get("/auth/me")
@@ -423,6 +444,21 @@ async def analytics(admin: dict = Depends(get_current_admin)):
     by_status = {doc["_id"]: doc["count"] async for doc in db.leads.aggregate(pipeline)}
     total = await db.leads.count_documents({})
     applications = await db.applications.count_documents({})
+    today = datetime.now(timezone.utc)
+    current_month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    previous_month_end = current_month_start
+    previous_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+    current_month_leads = await db.leads.count_documents({"created_at": {"$gte": current_month_start.isoformat()}})
+    previous_month_leads = await db.leads.count_documents({
+        "created_at": {
+            "$gte": previous_month_start.isoformat(),
+            "$lt": previous_month_end.isoformat(),
+        }
+    })
+    if previous_month_leads == 0:
+        monthly_growth = 100 if current_month_leads > 0 else 0
+    else:
+        monthly_growth = round(((current_month_leads - previous_month_leads) / previous_month_leads) * 100)
     # Leads by service
     svc_pipeline = [{"$group": {"_id": "$service", "count": {"$sum": 1}}}, {"$sort": {"count": -1}}]
     by_service = [{"service": d["_id"] or "Unspecified", "count": d["count"]} async for d in db.leads.aggregate(svc_pipeline)]
@@ -433,6 +469,9 @@ async def analytics(admin: dict = Depends(get_current_admin)):
         "by_service": by_service,
         "applications": applications,
         "subscribers": subscribers,
+        "current_month_leads": current_month_leads,
+        "previous_month_leads": previous_month_leads,
+        "monthly_growth": monthly_growth,
     }
 
 
@@ -459,11 +498,79 @@ async def list_applications(admin: dict = Depends(get_current_admin)):
     return {"items": items}
 
 
+@api.patch("/admin/applications/{application_id}/status")
+async def update_application_status(application_id: str, payload: ApplicationStatusUpdate, admin: dict = Depends(get_current_admin)):
+    if payload.status not in ("new", "reviewing", "shortlisted", "rejected", "hired"):
+        raise HTTPException(400, "Invalid status")
+    res = await db.applications.update_one(
+        {"id": application_id},
+        {"$set": {"status": payload.status, "updated_at": now_iso()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Application not found")
+    return {"success": True}
+
+
+@api.delete("/admin/applications/{application_id}")
+async def delete_application(application_id: str, admin: dict = Depends(get_current_admin)):
+    res = await db.applications.delete_one({"id": application_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Application not found")
+    return {"success": True}
+
+
+@api.get("/admin/applications/{application_id}/resume")
+async def download_application_resume(application_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await db.applications.find_one({"id": application_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Application not found")
+    file_path = doc.get("resume_file_path") or doc.get("file_path")
+    if not file_path or not Path(file_path).exists():
+        raise HTTPException(404, "Resume not found")
+    filename = doc.get("resume_file_name") or doc.get("file_name") or "resume"
+    return FileResponse(file_path, filename=filename)
+
+
+@api.get("/admin/applications/export.csv")
+async def export_applications(admin: dict = Depends(get_current_admin)):
+    import io
+    import csv
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    fields = ["id", "name", "email", "phone", "position", "experience", "portfolio", "linkedin", "github", "status", "cover_letter", "created_at"]
+    writer.writerow(fields)
+    async for d in db.applications.find({}, {"_id": 0}):
+        writer.writerow([d.get(k, "") for k in fields])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=dortx_applications.csv"},
+    )
+
+
 @api.get("/admin/newsletter")
 async def list_newsletter(admin: dict = Depends(get_current_admin)):
     items = await db.newsletter_subscribers.find({}, {"_id": 0}).sort("created_at", -1).to_list(length=2000)
     total = await db.newsletter_subscribers.count_documents({})
     return {"items": items, "total": total}
+
+
+@api.get("/admin/newsletter/export.csv")
+async def export_newsletter(admin: dict = Depends(get_current_admin)):
+    import io
+    import csv
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "email", "source", "created_at"])
+    async for d in db.newsletter_subscribers.find({}, {"_id": 0}):
+        writer.writerow([d.get(k, "") for k in ["id", "email", "source", "created_at"]])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=dortx_newsletter.csv"},
+    )
 
 
 @api.delete("/admin/newsletter/{sub_id}")

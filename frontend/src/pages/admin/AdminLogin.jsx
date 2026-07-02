@@ -36,6 +36,12 @@ export default function AdminLogin() {
       const { data } = await axios.post(`${API}/auth/login`, { email, password });
       localStorage.setItem("dortx-admin-token", data.access_token);
       localStorage.setItem("dortx-admin-email", data.email);
+      localStorage.setItem("dortx-admin-name", data.name || "DortX Admin");
+      if (data.avatar) {
+        localStorage.setItem("dortx-admin-avatar", data.avatar);
+      } else {
+        localStorage.removeItem("dortx-admin-avatar");
+      }
       nav("/admin", { replace: true });
     } catch (e) {
       setErr(getErrorMessage(e));
