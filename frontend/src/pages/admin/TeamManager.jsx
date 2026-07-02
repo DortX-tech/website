@@ -27,6 +27,14 @@ function toArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function readTeamResponse(response) {
+  const data = response?.data;
+  if (!data || !Array.isArray(data.items)) {
+    throw new Error("Team response must include an items array");
+  }
+  return data.items;
+}
+
 function safeInitials(name = "") {
   return String(name)
     .split(" ")
@@ -49,7 +57,7 @@ export default function TeamManager() {
     setError("");
     try {
       const { data } = await api().get("/admin/team");
-      setItems(toArray(data?.items));
+      setItems(readTeamResponse({ data }));
     } catch (e) {
       setItems([]);
       setError("Team data could not be loaded. Showing empty results.");

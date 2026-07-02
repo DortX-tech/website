@@ -26,6 +26,32 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(next) ? next : fallback;
 }
 
+function readListResponse(response, name, { paginated = false } = {}) {
+  const data = response?.data;
+  if (!data || !Array.isArray(data.items)) {
+    throw new Error(`${name} response must include an items array`);
+  }
+  return {
+    items: data.items,
+    total: paginated ? toNumber(data.total, data.items.length) : toNumber(data.total, data.items.length),
+  };
+}
+
+function readAnalyticsResponse(response) {
+  const data = response?.data;
+  if (!data || typeof data !== "object") {
+    throw new Error("Analytics response must be an object");
+  }
+
+  return {
+    total_leads: toNumber(data.total_leads),
+    by_status: data.by_status && typeof data.by_status === "object" && !Array.isArray(data.by_status) ? data.by_status : {},
+    by_service: Array.isArray(data.by_service) ? data.by_service : [],
+    applications: toNumber(data.applications),
+    subscribers: toNumber(data.subscribers),
+  };
+}
+
 function formatDate(value, mode = "date") {
   if (!value) return "-";
   const next = new Date(value);
@@ -76,16 +102,15 @@ export default function AdminDashboard() {
         api().get("/admin/applications"),
         api().get("/admin/newsletter"),
       ]);
-      setStats({
-        ...EMPTY_STATS,
-        ...(a?.data ?? {}),
-        by_status: a?.data?.by_status ?? {},
-        by_service: toArray(a?.data?.by_service),
-      });
-      setLeads(toArray(l?.data?.items));
-      setTotal(toNumber(l?.data?.total));
-      setApplications(toArray(apps?.data?.items));
-      setSubscribers(toArray(subs?.data?.items));
+      const leadData = readListResponse(l, "Leads", { paginated: true });
+      const applicationData = readListResponse(apps, "Applications");
+      const subscriberData = readListResponse(subs, "Newsletter");
+
+      setStats(readAnalyticsResponse(a));
+      setLeads(leadData.items);
+      setTotal(leadData.total);
+      setApplications(applicationData.items);
+      setSubscribers(subscriberData.items);
     } catch (e) {
       if (e?.response?.status === 401) {
         localStorage.removeItem("dortx-admin-token");
