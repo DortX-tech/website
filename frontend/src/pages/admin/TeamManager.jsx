@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Plus, Trash2, Upload, Crown, X, Save, Image as ImageIcon } from "lucide-react";
 
-const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || "";
+const BACKEND_BASE = process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com";
 const API = `${BACKEND_BASE}/api`;
 
 function api() {

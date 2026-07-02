@@ -5,7 +5,7 @@ import axios from "axios";
 import Logo from "./Logo";
 import { CONTACT, SOCIALS } from "@/data/site";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
 const SocialIconMap = { Linkedin };
 
 export default function Footer() {

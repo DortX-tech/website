@@ -5,7 +5,7 @@ import axios from "axios";
 import { LogIn, Lock, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
 
 function getErrorMessage(error) {
   const detail = error?.response?.data?.detail;

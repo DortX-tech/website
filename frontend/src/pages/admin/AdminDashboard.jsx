@@ -6,7 +6,7 @@ import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Se
 import Logo from "@/components/Logo";
 import TeamManager from "@/pages/admin/TeamManager";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
 const STATUSES = ["all", "new", "contacted", "qualified", "won", "lost"];
 const STATUS_COLOR = {
   new: "bg-blue-500/15 text-blue-300 border-blue-500/30",

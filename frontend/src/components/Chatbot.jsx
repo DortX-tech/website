@@ -4,7 +4,7 @@ import { Check, Copy, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import axios from "axios";
 import Logo from "./Logo";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"}/api`;
 
 const SERVICE_OPTIONS = [
   "AI Agents",
