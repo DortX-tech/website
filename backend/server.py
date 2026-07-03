@@ -962,8 +962,9 @@ def local_dortx_reply(
     inferred_service = infer_service_interest(selected_service or "", memory_hint, recent_user_text, text)
 
     if contains_any(text, ["hi", "hello", "hey", "good morning", "good evening", "who are you"]):
+        greeting = f"Hi {visitor_name}." if visitor_name else "Hi."
         return (
-            f"Hi{name_part[:-2] if visitor_name else ''}. I am DortX AI, your business and technology consultant for DortX.\n\n"
+            f"{greeting} I am DortX AI, your business and technology consultant for DortX.\n\n"
             "Tell me what you want to build, automate or improve. I can help you clarify requirements, compare options, estimate a broad timeline and identify the right DortX service path."
             f"{context_note}"
         )
@@ -982,6 +983,12 @@ def local_dortx_reply(
             "- **Phone:** +91 81509 90329\n\n"
             "If you share your project type, timeline and budget range, I can help you prepare a crisp enquiry before you contact the team."
         )
+    if contains_any(text, ["too expensive", "expensive", "cheaper", "compare", "why should", "trust", "guarantee"]):
+        return (
+            f"{name_part}that is a fair concern. The right answer is not always to build the biggest version first.\n\n"
+            "A sensible DortX approach would be to define the business outcome, separate must-have features from later improvements, and launch a reliable first phase before scaling.\n\n"
+            "To judge value, compare providers on discovery quality, maintainability, security, handover, support and whether they can explain tradeoffs clearly. What budget range or alternative are you comparing against?"
+        )
     if contains_any(text, ["price", "pricing", "cost", "budget", "quote", "proposal"]):
         return (
             f"{name_part}pricing depends on scope, complexity, integrations, content readiness and delivery timeline. As a practical guide:\n\n"
@@ -993,12 +1000,6 @@ def local_dortx_reply(
             "| AI agent/chatbot | knowledge sources, integrations, guardrails, analytics |\n"
             "| IoT/automation | hardware, protocols, site constraints, dashboards |\n\n"
             "If you share the project type, required features, timeline and budget range, I can help shape a realistic scope before DortX prepares a formal estimate."
-        )
-    if contains_any(text, ["too expensive", "expensive", "cheaper", "compare", "why should", "trust", "guarantee"]):
-        return (
-            f"{name_part}that is a fair concern. The right answer is not always to build the biggest version first.\n\n"
-            "A sensible DortX approach would be to define the business outcome, separate must-have features from later improvements, and launch a reliable first phase before scaling.\n\n"
-            "To judge value, compare providers on discovery quality, maintainability, security, handover, support and whether they can explain tradeoffs clearly. What budget range or alternative are you comparing against?"
         )
     if contains_any(text, ["portfolio", "case stud", "previous work", "clients"]):
         return (
@@ -1017,6 +1018,11 @@ def local_dortx_reply(
             "7. **Maintenance** - improvements, support and scaling.\n\n"
             "Generic timelines: a focused website may take a few weeks, a custom app often takes several weeks to a few months, and ERP/AI/IoT work depends heavily on integrations and testing."
         )
+    if contains_any(text, ["code", "bug", "programming", "function", "database schema", "endpoint", "api error", "python", "javascript", "react", "fastapi", "spring boot"]):
+        return (
+            f"{name_part}I can help reason through technical questions too. Share the goal, current stack, error message or a small code snippet, and I will explain the issue in plain language first, then suggest a practical fix.\n\n"
+            "If this is for a production DortX-style project, I would also check security, maintainability, deployment impact and whether the fix affects user workflows."
+        )
     if contains_any(text, ["technology", "technologies", "stack", "react", "python", "java", "cloud", "database", "api", "architecture"]):
         return (
             f"{name_part}DortX chooses technology around the business problem, not trends. Common stacks include:\n\n"
@@ -1027,11 +1033,6 @@ def local_dortx_reply(
             "- **AI:** OpenAI, Claude, Gemini, LangChain, agent workflows\n"
             "- **IoT/Industrial:** Arduino, ESP32, STM32, Raspberry Pi, PLC, SCADA, HMI, MQTT, Modbus, OPC UA, industrial sensors and edge computing\n\n"
             "If you share your target platform and users, I can suggest a sensible architecture."
-        )
-    if contains_any(text, ["code", "bug", "programming", "function", "database schema", "endpoint", "api error", "python", "javascript", "react", "fastapi", "spring boot"]):
-        return (
-            f"{name_part}I can help reason through technical questions too. Share the goal, current stack, error message or a small code snippet, and I will explain the issue in plain language first, then suggest a practical fix.\n\n"
-            "If this is for a production DortX-style project, I would also check security, maintainability, deployment impact and whether the fix affects user workflows."
         )
     if contains_any(text, ["iot", "iiot", "industrial", "plc", "scada", "hmi", "arduino", "esp32", "stm32", "raspberry", "robot", "robotics", "sensor", "pcb", "firmware", "mqtt", "modbus", "opc", "machine monitoring", "predictive maintenance", "smart factory"]):
         return (

@@ -47,9 +47,62 @@ const LEAD_FIELDS = [
 ];
 
 const initialAssistantMessage = {
+  id: "initial-assistant",
   role: "assistant",
   content:
     "Hi! Welcome to DortX!\n\nI'm the DortX AI Assistant.\n\nBefore we begin, I'd love to know a little about you.\n\n**What is your name?**",
+  createdAt: new Date().toISOString(),
+  status: "received",
+};
+
+const makeMessage = (role, content, extra = {}) => ({
+  id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  role,
+  content,
+  createdAt: new Date().toISOString(),
+  status: role === "user" ? "sent" : "received",
+  ...extra,
+});
+
+const normalizeMessages = (items) => (Array.isArray(items) && items.length ? items : [initialAssistantMessage]).map((message, index) => ({
+  ...message,
+  id: message.id || `${message.role || "message"}-${index}-${Date.now()}`,
+  createdAt: message.createdAt || new Date().toISOString(),
+  status: message.status || (message.role === "user" ? "sent" : "received"),
+}));
+
+const formatTime = (value) => {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+};
+
+const dateKey = (value) => {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toDateString();
+};
+
+const dateLabel = (value) => {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return "Today";
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString([], { month: "short", day: "numeric", year: date.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+};
+
+const statusLabel = (message) => {
+  if (message.role === "user") {
+    if (message.status === "sending") return "Sending...";
+    if (message.status === "error") return "Error";
+    return "Sent";
+  }
+  if (message.status === "error") return "Error";
+  if (message.streaming) return message.content ? "Receiving..." : "AI is typing...";
+  return "Received";
 };
 
 const sid = () => {
@@ -252,22 +305,39 @@ function formatInline(text) {
 
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState(() => loadJson("dortx-chat-messages", [initialAssistantMessage]));
+  const [messages, setMessages] = useState(() => normalizeMessages(loadJson("dortx-chat-messages", [initialAssistantMessage])));
   const [memory, setMemory] = useState(() => loadJson("dortx-chat-memory", { name: "", service: "", lead: {} }));
   const [stage, setStage] = useState(() => localStorage.getItem("dortx-chat-stage") || "name");
   const [leadIndex, setLeadIndex] = useState(() => Number(localStorage.getItem("dortx-chat-lead-index") || 0));
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(null);
+  const [showNewMessages, setShowNewMessages] = useState(false);
   const abortRef = useRef(null);
   const scrollerRef = useRef(null);
   const inputRef = useRef(null);
+  const autoScrollRef = useRef(true);
 
-  const recentHistory = useMemo(() => messages.slice(-10).map(({ role, content }) => ({ role, content })), [messages]);
+  const recentHistory = useMemo(
+    () => messages
+      .filter(({ role, content }) => ["user", "assistant"].includes(role) && String(content || "").trim())
+      .slice(-10)
+      .map(({ role, content }) => ({ role, content })),
+    [messages]
+  );
 
   useEffect(() => {
     saveJson("dortx-chat-messages", messages.slice(-40));
-    if (scrollerRef.current) scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    if (autoScrollRef.current) {
+      requestAnimationFrame(() => {
+        scroller.scrollTop = scroller.scrollHeight;
+        setShowNewMessages(false);
+      });
+    } else if (open) {
+      setShowNewMessages(true);
+    }
   }, [messages, open, busy]);
 
   useEffect(() => {
@@ -283,31 +353,68 @@ export default function Chatbot() {
     if (open) setTimeout(() => inputRef.current?.focus(), 120);
   }, [open]);
 
-  const append = (message) => setMessages((current) => [...current, message]);
+  const handleScroll = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    const nearBottom = distanceFromBottom < 80;
+    autoScrollRef.current = nearBottom;
+    if (nearBottom) setShowNewMessages(false);
+  };
 
-  const updateLastAssistant = (chunk, replace = false) => {
+  const scrollToLatest = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    autoScrollRef.current = true;
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+    setShowNewMessages(false);
+  };
+
+  const append = (message) => {
+    const nextMessage = message.id ? message : makeMessage(message.role, message.content, message);
+    setMessages((current) => [...current, nextMessage]);
+    return nextMessage;
+  };
+
+  const patchMessage = (id, patch) => {
+    setMessages((current) => current.map((message) => message.id === id ? { ...message, ...patch } : message));
+  };
+
+  const updateLastAssistant = (id, chunk, replace = false) => {
     setMessages((current) => {
       const next = [...current];
-      const last = next[next.length - 1];
-      if (last?.role === "assistant" && last.streaming) {
-        next[next.length - 1] = { ...last, content: replace ? chunk : `${last.content}${chunk}` };
+      const index = next.findIndex((message) => message.id === id);
+      const target = next[index];
+      if (target?.role === "assistant" && target.streaming) {
+        next[index] = {
+          ...target,
+          content: replace ? chunk : `${target.content}${chunk}`,
+          status: "received",
+          receivedAt: target.receivedAt || new Date().toISOString(),
+        };
       }
       return next;
     });
   };
 
-  const finalizeAssistant = () => {
+  const finalizeAssistant = (id, status = "received") => {
     setMessages((current) => {
       const next = [...current];
-      const last = next[next.length - 1];
-      if (last?.role === "assistant" && last.streaming) {
-        next[next.length - 1] = { ...last, streaming: false };
+      const index = next.findIndex((message) => message.id === id);
+      const target = next[index];
+      if (target?.role === "assistant") {
+        next[index] = {
+          ...target,
+          streaming: false,
+          status,
+          receivedAt: target.receivedAt || new Date().toISOString(),
+        };
       }
       return next;
     });
   };
 
-  const requestStreamingReply = async (message, effectiveMemory = memory) => {
+  const requestStreamingReply = async (message, effectiveMemory = memory, assistantMessageId) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -354,7 +461,7 @@ export default function Chatbot() {
           }
           if (chunk) {
             received = true;
-            updateLastAssistant(chunk);
+            updateLastAssistant(assistantMessageId, chunk);
           }
         });
       });
@@ -374,22 +481,28 @@ export default function Chatbot() {
     return data.reply;
   };
 
-  const assistantReply = async (message, effectiveMemory = memory) => {
-    append({ role: "assistant", content: "", streaming: true });
+  const assistantReply = async (message, effectiveMemory = memory, userMessageId = null) => {
+    if (userMessageId) patchMessage(userMessageId, { status: "sent", sentAt: new Date().toISOString() });
+    const assistantMessage = append(makeMessage("assistant", "", {
+      streaming: true,
+      status: "typing",
+      retryFor: message,
+    }));
     try {
-      await requestStreamingReply(message, effectiveMemory);
+      await requestStreamingReply(message, effectiveMemory, assistantMessage.id);
+      finalizeAssistant(assistantMessage.id, "received");
     } catch {
       try {
         const reply = await requestSyncReply(message, effectiveMemory);
-        updateLastAssistant(reply || "I understood your question, but I could not form a complete response. Please send it once more.", true);
+        updateLastAssistant(assistantMessage.id, reply || "I understood your question, but I could not form a complete response. Please send it once more.", true);
+        finalizeAssistant(assistantMessage.id, "received");
       } catch {
-        updateLastAssistant(
+        updateLastAssistant(assistantMessage.id,
           "I'm sorry, the AI service is temporarily unavailable. I can still help with DortX services, AI, automation, websites, software development, pricing and contact details. Please try again in a moment, or contact **support@dortxtech.com**.",
           true
         );
+        finalizeAssistant(assistantMessage.id, "error");
       }
-    } finally {
-      finalizeAssistant();
     }
   };
 
@@ -481,7 +594,8 @@ export default function Chatbot() {
     if (!msg || busy) return;
 
     setInput("");
-    append({ role: "user", content: msg });
+    autoScrollRef.current = true;
+    const userMessage = append(makeMessage("user", msg, { status: "sending" }));
     const memoryPatch = deriveMemoryPatch(msg, memory);
     const effectiveMemory = {
       ...memory,
@@ -497,10 +611,11 @@ export default function Chatbot() {
       if (looksLikeConsultingRequest(msg)) {
         setStage("chat");
         setBusy(true);
-        await assistantReply(msg, effectiveMemory);
+        await assistantReply(msg, effectiveMemory, userMessage.id);
         setBusy(false);
         return;
       }
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
       const name = msg.split(/\s+/).slice(0, 4).join(" ");
       setMemory((current) => ({ ...current, name }));
       setStage("service");
@@ -512,6 +627,7 @@ export default function Chatbot() {
       const serviceMemory = { ...effectiveMemory, service: msg };
       setMemory(serviceMemory);
       setStage("chat");
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
       append({
         role: "assistant",
         content: `Great, ${memory.name || "there"}. I'll keep **${msg}** in mind.\n\nWhat would you like to know or plan first?`,
@@ -521,27 +637,38 @@ export default function Chatbot() {
     }
 
     if (stage === "lead") {
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
       await handleLeadAnswer(msg);
       return;
     }
 
     if (isBuyingIntent(msg)) {
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
       startLeadFlow(effectiveMemory);
       return;
     }
 
     setBusy(true);
-    await assistantReply(msg, effectiveMemory);
+    await assistantReply(msg, effectiveMemory, userMessage.id);
     setBusy(false);
   };
 
   const onAction = (action) => {
+    if (busy) return;
     if (["Book Consultation", "Talk to Sales"].includes(action)) {
-      append({ role: "user", content: action });
+      append(makeMessage("user", action, { status: "sent" }));
       startLeadFlow();
       return;
     }
     send(action);
+  };
+
+  const retryMessage = async (message) => {
+    if (!message?.retryFor || busy) return;
+    autoScrollRef.current = true;
+    setBusy(true);
+    await assistantReply(message.retryFor, memory);
+    setBusy(false);
   };
 
   const copyMessage = async (content, index) => {
@@ -600,50 +727,111 @@ export default function Chatbot() {
               </div>
             </div>
 
-            <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3" data-testid="chatbot-messages" aria-live="polite">
-              {messages.map((message, index) => (
-                <div key={index} className={`group flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`relative max-w-[88%] px-3.5 py-2.5 rounded-2xl text-[13.5px] leading-relaxed ${
-                    message.role === "user"
-                      ? "bg-[#1E6BFF] text-white rounded-br-sm"
-                      : "bg-white/6 text-[#E7EBF3] rounded-bl-sm"
-                  }`}>
-                    <MarkdownMessage content={message.content} />
-                    {message.role === "assistant" && !message.streaming && (
-                      <button
-                        type="button"
-                        onClick={() => copyMessage(message.content, index)}
-                        className="absolute -right-8 top-2 hidden group-hover:flex w-6 h-6 items-center justify-center rounded-full bg-white/8 text-[#C9D2E0] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
-                        aria-label="Copy assistant message"
-                      >
-                        {copied === index ? <Check size={12} /> : <Copy size={12} />}
-                      </button>
-                    )}
-                    {message.actions?.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {message.actions.map((action) => (
-                          <button
-                            key={action}
-                            type="button"
-                            onClick={() => onAction(action)}
-                            className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/7 hover:bg-white/12 text-[#DCE6F7] border border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
-                          >
-                            {action}
-                          </button>
-                        ))}
+            <div
+              ref={scrollerRef}
+              onScroll={handleScroll}
+              className="relative flex-1 overflow-y-auto px-4 py-4 space-y-3"
+              data-testid="chatbot-messages"
+              aria-live="polite"
+            >
+              {messages.map((message, index) => {
+                const isUser = message.role === "user";
+                const previous = messages[index - 1];
+                const showDate = !previous || dateKey(previous.createdAt) !== dateKey(message.createdAt);
+                const isTyping = message.role === "assistant" && message.streaming && !message.content;
+                return (
+                  <div key={message.id || index}>
+                    {showDate && (
+                      <div className="sticky top-0 z-10 my-3 flex justify-center pointer-events-none">
+                        <span className="rounded-full bg-[#070B14]/85 border border-white/10 px-3 py-1 text-[10.5px] text-[#9AA3B8] shadow-lg backdrop-blur">
+                          {dateLabel(message.createdAt)}
+                        </span>
                       </div>
                     )}
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.18 }}
+                      className={`group flex ${isUser ? "justify-end" : "justify-start"}`}
+                    >
+                      <div className={`max-w-[88%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
+                        <div className={`px-1 text-[10.5px] font-medium ${isUser ? "text-[#BFD0FF]" : "text-[#9AA3B8]"}`}>
+                          {isUser ? "User" : "DortX AI"}
+                        </div>
+                        <div className={`relative px-3.5 py-2.5 rounded-2xl text-[13.5px] leading-relaxed shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] ${
+                          isUser
+                            ? "bg-[#1E6BFF] text-white rounded-br-sm"
+                            : message.status === "error"
+                              ? "bg-[#3A141A]/80 border border-[#F87171]/25 text-[#FFE5E5] rounded-bl-sm"
+                              : "bg-white/6 text-[#E7EBF3] rounded-bl-sm"
+                        }`}>
+                          {isTyping ? (
+                            <div className="flex items-center gap-2" role="status" aria-label="DortX AI is typing">
+                              <span className="text-[#C9D2E0]">DortX AI is typing</span>
+                              <span className="flex gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "120ms" }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "240ms" }} />
+                              </span>
+                            </div>
+                          ) : (
+                            <MarkdownMessage content={message.content} />
+                          )}
+                          {message.role === "assistant" && !message.streaming && message.content && (
+                            <button
+                              type="button"
+                              onClick={() => copyMessage(message.content, index)}
+                              className="absolute -right-8 top-2 hidden group-hover:flex w-6 h-6 items-center justify-center rounded-full bg-white/8 text-[#C9D2E0] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                              aria-label="Copy assistant message"
+                            >
+                              {copied === index ? <Check size={12} /> : <Copy size={12} />}
+                            </button>
+                          )}
+                          {message.actions?.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {message.actions.map((action) => (
+                                <button
+                                  key={action}
+                                  type="button"
+                                  onClick={() => onAction(action)}
+                                  disabled={busy}
+                                  className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/7 hover:bg-white/12 text-[#DCE6F7] border border-white/10 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                                >
+                                  {action}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {message.status === "error" && message.retryFor && (
+                            <button
+                              type="button"
+                              onClick={() => retryMessage(message)}
+                              disabled={busy}
+                              className="mt-3 text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white border border-white/15 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                            >
+                              Retry
+                            </button>
+                          )}
+                        </div>
+                        <div className={`px-1 flex items-center gap-1.5 text-[10.5px] ${isUser ? "text-[#9DB8FF]" : "text-[#7E8799]"}`}>
+                          <Check size={10} />
+                          <span>{statusLabel(message)}</span>
+                          <span>-</span>
+                          <span>{formatTime(message.receivedAt || message.sentAt || message.createdAt)}</span>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
-                </div>
-              ))}
-              {busy && (
-                <div className="flex justify-start" role="status" aria-label="DortX AI is thinking">
-                  <div className="bg-white/6 text-[#E7EBF3] px-3.5 py-2.5 rounded-2xl rounded-bl-sm flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "120ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "240ms" }} />
-                  </div>
-                </div>
+                );
+              })}
+              {showNewMessages && (
+                <button
+                  type="button"
+                  onClick={scrollToLatest}
+                  className="sticky bottom-2 left-1/2 z-20 mx-auto flex -translate-x-0 rounded-full bg-[#1E6BFF] px-3 py-1.5 text-[11.5px] text-white shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                >
+                  New messages
+                </button>
               )}
             </div>
 
@@ -654,7 +842,8 @@ export default function Chatbot() {
                     key={suggestion}
                     data-testid={`chat-suggestion-${suggestion.slice(0, 10)}`}
                     onClick={() => onAction(suggestion)}
-                    className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#C9D2E0] border border-white/8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                    disabled={busy}
+                    className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#C9D2E0] border border-white/8 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
                   >
                     {suggestion}
                   </button>
