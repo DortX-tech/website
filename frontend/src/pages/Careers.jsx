@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, Coffee, Rocket, Globe, CheckCircle2, Briefcase } from "lucide-react";
-import axios from "axios";
 import SectionHeader from "@/components/SectionHeader";
-import { API_URL } from "@/config/api";
+import { apiClient } from "@/config/api";
 
 const CULTURE = [
   { i: Heart, t: "Care for the craft", d: "Code reviews, design critiques, and written docs are handled with kindness and high standards." },
@@ -23,7 +22,7 @@ export default function Careers() {
     setBusy(true);
     setErr("");
     try {
-      await axios.post(`${API_URL}/careers/apply`, form);
+      await apiClient.post("/careers/apply", form);
       setDone(true);
     } catch (e) {
       setErr(e.response?.data?.detail || "Could not submit your application. Please try again.");
@@ -37,15 +36,15 @@ export default function Careers() {
 
   return (
     <div data-testid="careers-page">
-      <section className="pt-32 pb-10 relative">
+      <section className="pt-28 sm:pt-32 pb-8 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Careers</div>
-          <h1 className="font-display text-[44px] sm:text-[60px] lg:text-[72px] leading-[1.02] font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display text-[36px] sm:text-[50px] lg:text-[60px] leading-[1.05] font-semibold mt-4 max-w-4xl">
             Join Our <span className="gradient-text">Team</span>
           </h1>
-          <p className="mt-6 text-[17px] text-[#9AA3B8] max-w-2xl leading-relaxed">
+          <p className="mt-6 text-[15.5px] text-[#9AA3B8] max-w-2xl leading-relaxed">
             Join a focused technology team building practical AI, software, automation, and digital systems with quality at the center.
           </p>
         </div>
@@ -54,11 +53,11 @@ export default function Careers() {
       <section className="py-10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <SectionHeader eyebrow="Culture" title="Why people stay." />
-          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {CULTURE.map((c, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} className="card-glow p-6">
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} className="card-glow p-5">
                 <c.i className="text-[#4D8BFF] mb-4" size={22}/>
-                <div className="font-display text-white font-semibold text-[16px]">{c.t}</div>
+                <div className="font-display text-white font-semibold text-[15px]">{c.t}</div>
                 <p className="mt-2 text-[13.5px] text-[#9AA3B8] leading-relaxed">{c.d}</p>
               </motion.div>
             ))}
@@ -68,13 +67,13 @@ export default function Careers() {
 
       <section className="pb-14">
         <div className="max-w-3xl mx-auto px-6 lg:px-8">
-          <div className="glass rounded-2xl p-5 sm:p-6 mb-5 border border-white/8">
+          <div className="glass rounded-2xl p-5 sm:p-5 mb-5 border border-white/8">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-[#1E6BFF]/15 border border-[#1E6BFF]/25 flex items-center justify-center shrink-0">
                 <Briefcase size={18} className="text-[#4D8BFF]"/>
               </div>
               <div>
-                <h2 className="font-display text-white text-[20px] sm:text-[22px] font-semibold">
+                <h2 className="font-display text-white text-[18px] sm:text-[22px] font-semibold">
                   We are not currently hiring for specific roles.
                 </h2>
                 <p className="mt-3 text-[14.5px] sm:text-[15px] text-[#9AA3B8] leading-relaxed">
@@ -85,13 +84,13 @@ export default function Careers() {
           </div>
 
           {done ? (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-8 sm:p-10 text-center">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-5 sm:p-8 text-center">
               <CheckCircle2 className="mx-auto text-[#22c55e] mb-4" size={40}/>
-              <h3 className="font-display text-[26px] font-semibold">Application received</h3>
+              <h3 className="font-display text-[22px] font-semibold">Application received</h3>
               <p className="mt-3 text-[15px] text-[#9AA3B8]">Thanks for reaching out. We read every application and will contact you if there is a strong fit.</p>
             </motion.div>
           ) : (
-            <form onSubmit={submit} data-testid="careers-form" className="glass rounded-2xl p-5 sm:p-6 space-y-3.5 border border-white/8">
+            <form onSubmit={submit} data-testid="careers-form" className="glass rounded-2xl p-5 sm:p-5 space-y-3.5 border border-white/8">
               <div className="grid sm:grid-cols-2 gap-3.5">
                 <div>
                   <label htmlFor="career-name" className={label}>Full Name *</label>

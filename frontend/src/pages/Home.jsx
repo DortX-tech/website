@@ -21,7 +21,7 @@ function Hero() {
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   return (
-    <section ref={ref} className="relative pt-32 pb-14 overflow-hidden">
+    <section ref={ref} className="relative pt-28 sm:pt-32 pb-8 overflow-hidden">
       {/* Background grid */}
       <div className="absolute inset-0 bg-grid opacity-40"/>
       {/* Animated gradient orbs (mouse-responsive) */}
@@ -68,7 +68,7 @@ function Hero() {
       </svg>
 
       <motion.div style={{ y: y1, opacity }} className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full">
-        <div className="grid lg:grid-cols-12 gap-10 items-center">
+        <div className="grid lg:grid-cols-12 gap-8 items-center">
           <div className="lg:col-span-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
@@ -79,7 +79,7 @@ function Hero() {
 
             <motion.h1
               initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="font-display mt-7 text-[44px] sm:text-[68px] lg:text-[92px] leading-[0.95] tracking-tight font-semibold"
+              className="font-display mt-6 text-[40px] sm:text-[56px] lg:text-[76px] leading-[1] tracking-tight font-semibold"
             >
               We solve <span className="italic font-normal text-[#4D8BFF]">business</span>
               <br/>
@@ -90,14 +90,14 @@ function Hero() {
 
             <motion.p
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}
-              className="mt-8 text-[17px] sm:text-[20px] text-[#9AA3B8] max-w-xl leading-[1.55]"
+              className="mt-6 text-[15.5px] sm:text-[18px] text-[#9AA3B8] max-w-xl leading-[1.55]"
             >
               DortX builds high-quality AI solutions, software, and automation systems that solve real business problems. Every project is engineered with precision, tested thoroughly, and delivered on time.
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.35 }}
-              className="mt-10 flex flex-wrap items-center gap-3"
+              className="mt-6 flex flex-wrap items-center gap-3"
             >
               <Link to="/services" data-testid="hero-cta-services" className="btn-ghost">
                 Explore services <ArrowRight size={16}/>
@@ -150,7 +150,7 @@ function Hero() {
         {/* Bottom strip — values */}
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }}
-          className="mt-10 pt-6 border-t border-white/8 grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-6"
+          className="mt-6 pt-6 border-t border-white/8 grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-5"
         >
           {[
             { k: "Team", v: "Small & focused" },
@@ -179,24 +179,24 @@ function WhyExist() {
   const op2 = useTransform(scrollYProgress, [0.4, 0.7], [0.2, 1]);
 
   return (
-    <section ref={ref} className="relative py-20 lg:py-24">
+    <section ref={ref} className="relative py-14 lg:py-16">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
-        <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-10">— Why we exist</div>
+        <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-6">— Why we exist</div>
 
-        <motion.p style={{ opacity: op1 }} className="font-display text-[32px] sm:text-[44px] lg:text-[56px] leading-[1.15] font-medium">
+        <motion.p style={{ opacity: op1 }} className="font-display text-[28px] sm:text-[38px] lg:text-[48px] leading-[1.15] font-medium">
           We kept seeing the same pattern.
         </motion.p>
 
-        <div className="grid lg:grid-cols-2 gap-x-16 gap-y-8 mt-10">
-          <motion.p style={{ opacity: op2 }} className="text-[17px] sm:text-[19px] text-[#C9D2E0] leading-[1.7]">
+        <div className="grid lg:grid-cols-2 gap-x-16 gap-y-8 mt-6">
+          <motion.p style={{ opacity: op2 }} className="text-[15.5px] sm:text-[16px] text-[#C9D2E0] leading-[1.7]">
             Companies investing heavily in software — and getting back generic outputs. Slow products. Dashboards no one opens. AI experiments that never see production. Marketing money that disappears into the void.
           </motion.p>
-          <motion.p style={{ opacity: op2 }} className="text-[17px] sm:text-[19px] text-[#9AA3B8] leading-[1.7]">
+          <motion.p style={{ opacity: op2 }} className="text-[15.5px] sm:text-[16px] text-[#9AA3B8] leading-[1.7]">
             DortX was started to be the opposite of that. A small, focused team that treats every engagement like our own product — with care, ownership and the standards we'd expect for ourselves.
           </motion.p>
         </div>
 
-        <div className="mt-10 flex items-center gap-6">
+        <div className="mt-6 flex items-center gap-5">
           <div className="h-px flex-1 bg-gradient-to-r from-[#1E6BFF]/40 to-transparent"/>
           <Link to="/about" className="text-[13px] text-[#C9D2E0] hover:text-white flex items-center gap-2">
             Read the full story <ArrowRight size={14}/>
@@ -219,12 +219,12 @@ function Problems() {
   ];
 
   return (
-    <section className="relative py-16">
+    <section className="relative py-14">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="grid lg:grid-cols-12 gap-10">
+        <div className="grid lg:grid-cols-12 gap-8">
           <div className="lg:col-span-5 lg:sticky lg:top-32 self-start">
             <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF]">— What we remove</div>
-            <h2 className="font-display text-[34px] sm:text-[44px] lg:text-[52px] leading-[1.05] font-semibold mt-5">
+            <h2 className="font-display text-[30px] sm:text-[40px] lg:text-[46px] leading-[1.05] font-semibold mt-5">
               The four frictions <br/> we hear about <br/>
               <span className="gradient-text">every week</span>.
             </h2>
@@ -246,11 +246,11 @@ function Problems() {
                   e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
                   e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
                 }}
-                className="spotlight glass rounded-2xl p-7 flex items-start gap-6 group"
+                className="spotlight glass rounded-2xl p-5 flex items-start gap-5 group"
               >
-                <div className="font-display text-[40px] text-[#243049] leading-none">{it.n}</div>
+                <div className="font-display text-[34px] text-[#243049] leading-none">{it.n}</div>
                 <div className="flex-1">
-                  <h3 className="font-display text-[20px] font-semibold text-white">{it.t}</h3>
+                  <h3 className="font-display text-[18px] font-semibold text-white">{it.t}</h3>
                   <p className="mt-2 text-[14px] text-[#9AA3B8] leading-relaxed">{it.d}</p>
                 </div>
                 <ArrowUpRight className="text-[#4D8BFF] opacity-0 group-hover:opacity-100 transition" size={18}/>
@@ -268,19 +268,19 @@ function Problems() {
    ======================================================================== */
 function Approach() {
   return (
-    <section className="relative py-20">
+    <section className="relative py-14">
       <div className="absolute inset-0 hair-diag opacity-40"/>
       <div className="relative max-w-6xl mx-auto px-6 lg:px-8 text-center">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-6">— Our approach</div>
-        <h2 className="font-display text-[36px] sm:text-[52px] lg:text-[64px] leading-[1.05] font-medium max-w-4xl mx-auto">
+        <h2 className="font-display text-[28px] sm:text-[38px] lg:text-[54px] leading-[1.05] font-medium max-w-4xl mx-auto">
           One small team. <span className="text-[#4D8BFF]">Six disciplines.</span> <br className="hidden sm:block"/>
           Working as a single system.
         </h2>
-        <p className="mt-5 text-[17px] text-[#9AA3B8] max-w-2xl mx-auto leading-relaxed">
+        <p className="mt-5 text-[15.5px] text-[#9AA3B8] max-w-2xl mx-auto leading-relaxed">
           Most agencies separate engineering, design, AI, growth, industrial automation and security into different silos. We don't. They reinforce each other - so we run them as one practice, on one project, with one team.
         </p>
 
-        <div className="mt-10 relative h-[260px] sm:h-[320px]">
+        <div className="mt-6 relative h-[260px] sm:h-[320px]">
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 320" preserveAspectRatio="xMidYMid meet">
             <defs>
               <radialGradient id="cg" cx="50%" cy="50%" r="50%">
@@ -340,12 +340,12 @@ function WingRow({ wing, index }) {
   const inView = useInView(ref, { once: true, amount: 0.3 });
 
   return (
-    <div ref={ref} id={wing.id} className="relative py-14 lg:py-20 scroll-mt-32">
+    <div ref={ref} id={wing.id} className="relative py-14 lg:py-16 scroll-mt-32">
       <div className={`absolute ${isReverse ? "right-0" : "left-0"} top-0 rail-num`}>
         {wing.number}
       </div>
 
-      <div className={`relative max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-10 items-center ${isReverse ? "lg:flex-row-reverse" : ""}`}>
+      <div className={`relative max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-8 items-center ${isReverse ? "lg:flex-row-reverse" : ""}`}>
         <motion.div
           initial={{ opacity: 0, x: isReverse ? 40 : -40 }}
           animate={inView ? { opacity: 1, x: 0 } : {}}
@@ -358,9 +358,9 @@ function WingRow({ wing, index }) {
             </div>
             <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#6B7385]">Wing {wing.number}</div>
           </div>
-          <h3 className="font-display text-[32px] sm:text-[44px] leading-[1.05] font-semibold">{wing.name}</h3>
-          <p className="mt-5 text-[16px] text-[#9AA3B8] leading-relaxed max-w-lg">{wing.description}</p>
-          <Link to={`/services#${wing.id}`} className="mt-7 inline-flex btn-ghost">
+          <h3 className="font-display text-[28px] sm:text-[38px] leading-[1.05] font-semibold">{wing.name}</h3>
+          <p className="mt-5 text-[15px] text-[#9AA3B8] leading-relaxed max-w-lg">{wing.description}</p>
+          <Link to={`/services#${wing.id}`} className="mt-6 inline-flex btn-ghost">
             Explore this wing <ArrowUpRight size={15}/>
           </Link>
         </motion.div>
@@ -400,9 +400,9 @@ function WingRow({ wing, index }) {
 function Wings() {
   return (
     <section className="relative">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-8 pt-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-6 pt-16">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The six wings</div>
-        <h2 className="font-display text-[36px] sm:text-[52px] lg:text-[64px] leading-[1.05] font-semibold max-w-4xl">
+        <h2 className="font-display text-[28px] sm:text-[38px] lg:text-[54px] leading-[1.05] font-semibold max-w-4xl">
           Each wing is a focused practice <br/>
           in its own right.
         </h2>
@@ -423,14 +423,14 @@ function ProcessTimeline() {
   const lineH = useSpring(useTransform(scrollYProgress, [0, 1], ["0%", "100%"]), { stiffness: 60, damping: 18 });
 
   return (
-    <section ref={ref} className="relative py-20">
+    <section ref={ref} className="relative py-14">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— How we deliver</div>
-        <h2 className="font-display text-[36px] sm:text-[52px] lg:text-[60px] leading-[1.05] font-semibold max-w-3xl">
+        <h2 className="font-display text-[28px] sm:text-[38px] lg:text-[52px] leading-[1.05] font-semibold max-w-3xl">
           Seven steps. Predictable delivery. <span className="gradient-text">Zero surprises.</span>
         </h2>
 
-        <div className="relative mt-10 pl-12 sm:pl-20">
+        <div className="relative mt-6 pl-12 sm:pl-20">
           {/* Track */}
           <div className="absolute left-3 sm:left-7 top-0 bottom-0 w-px bg-white/8"/>
           <motion.div style={{ height: lineH }} className="absolute left-3 sm:left-7 top-0 w-px bg-gradient-to-b from-[#1E6BFF] via-[#4D8BFF] to-transparent"/>
@@ -454,7 +454,7 @@ function ProcessTimeline() {
                   </div>
                   <div className="flex items-baseline gap-4">
                     <span className="font-display text-[#3B4660] text-[14px]">{s.num}</span>
-                    <h3 className="font-display text-[20px] sm:text-[24px] font-semibold">{s.title}</h3>
+                    <h3 className="font-display text-[18px] sm:text-[22px] font-semibold">{s.title}</h3>
                   </div>
                   <p className="mt-2 text-[14.5px] text-[#9AA3B8] leading-relaxed max-w-2xl">{s.desc}</p>
                 </motion.div>
@@ -475,10 +475,10 @@ function TechMarquee() {
   const row1 = [...all, ...all];
   const row2 = [...all.reverse(), ...all];
   return (
-    <section className="relative py-16">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-8">
+    <section className="relative py-14">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-6">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The stack</div>
-        <h2 className="font-display text-[36px] sm:text-[52px] lg:text-[60px] leading-[1.05] font-semibold max-w-3xl">
+        <h2 className="font-display text-[28px] sm:text-[38px] lg:text-[52px] leading-[1.05] font-semibold max-w-3xl">
           Modern, polyglot, <br/>chosen for <span className="gradient-text">fit</span>.
         </h2>
       </div>
@@ -507,12 +507,12 @@ function TechMarquee() {
    ======================================================================== */
 function TeamTeaser() {
   return (
-    <section className="relative py-16">
+    <section className="relative py-14">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex items-end justify-between gap-6 mb-8">
+        <div className="flex items-end justify-between gap-5 mb-6">
           <div>
             <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The team</div>
-            <h2 className="font-display text-[34px] sm:text-[46px] leading-[1.05] font-semibold max-w-2xl">
+            <h2 className="font-display text-[30px] sm:text-[40px] leading-[1.05] font-semibold max-w-2xl">
               Passionate builders. <span className="text-[#4D8BFF]">Quality-first by habit.</span>
             </h2>
           </div>
@@ -532,8 +532,8 @@ function TeamTeaser() {
               <div className="absolute inset-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0F1830] via-[#0A0F1C] to-[#0F1830]"/>
                 <div className="absolute inset-0 bg-grid opacity-30"/>
-                <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-[#1E6BFF]/15 blur-2xl"/>
-                <div className="absolute top-6 left-6 font-display text-[42px] gradient-text opacity-90">
+                <div className="absolute -top-5 -right-6 w-32 h-32 rounded-full bg-[#1E6BFF]/15 blur-2xl"/>
+                <div className="absolute top-5 left-6 font-display text-[36px] gradient-text opacity-90">
                   {m.name.split(" ").map(s => s[0]).slice(0, 2).join("")}
                 </div>
               </div>
@@ -557,11 +557,11 @@ function TeamTeaser() {
    ======================================================================== */
 function Industries() {
   return (
-    <section className="relative py-16">
+    <section className="relative py-14">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <div className="max-w-2xl">
           <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— Industries we empower</div>
-          <h2 className="font-display text-[32px] sm:text-[44px] leading-[1.1] font-medium">
+          <h2 className="font-display text-[28px] sm:text-[38px] leading-[1.1] font-medium">
             Industries we empower.
           </h2>
           <p className="mt-5 text-[15.5px] sm:text-[16px] text-[#9AA3B8] leading-relaxed">
@@ -569,7 +569,7 @@ function Industries() {
           </p>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-2">
+        <div className="mt-6 flex flex-wrap gap-2">
           {INDUSTRIES.map((ind, i) => (
             <motion.span
               key={ind.name}
@@ -606,8 +606,8 @@ function FAQTeaser() {
   const [open, setOpen] = useState(0);
   const list = FAQS.slice(0, 6);
   return (
-    <section className="relative py-16">
-      <div className="max-w-5xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-10">
+    <section className="relative py-14">
+      <div className="max-w-5xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4">
           <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— FAQ</div>
           <h2 className="font-display text-[32px] sm:text-[40px] leading-[1.1] font-semibold">
@@ -636,24 +636,24 @@ function FAQTeaser() {
    ======================================================================== */
 function FinalCTA() {
   return (
-    <section className="relative py-20">
+    <section className="relative py-14">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        <div className="relative rounded-3xl overflow-hidden border border-white/10 p-8 lg:p-10">
+        <div className="relative rounded-3xl overflow-hidden border border-white/10 p-5 lg:p-8">
           <div className="absolute inset-0 bg-gradient-to-br from-[#0A1430] via-[#05080F] to-[#0A1430]"/>
           <div className="absolute inset-0 bg-grid opacity-30"/>
           <div className="absolute -top-32 -right-24 w-[480px] h-[480px] rounded-full bg-[#1E6BFF]/20 blur-[80px]"/>
 
           <div className="relative">
             <Quote className="text-[#4D8BFF] mb-4" size={28}/>
-            <h3 className="font-display text-[36px] sm:text-[56px] lg:text-[68px] leading-[1.02] font-semibold max-w-3xl">
+            <h3 className="font-display text-[32px] sm:text-[48px] lg:text-[58px] leading-[1.05] font-semibold max-w-3xl">
               Have a problem worth <span className="italic font-normal text-[#4D8BFF]">solving</span>?
             </h3>
-            <p className="mt-5 text-[17px] text-[#9AA3B8] max-w-xl leading-relaxed">
+            <p className="mt-5 text-[15.5px] text-[#9AA3B8] max-w-xl leading-relaxed">
               Tell us about your business and what you're trying to change. We reply within one working day — usually faster — and we mean it.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <MagneticButton strength={16}>
-                <Link to="/contact" data-testid="cta-start-conversation" className="btn-primary !py-4 !px-7 text-[15px]">
+                <Link to="/contact" data-testid="cta-start-conversation" className="btn-primary !py-3 !px-6 text-[14px]">
                   Start a conversation <ArrowUpRight size={17}/>
                 </Link>
               </MagneticButton>

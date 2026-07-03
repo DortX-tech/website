@@ -5,15 +5,15 @@ import { TECH_GROUPS } from "@/data/site";
 export default function Technologies() {
   return (
     <div data-testid="technologies-page">
-      <section className="pt-32 pb-10 relative">
+      <section className="pt-28 sm:pt-32 pb-8 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Technologies</div>
-          <h1 className="font-display text-[44px] sm:text-[60px] lg:text-[72px] leading-[1.02] font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display text-[36px] sm:text-[50px] lg:text-[60px] leading-[1.05] font-semibold mt-4 max-w-4xl">
             A modern stack — <span className="gradient-text">chosen for fit</span>.
           </h1>
-          <p className="mt-6 text-[17px] text-[#9AA3B8] max-w-2xl leading-relaxed">
+          <p className="mt-6 text-[15.5px] text-[#9AA3B8] max-w-2xl leading-relaxed">
             We're polyglot by training and pragmatic by habit. Here are the technologies we work with most often, grouped by where they sit in your system.
           </p>
         </div>
@@ -28,10 +28,10 @@ export default function Technologies() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ delay: i * 0.05, duration: 0.5 }}
-              className="card-glow p-6"
+              className="card-glow p-5"
             >
               <div className="flex items-center justify-between mb-5">
-                <div className="font-display text-white font-semibold text-[17px]">{g.group}</div>
+                <div className="font-display text-white font-semibold text-[15.5px]">{g.group}</div>
                 <span className="text-[#3B4660] font-display text-[12px]">0{i + 1}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">

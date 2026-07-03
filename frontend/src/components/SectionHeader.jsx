@@ -14,11 +14,11 @@ export default function SectionHeader({ eyebrow, title, subtitle, align = "left"
           <span className="w-6 h-px bg-[#4D8BFF]"/> {eyebrow}
         </div>
       )}
-      <h2 className="font-display text-[34px] sm:text-[44px] lg:text-[52px] leading-[1.05] font-semibold text-white">
+      <h2 className="font-display text-[30px] sm:text-[40px] lg:text-[46px] leading-[1.05] font-semibold text-white">
         {title}
       </h2>
       {subtitle && (
-        <p className="mt-5 text-[16px] sm:text-[17px] text-[#9AA3B8] leading-relaxed max-w-2xl">
+        <p className="mt-5 text-[15px] sm:text-[16px] text-[#9AA3B8] leading-relaxed max-w-2xl">
           {subtitle}
         </p>
       )}

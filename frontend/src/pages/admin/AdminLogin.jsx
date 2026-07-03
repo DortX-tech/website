@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import axios from "axios";
 import { LogIn, Lock, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
-import { API_URL } from "@/config/api";
+import { apiClient } from "@/config/api";
 
 function getErrorMessage(error) {
   const detail = error?.response?.data?.detail;
@@ -32,7 +31,7 @@ export default function AdminLogin() {
     e.preventDefault();
     setBusy(true); setErr("");
     try {
-      const { data } = await axios.post(`${API_URL}/auth/login`, { email, password });
+      const { data } = await apiClient.post("/auth/login", { email, password });
       localStorage.setItem("dortx-admin-token", data.access_token);
       localStorage.setItem("dortx-admin-email", data.email || email);
       localStorage.setItem("dortx-admin-name", data.name || data.email || "Admin");
@@ -58,7 +57,7 @@ export default function AdminLogin() {
           <Logo height={52}/>
           <div className="text-[11px] uppercase tracking-[0.16em] text-[#4D8BFF]">Admin</div>
         </div>
-        <h1 className="font-display text-[28px] font-semibold">Welcome back</h1>
+        <h1 className="font-display text-[24px] font-semibold">Welcome back</h1>
         <p className="mt-2 text-[14px] text-[#9AA3B8]">Sign in to manage leads and applications.</p>
 
         <form onSubmit={submit} className="mt-7 space-y-3" data-testid="admin-login-form">

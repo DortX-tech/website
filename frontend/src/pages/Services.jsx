@@ -8,15 +8,15 @@ import { WINGS } from "@/data/site";
 export default function Services() {
   return (
     <div data-testid="services-page">
-      <section className="pt-32 pb-10 relative">
+      <section className="pt-28 sm:pt-32 pb-8 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Services</div>
-          <h1 className="font-display text-[44px] sm:text-[60px] lg:text-[72px] leading-[1.02] font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display text-[36px] sm:text-[50px] lg:text-[60px] leading-[1.05] font-semibold mt-4 max-w-4xl">
             Six service wings - <span className="gradient-text">built to compound</span>.
           </h1>
-          <p className="mt-6 text-[17px] text-[#9AA3B8] max-w-2xl leading-relaxed">
+          <p className="mt-6 text-[15.5px] text-[#9AA3B8] max-w-2xl leading-relaxed">
             From product engineering to AI agents, dashboards, growth, industrial automation and security - every wing reinforces the others. Use one. Or use them as a system.
           </p>
         </div>
@@ -34,19 +34,19 @@ export default function Services() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.15 }}
                 transition={{ duration: 0.6 }}
-                className="card-glow p-6 lg:p-10 scroll-mt-24"
+                className="card-glow p-5 lg:p-10 scroll-mt-24"
               >
-                <div className="grid lg:grid-cols-12 gap-10">
+                <div className="grid lg:grid-cols-12 gap-8">
                   <div className="lg:col-span-5">
                     <div className="flex items-center gap-4 mb-6">
                       <div className="w-14 h-14 rounded-2xl bg-[#1E6BFF]/15 flex items-center justify-center text-[#4D8BFF] border border-[#1E6BFF]/25">
                         <Icon size={24}/>
                       </div>
-                      <div className="font-display text-[44px] text-[#243049] leading-none">{w.number}</div>
+                      <div className="font-display text-[38px] text-[#243049] leading-none">{w.number}</div>
                     </div>
-                    <h2 className="font-display text-[30px] lg:text-[36px] font-semibold leading-tight">{w.name}</h2>
+                    <h2 className="font-display text-[24px] lg:text-[32px] font-semibold leading-tight">{w.name}</h2>
                     <p className="mt-5 text-[15px] text-[#9AA3B8] leading-relaxed">{w.description}</p>
-                    <Link to="/contact" data-testid={`service-cta-${w.id}`} className="mt-7 inline-flex btn-ghost">
+                    <Link to="/contact" data-testid={`service-cta-${w.id}`} className="mt-6 inline-flex btn-ghost">
                       Discuss this wing <ArrowUpRight size={15}/>
                     </Link>
                   </div>
@@ -66,10 +66,10 @@ export default function Services() {
         </div>
       </section>
 
-      <section className="py-16">
-        <div className="max-w-5xl mx-auto px-6 lg:px-8 glass rounded-3xl p-8 lg:p-12 text-center">
+      <section className="py-14">
+        <div className="max-w-5xl mx-auto px-6 lg:px-8 glass rounded-3xl p-5 lg:p-9 text-center">
           <SectionHeader align="center" eyebrow="Get started" title="Not sure where to begin?" subtitle="Tell us the business problem. We'll recommend the wing — or the combination — that fits best." />
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link to="/contact" className="btn-primary">Talk to us <ArrowUpRight size={16}/></Link>
           </div>
         </div>

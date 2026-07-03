@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail, Phone, ArrowUpRight, CheckCircle2, Linkedin, Send } from "lucide-react";
-import axios from "axios";
 import Logo from "./Logo";
 import { CONTACT, SOCIALS } from "@/data/site";
-import { API_URL } from "@/config/api";
+import { apiClient } from "@/config/api";
 
 const SocialIconMap = { Linkedin };
 
@@ -18,7 +17,7 @@ export default function Footer() {
     if (!email || busy) return;
     setBusy(true);
     try {
-      await axios.post(`${API_URL}/newsletter/subscribe`, { email, source: "footer" });
+      await apiClient.post("/newsletter/subscribe", { email, source: "footer" });
       setDone(true);
       setEmail("");
     } catch (err) {
@@ -33,11 +32,11 @@ export default function Footer() {
   };
 
   return (
-    <footer data-testid="main-footer" className="relative mt-10 border-t border-white/8">
+    <footer data-testid="main-footer" className="relative mt-6 border-t border-white/8">
       <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[#1E6BFF]/60 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-12 pb-9">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-8">
           <div className="lg:col-span-4">
             <Logo height={84} />
             <p className="mt-4 text-[#9AA3B8] text-[14.5px] leading-relaxed max-w-sm">
@@ -139,10 +138,10 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="divider-line mt-10 mb-5" />
+        <div className="divider-line mt-6 mb-5" />
         <div className="flex flex-col md:flex-row justify-between gap-4 text-[12px] text-[#6B7385]">
           <div>&copy; 2026 DortX Technologies. All Rights Reserved.</div>
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-5">
             <span>Empowering Business Through Technology</span>
           </div>
         </div>

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Copy, MessageCircle, Send, Sparkles, X } from "lucide-react";
-import axios from "axios";
 import Logo from "./Logo";
-import { API_URL } from "@/config/api";
+import { API_URL, apiClient } from "@/config/api";
 
 const SERVICE_OPTIONS = [
   "AI Agents",
@@ -50,7 +49,7 @@ const LEAD_FIELDS = [
 const initialAssistantMessage = {
   role: "assistant",
   content:
-    "👋 Welcome to DortX!\n\nI'm the DortX AI Assistant.\n\nBefore we begin, I'd love to know a little about you.\n\n**What is your name?**",
+    "Hi! Welcome to DortX!\n\nI'm the DortX AI Assistant.\n\nBefore we begin, I'd love to know a little about you.\n\n**What is your name?**",
 };
 
 const sid = () => {
@@ -77,12 +76,67 @@ const saveJson = (key, value) => {
 const isBuyingIntent = (text) => {
   const value = text.toLowerCase();
   return [
-    "book", "consult", "sales", "quote", "proposal", "hire", "start project",
-    "build for me", "contact me", "call me", "budget", "timeline",
+    "book", "book consultation", "consultation", "talk to sales", "hire",
+    "start project", "build for me", "contact me", "call me", "whatsapp me",
+    "send proposal", "schedule", "connect me",
   ].some((token) => value.includes(token));
 };
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+const SERVICE_MEMORY_PATTERNS = [
+  { service: "Website Development", pattern: /\b(website|web site|landing page|redesign|cms)\b/i },
+  { service: "Web Application", pattern: /\b(web app|web application|portal|dashboard app)\b/i },
+  { service: "Mobile App", pattern: /\b(mobile app|android|ios)\b/i },
+  { service: "ERP", pattern: /\b(erp|inventory|operations system)\b/i },
+  { service: "CRM", pattern: /\b(crm|lead management|sales pipeline)\b/i },
+  { service: "HRMS", pattern: /\b(hrms|payroll|attendance|employee management)\b/i },
+  { service: "SaaS", pattern: /\b(saas|subscription software)\b/i },
+  { service: "AI Chatbot", pattern: /\b(chatbot|chat bot|support bot)\b/i },
+  { service: "AI Agent", pattern: /\b(ai agent|agent|mcp|tool calling)\b/i },
+  { service: "AI Automation", pattern: /\b(ai automation|workflow automation|rag|llm|openai|claude|gemini)\b/i },
+  { service: "Data & Analytics", pattern: /\b(analytics|dashboard|reporting|bi|business intelligence|prediction)\b/i },
+  { service: "Marketing", pattern: /\b(seo|branding|marketing|growth|performance marketing)\b/i },
+  { service: "IoT & Industrial Automation", pattern: /\b(iot|iiot|plc|scada|hmi|esp32|arduino|raspberry|robot|sensor)\b/i },
+  { service: "Security / DevOps", pattern: /\b(security|cyber|devops|cloud|monitoring|maintenance)\b/i },
+];
+
+const deriveMemoryPatch = (text, current = {}) => {
+  const value = String(text || "");
+  const patch = {};
+  const serviceMatch = SERVICE_MEMORY_PATTERNS.find(({ pattern }) => pattern.test(value));
+  if (serviceMatch) patch.service = serviceMatch.service;
+
+  const email = value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+  if (email) patch.email = email;
+
+  const phone = value.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0];
+  if (phone) patch.phone = phone.trim();
+
+  const budget = value.match(/\b(?:budget|cost|price|around|under|within)\s*(?:is|of|:)?\s*([₹$€£]?\s?[\w., -]{2,40})/i)?.[1];
+  if (budget) patch.budget = budget.trim();
+
+  const timeline = value.match(/\b(?:timeline|deadline|launch|deliver|within|in)\s*(?:is|by|:)?\s*([A-Za-z0-9 ,.-]{2,40})/i)?.[1];
+  if (timeline) patch.timeline = timeline.trim();
+
+  const businessType = value.match(/\b(?:for my|for our|we run|i run|business is|company is)\s+([A-Za-z0-9 &-]{2,60})/i)?.[1];
+  if (businessType) patch.business_type = businessType.trim();
+
+  if (value.length > 25 && looksLikeConsultingRequest(value)) {
+    patch.requirements = [current.requirements, value].filter(Boolean).slice(-2).join("\n");
+  }
+
+  return patch;
+};
+
+const looksLikeConsultingRequest = (text) => {
+  const value = text.toLowerCase();
+  return /[?]/.test(value) || [
+    "need", "want", "build", "create", "develop", "website", "app", "software",
+    "automation", "ai", "agent", "chatbot", "erp", "crm", "hrms", "iot",
+    "robot", "embedded", "seo", "pricing", "cost", "timeline", "service",
+  ].some((token) => value.includes(token));
+};
 
 function MarkdownMessage({ content }) {
   const lines = String(content || "").split("\n");
@@ -253,7 +307,7 @@ export default function Chatbot() {
     });
   };
 
-  const requestStreamingReply = async (message) => {
+  const requestStreamingReply = async (message, effectiveMemory = memory) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -261,8 +315,9 @@ export default function Chatbot() {
     const payload = {
       session_id: sid(),
       message,
-      visitor_name: memory.name,
-      selected_service: memory.service,
+      visitor_name: effectiveMemory.name,
+      selected_service: effectiveMemory.service,
+      memory: { ...effectiveMemory, stage },
       history: recentHistory,
     };
 
@@ -307,28 +362,29 @@ export default function Chatbot() {
     if (!received) throw new Error("empty stream");
   };
 
-  const requestSyncReply = async (message) => {
-    const { data } = await axios.post(`${API_URL}/chat`, {
+  const requestSyncReply = async (message, effectiveMemory = memory) => {
+    const { data } = await apiClient.post("/chat", {
       session_id: sid(),
       message,
-      visitor_name: memory.name,
-      selected_service: memory.service,
+      visitor_name: effectiveMemory.name,
+      selected_service: effectiveMemory.service,
+      memory: { ...effectiveMemory, stage },
       history: recentHistory,
     }, { timeout: 50000 });
     return data.reply;
   };
 
-  const assistantReply = async (message) => {
+  const assistantReply = async (message, effectiveMemory = memory) => {
     append({ role: "assistant", content: "", streaming: true });
     try {
-      await requestStreamingReply(message);
+      await requestStreamingReply(message, effectiveMemory);
     } catch {
       try {
-        const reply = await requestSyncReply(message);
+        const reply = await requestSyncReply(message, effectiveMemory);
         updateLastAssistant(reply || "I understood your question, but I could not form a complete response. Please send it once more.", true);
       } catch {
         updateLastAssistant(
-          "I’m sorry, the AI service is temporarily unavailable. I can still help with DortX services, AI, automation, websites, software development, pricing and contact details. Please try again in a moment, or contact **support@dortxtech.com**.",
+          "I'm sorry, the AI service is temporarily unavailable. I can still help with DortX services, AI, automation, websites, software development, pricing and contact details. Please try again in a moment, or contact **support@dortxtech.com**.",
           true
         );
       }
@@ -345,12 +401,12 @@ export default function Chatbot() {
     });
   };
 
-  const startLeadFlow = () => {
+  const startLeadFlow = (contextMemory = memory) => {
     setStage("lead");
     setLeadIndex(0);
     append({
       role: "assistant",
-      content: `${memory.name ? `${memory.name}, ` : ""}I can collect the key details and connect you with the DortX team.\n\n${LEAD_FIELDS[0].question}`,
+      content: `${contextMemory.name ? `${contextMemory.name}, ` : ""}I can collect the key details and connect you with the DortX team.\n\n${LEAD_FIELDS[0].question}`,
     });
   };
 
@@ -361,7 +417,7 @@ export default function Chatbot() {
       `Preferred contact: ${lead.preferred_contact_method || "Not provided"}`,
     ].filter(Boolean).join("\n");
 
-    await axios.post(`${API_URL}/chat/lead`, {
+    await apiClient.post("/chat/lead", {
       session_id: sid(),
       name: memory.name || lead.name || "Website visitor",
       company: lead.company || undefined,
@@ -406,7 +462,7 @@ export default function Chatbot() {
       append({
         role: "assistant",
         content:
-          "Thank you. I’ve shared your project details with the DortX team.\n\nThey can follow up using your preferred contact method. Meanwhile, I can still help you refine scope, features, architecture or timeline.",
+          "Thank you. I've shared your project details with the DortX team.\n\nThey can follow up using your preferred contact method. Meanwhile, I can still help you refine scope, features, architecture or timeline.",
         actions: ["Refine project scope", "What should I prepare?", "Contact Us"],
       });
     } catch {
@@ -426,8 +482,25 @@ export default function Chatbot() {
 
     setInput("");
     append({ role: "user", content: msg });
+    const memoryPatch = deriveMemoryPatch(msg, memory);
+    const effectiveMemory = {
+      ...memory,
+      ...memoryPatch,
+      lead: {
+        ...(memory.lead || {}),
+        ...Object.fromEntries(["email", "phone", "budget", "timeline", "requirements"].filter((key) => memoryPatch[key]).map((key) => [key, memoryPatch[key]])),
+      },
+    };
+    if (Object.keys(memoryPatch).length > 0) setMemory(effectiveMemory);
 
     if (stage === "name") {
+      if (looksLikeConsultingRequest(msg)) {
+        setStage("chat");
+        setBusy(true);
+        await assistantReply(msg, effectiveMemory);
+        setBusy(false);
+        return;
+      }
       const name = msg.split(/\s+/).slice(0, 4).join(" ");
       setMemory((current) => ({ ...current, name }));
       setStage("service");
@@ -436,11 +509,12 @@ export default function Chatbot() {
     }
 
     if (stage === "service") {
-      setMemory((current) => ({ ...current, service: msg }));
+      const serviceMemory = { ...effectiveMemory, service: msg };
+      setMemory(serviceMemory);
       setStage("chat");
       append({
         role: "assistant",
-        content: `Great, ${memory.name || "there"}. I’ll keep **${msg}** in mind.\n\nWhat would you like to know or plan first?`,
+        content: `Great, ${memory.name || "there"}. I'll keep **${msg}** in mind.\n\nWhat would you like to know or plan first?`,
         actions: QUICK_ACTIONS,
       });
       return;
@@ -452,12 +526,12 @@ export default function Chatbot() {
     }
 
     if (isBuyingIntent(msg)) {
-      startLeadFlow();
+      startLeadFlow(effectiveMemory);
       return;
     }
 
     setBusy(true);
-    await assistantReply(msg);
+    await assistantReply(msg, effectiveMemory);
     setBusy(false);
   };
 
@@ -618,7 +692,7 @@ export default function Chatbot() {
                 <Send size={15} />
               </button>
             </form>
-            <div className="px-4 pb-3 text-[10.5px] text-[#6B7385]">Enter to send • Shift+Enter for a new line</div>
+            <div className="px-4 pb-3 text-[10.5px] text-[#6B7385]">Enter to send | Shift+Enter for a new line</div>
           </motion.div>
         )}
       </AnimatePresence>

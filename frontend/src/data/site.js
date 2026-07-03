@@ -1,4 +1,4 @@
-﻿export const NAV_LINKS = [
+export const NAV_LINKS = [
   { to: "/", label: "Home" },
   { to: "/about", label: "About" },
   { to: "/services", label: "Services" },
@@ -62,10 +62,10 @@ export const WINGS = [
     name: "Strategic Growth",
     short: "Growth treated as a system, not a one-off campaign.",
     description:
-      "SEO, paid media, analytics and brand work together as one practice â€” designed to compound your pipeline month after month.",
+      "SEO, paid media, analytics and brand work together as one practice — designed to compound your pipeline month after month.",
     services: [
       { title: "Search Engine Optimization", desc: "Technical, on-page and content SEO focused on long-term organic growth." },
-      { title: "Performance Marketing", desc: "Paid acquisition across Google, Meta and LinkedIn â€” optimised on outcomes." },
+      { title: "Performance Marketing", desc: "Paid acquisition across Google, Meta and LinkedIn — optimised on outcomes." },
       { title: "Growth Analytics", desc: "Attribution, LTV/CAC and experimentation frameworks for revenue teams." },
       { title: "Brand Transformation", desc: "Positioning, identity and messaging that earn trust." },
     ],
@@ -161,7 +161,7 @@ export const TECH_GROUPS = [
    TEAM
    - Every name, role, bio, photo and "responsibilities" entry is editable.
    - To swap the initials avatar for a real photo, set `photo` to a URL
-     (preferably square / 1:1, min 600Ã—600 for crispness).
+     (preferably square / 1:1, min 600×600 for crispness).
    - No fake experience claims, no certifications, no metrics.
    --------------------------------------------------------------------------- */
 export const TEAM = [
@@ -169,7 +169,7 @@ export const TEAM = [
     name: "Thrisha J C",
     role: "Founder & CEO | Founding Engineer",
     leadership: true,
-    photo: "/team/thrisha.jpeg",
+    photo: "/team-members/thrisha.jpeg",
     bio: "Founded DortX with a conviction that small, focused teams can deliver software that actually changes how a business runs. Sets the company's vision and stays close to every line of architecture.",
     expertise: "Engineering Leadership | Product Strategy | System Architecture",
     responsibilities: ["Company vision", "Technical architecture", "Software engineering", "Product strategy"],
@@ -179,7 +179,7 @@ export const TEAM = [
   {
     name: "Venu P K",
     role: "Co-Founder | Chief Marketing Officer",
-    photo: "/team/venu-pk.jpeg",
+    photo: "/team-members/venu-pk.jpeg",
     bio: "Owns brand, growth and go-to-market at DortX - making sure the businesses we can help the most actually find us, understand us and choose to work with us.",
     expertise: "Brand & Growth Marketing",
     responsibilities: ["Digital growth", "Marketing strategy", "SEO", "Performance marketing", "Brand development"],
@@ -188,7 +188,7 @@ export const TEAM = [
   {
     name: "Mallikarjun",
     role: "Chief Technology Officer (CTO) | AI & Autonomous Systems Engineer",
-    photo: "/team/mallikaarjun.jpeg",
+    photo: "/team-members/mallikaarjun.jpeg",
     bio: "Designs and ships AI agents, automation workflows and machine-learning systems that move from notebooks into real production environments - measured by outcomes, not demos.",
     expertise: "AI Engineering | Agentic Systems",
     responsibilities: ["AI solutions", "AI agents", "Automation", "Machine learning"],
@@ -197,7 +197,7 @@ export const TEAM = [
   {
     name: "Lalith S",
     role: "Chief Product Officer (CPO) | Data Engineer & Automation Architect",
-    photo: "/team/lalith-s.jpeg",
+    photo: "/team-members/lalith-s.jpeg",
     bio: "Designs the data pipelines, warehouses and automation flows that turn scattered information into clear, dependable signals for the business.",
     expertise: "Data Engineering | BI | Workflow Automation",
     responsibilities: ["Data engineering", "Analytics", "Business intelligence", "Workflow automation"],
@@ -206,7 +206,7 @@ export const TEAM = [
    {
     name: "Kavyashree",
     role: "Full Stack Developer",
-    photo: "/team/kavyashree.jpeg",
+    photo: "/team-members/kavyashree.jpeg",
     bio: "Builds end-to-end web and mobile experiences - from clean, accessible interfaces to dependable APIs. Cares deeply about details that users never notice and developers always do.",
     expertise: "Web & Mobile Development",
     responsibilities: ["Frontend development", "Backend development", "API integration", "Application development"],
@@ -215,7 +215,7 @@ export const TEAM = [
    {
     name: "Chandana",
     role: "Creative Head",
-    photo: "/team/chandana.jpeg",
+    photo: "/team-members/chandana.jpeg",
     bio: "Shapes the visual and experiential identity of DortX - translating product strategy into interfaces, brand systems and design language people connect with.",
     expertise: "Product Design | Brand Identity",
     responsibilities: ["UI/UX design", "Brand identity", "Visual design", "Creative direction"],
@@ -224,7 +224,7 @@ export const TEAM = [
   {
     name: "Anusha R",
     role: "Software Developer",
-    photo: "/team/anusha-r.jpeg",
+    photo: "/team-members/anusha-r.jpeg",
     bio: "Works across application features, quality and testing - focused on shipping software that's not just functional, but genuinely pleasant for the people using it.",
     expertise: "Application Development | Quality",
     responsibilities: ["Software development", "Application features", "Quality improvements", "Testing support"],
@@ -247,7 +247,7 @@ export const VALUES = [
 ];
 
 /* ---------------------------------------------------------------------------
-   FAQ â€” all "senior" / "decades" claims removed
+   FAQ — all "senior" / "decades" claims removed
    --------------------------------------------------------------------------- */
 export const FAQS = [
   { q: "Why choose DortX?", a: "We combine engineering, design and AI capability under one small team - with quality-first development, transparent communication and a strong focus on solving the business problem." },
@@ -260,10 +260,10 @@ export const FAQS = [
   { q: "How much does a project cost?", a: "Pricing depends on scope, complexity and timeline. We share a transparent estimate after a short discovery call. No hidden fees, no surprises." },
   { q: "Do you build MVPs?", a: "Yes. MVPs are one of our favourite engagements - small, fast, well-architected products that can grow into something larger without sacrificing quality." },
   { q: "Do you work with international clients?", a: "Yes. We work remotely with founders and teams across India and globally." },
-  { q: "Can you maintain applications built by another team?", a: "Yes. We regularly take over and stabilise codebases â€” starting with a technical audit and a clear handover plan." },
+  { q: "Can you maintain applications built by another team?", a: "Yes. We regularly take over and stabilise codebases — starting with a technical audit and a clear handover plan." },
   { q: "What does the engagement look like?", a: "You get a dedicated point-of-contact and a small focused team, weekly demos, async updates, transparent progress tracking and clear delivery checkpoints." },
   { q: "What technologies do you specialize in?", a: "React, Next.js, TypeScript, Python, Java Spring Boot, FastAPI, MongoDB, MySQL, PostgreSQL, AWS/GCP/Azure, modern AI stacks, Arduino, ESP32, STM32, Raspberry Pi, PLC, SCADA, MQTT, Modbus and OPC UA." },
-  { q: "Do you offer fixed-price projects?", a: "For well-defined scopes â€” yes. For evolving products, we recommend time-and-materials with clear milestones and weekly accountability." },
+  { q: "Do you offer fixed-price projects?", a: "For well-defined scopes — yes. For evolving products, we recommend time-and-materials with clear milestones and weekly accountability." },
   { q: "Who owns the IP and the code?", a: "You do. Once invoices are settled, all source code, designs and assets belong fully to your company." },
   { q: "How do we start working together?", a: "Send us a note via the Contact page. We'll reply quickly and set up a short discovery call." },
 ];

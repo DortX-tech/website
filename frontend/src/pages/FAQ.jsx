@@ -8,12 +8,12 @@ export default function FAQ() {
   const [open, setOpen] = useState(0);
   return (
     <div data-testid="faq-page">
-      <section className="pt-32 pb-10 relative">
+      <section className="pt-28 sm:pt-32 pb-8 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">FAQ</div>
-          <h1 className="font-display text-[44px] sm:text-[60px] lg:text-[72px] leading-[1.02] font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display text-[36px] sm:text-[50px] lg:text-[60px] leading-[1.05] font-semibold mt-4 max-w-4xl">
             Every question, <span className="gradient-text">honestly answered</span>.
           </h1>
         </div>

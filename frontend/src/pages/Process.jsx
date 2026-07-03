@@ -5,15 +5,15 @@ import { PROCESS_STEPS } from "@/data/site";
 export default function Process() {
   return (
     <div data-testid="process-page">
-      <section className="pt-32 pb-10 relative">
+      <section className="pt-28 sm:pt-32 pb-8 relative">
         <div className="absolute inset-0 bg-grid opacity-40"/>
         <div className="absolute inset-0 bg-radial-glow"/>
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Process</div>
-          <h1 className="font-display text-[44px] sm:text-[60px] lg:text-[72px] leading-[1.02] font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display text-[36px] sm:text-[50px] lg:text-[60px] leading-[1.05] font-semibold mt-4 max-w-4xl">
             A disciplined seven-step <span className="gradient-text">delivery process</span>.
           </h1>
-          <p className="mt-6 text-[17px] text-[#9AA3B8] max-w-2xl leading-relaxed">
+          <p className="mt-6 text-[15.5px] text-[#9AA3B8] max-w-2xl leading-relaxed">
             From the first conversation to long-term maintenance, we keep delivery transparent, quality-focused, and on schedule. Quality isn't something we promise at the end - it's how we build from day one.
           </p>
         </div>
@@ -33,11 +33,11 @@ export default function Process() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.4 }}
                   transition={{ duration: 0.5 }}
-                  className={`relative lg:grid lg:grid-cols-2 gap-10 items-center`}
+                  className={`relative lg:grid lg:grid-cols-2 gap-8 items-center`}
                 >
                   <div className={`pl-20 lg:pl-0 ${left ? "lg:pr-12 lg:text-right" : "lg:col-start-2 lg:pl-12"}`}>
                     <div className="font-display text-[#243049] text-[44px] leading-none">{s.num}</div>
-                    <h3 className="mt-3 font-display text-[24px] font-semibold text-white">{s.title}</h3>
+                    <h3 className="mt-3 font-display text-[22px] font-semibold text-white">{s.title}</h3>
                     <p className="mt-3 text-[14.5px] text-[#9AA3B8] leading-relaxed">{s.desc}</p>
                   </div>
                   <div className={`absolute left-0 top-0 lg:static lg:flex ${left ? "lg:col-start-2 lg:justify-start" : "lg:col-start-1 lg:row-start-1 lg:justify-end"}`}>

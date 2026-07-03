@@ -37,9 +37,25 @@
   --radius: 0.75rem;
 }
 
-* { border-color: hsl(var(--border)); }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  border-color: hsl(var(--border));
+  min-width: 0;
+}
 
 html { scroll-behavior: smooth; }
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+}
 
 body {
   margin: 0;
@@ -51,9 +67,21 @@ body {
   overflow-x: hidden;
 }
 
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+img,
+video {
+  height: auto;
+}
+
 h1, h2, h3, h4, h5, h6, .font-display {
   font-family: 'Space Grotesk', sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 ::selection {
@@ -107,10 +135,10 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .btn-primary {
   background: linear-gradient(135deg, #1E6BFF 0%, #2A7BFF 100%);
   color: white;
-  padding: 0.85rem 1.6rem;
+  padding: 0.75rem 1.35rem;
   border-radius: 9999px;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -118,6 +146,8 @@ h1, h2, h3, h4, h5, h6, .font-display {
   box-shadow: 0 8px 24px -8px rgba(30, 107, 255, 0.6);
   border: none;
   cursor: pointer;
+  min-height: 44px;
+  text-align: center;
 }
 .btn-primary:hover {
   transform: translateY(-2px);
@@ -128,15 +158,17 @@ h1, h2, h3, h4, h5, h6, .font-display {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
   color: white;
-  padding: 0.85rem 1.6rem;
+  padding: 0.75rem 1.35rem;
   border-radius: 9999px;
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   transition: all 0.2s ease;
   cursor: pointer;
+  min-height: 44px;
+  text-align: center;
 }
 .btn-ghost:hover {
   background: rgba(255,255,255,0.08);
@@ -261,7 +293,7 @@ select:-moz-autofill {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
-  font-size: 14.5px;
+  font-size: 16px;
   line-height: 1.5;
   color: #F7FAFF;
   -webkit-text-fill-color: #F7FAFF;
@@ -269,6 +301,29 @@ select:-moz-autofill {
   outline: none;
   transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
   appearance: none;
+}
+
+@media (min-width: 640px) {
+  .contact-field {
+    font-size: 14.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn-primary,
+  .btn-ghost {
+    width: 100%;
+    justify-content: center;
+    padding: 0.78rem 1rem;
+    font-size: 0.9rem;
+    white-space: normal;
+  }
+
+  .glass,
+  .glass-strong,
+  .card-glow {
+    border-radius: 0.875rem;
+  }
 }
 
 .contact-field::placeholder {
@@ -374,7 +429,7 @@ textarea.contact-field:-webkit-autofill:focus {
   font-size: clamp(80px, 18vw, 220px);
   font-weight: 600;
   line-height: 0.85;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: transparent;
   -webkit-text-stroke: 1px rgba(77, 139, 255, 0.18);
 }

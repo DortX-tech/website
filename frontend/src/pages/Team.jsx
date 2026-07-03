@@ -1,28 +1,28 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { Linkedin, Mail, ArrowUpRight, ArrowRight, Sparkles, Plus } from "lucide-react";
 import MagneticButton from "@/components/MagneticButton";
 import { CONTACT, TEAM } from "@/data/site";
-import { API_URL, BACKEND_URL } from "@/config/api";
+import { BACKEND_URL, apiClient } from "@/config/api";
 
 function fullPhoto(p) {
   if (!p) return null;
   if (p.startsWith("http")) return p;
   if (p.startsWith("/api/")) return `${BACKEND_URL}${p}`;
+  if (p.startsWith("/team/")) return p.replace("/team/", "/team-members/");
   return p;
 }
 
 /* —————————————————— Hero —————————————————— */
 function Hero() {
   return (
-    <section className="relative pt-32 pb-8 overflow-hidden">
+    <section className="relative pt-28 sm:pt-32 pb-8 overflow-hidden">
       <div className="absolute inset-0 bg-grid opacity-40"/>
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-[#1E6BFF]/15 blur-[100px]"/>
       <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF]">— The team behind DortX</div>
-        <h1 className="font-display text-[44px] sm:text-[68px] lg:text-[84px] leading-[0.98] font-semibold mt-6 max-w-4xl">
+        <h1 className="font-display text-[38px] sm:text-[54px] lg:text-[68px] leading-[0.98] font-semibold mt-6 max-w-4xl">
           Engineers, designers <br/>
           and builders — <span className="italic font-normal text-[#4D8BFF]">united</span> by craft.
         </h1>
@@ -41,7 +41,7 @@ function Philosophy() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="font-display text-[26px] sm:text-[36px] lg:text-[42px] leading-[1.25] font-medium"
+          className="font-display text-[24px] sm:text-[36px] lg:text-[42px] leading-[1.25] font-medium"
         >
           Our strength isn't measured by years on a resume. It's measured by
           <span className="text-[#4D8BFF]"> curiosity</span>, by
@@ -50,7 +50,7 @@ function Philosophy() {
           <span className="text-[#4D8BFF]"> passion</span> for building software that genuinely helps a business.
         </motion.p>
 
-        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             "Continuous Learning",
             "Engineering Excellence",
@@ -66,7 +66,7 @@ function Philosophy() {
               className="glass rounded-2xl p-5"
             >
               <div className="text-[10.5px] uppercase tracking-[0.16em] text-[#6B7385] mb-2">Value 0{i + 1}</div>
-              <div className="font-display text-white text-[16px] font-semibold">{v}</div>
+              <div className="font-display text-white text-[15px] font-semibold">{v}</div>
             </motion.div>
           ))}
         </div>
@@ -125,7 +125,7 @@ function Leadership({ team }) {
     <section className="relative py-12">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">FOUNDER</div>
-        <h2 className="font-display text-[34px] sm:text-[48px] leading-[1.05] font-medium max-w-3xl">
+        <h2 className="font-display text-[30px] sm:text-[40px] leading-[1.05] font-medium max-w-3xl">
           Thrisha J C
         </h2>
 
@@ -134,7 +134,7 @@ function Leadership({ team }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.6 }}
-          className="mt-8 grid lg:grid-cols-12 gap-8 lg:gap-10 items-start"
+          className="mt-6 grid lg:grid-cols-12 gap-8 lg:gap-8 items-start"
         >
           <div className="lg:col-span-5">
             <div className="relative max-w-[24rem]">
@@ -148,11 +148,11 @@ function Leadership({ team }) {
           <div className="lg:col-span-7">
             <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF]">{leader.role}</div>
 
-            <p className="mt-6 text-[16.5px] text-[#C9D2E0] leading-[1.7] max-w-2xl">
+            <p className="mt-6 text-[15.5px] text-[#C9D2E0] leading-[1.7] max-w-2xl">
               DortX was founded with a simple belief: technology should solve real business problems, not create more complexity. As Founder & CEO, Thrisha leads the company's vision, product strategy, software architecture, and engineering, ensuring every solution is practical, scalable, and built for long-term business value.
             </p>
 
-            <div className="mt-7 grid sm:grid-cols-2 gap-2.5 max-w-lg">
+            <div className="mt-6 grid sm:grid-cols-2 gap-2.5 max-w-lg">
               {leadershipDetails.map((r) => (
                 <div key={r} className="flex items-center gap-2.5 text-[13.5px] text-[#9AA3B8]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#4D8BFF]"/> {r}
@@ -160,7 +160,7 @@ function Leadership({ team }) {
               ))}
             </div>
 
-            <div className="mt-7 flex items-center gap-2">
+            <div className="mt-6 flex items-center gap-2">
               {leader.linkedin && (
                 <a href={leader.linkedin} target="_blank" rel="noopener noreferrer" aria-label="View LinkedIn" title="View LinkedIn" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
                   <Linkedin size={14}/>
@@ -204,7 +204,7 @@ function MemberCard({ member, index }) {
       </div>
 
       <div className="relative mt-5">
-        <div className="font-display text-[20px] font-semibold text-white">{member.name}</div>
+        <div className="font-display text-[18px] font-semibold text-white">{member.name}</div>
         <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF] mt-1.5">{member.role}</div>
         <p className="mt-3 text-[13.5px] text-[#9AA3B8] leading-relaxed line-clamp-3">{member.bio}</p>
 
@@ -260,10 +260,10 @@ function TheTeam({ team }) {
   return (
     <section className="relative py-12">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex items-end justify-between gap-6 mb-7 flex-wrap">
+        <div className="flex items-end justify-between gap-5 mb-7 flex-wrap">
           <div>
             <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— The team</div>
-            <h2 className="font-display text-[34px] sm:text-[48px] leading-[1.05] font-medium max-w-2xl">
+            <h2 className="font-display text-[30px] sm:text-[40px] leading-[1.05] font-medium max-w-2xl">
               The people you'll actually work with.
             </h2>
           </div>
@@ -285,13 +285,13 @@ function CTA() {
   return (
     <section className="relative py-14">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
-        <div className="relative rounded-3xl border border-white/10 overflow-hidden p-8 lg:p-10">
+        <div className="relative rounded-3xl border border-white/10 overflow-hidden p-5 lg:p-8">
           <div className="absolute inset-0 bg-gradient-to-br from-[#0A1430] via-[#05080F] to-[#0A1430]"/>
           <div className="absolute -top-24 -right-16 w-80 h-80 rounded-full bg-[#1E6BFF]/20 blur-[60px]"/>
           <div className="relative grid lg:grid-cols-2 gap-8 items-center">
             <div>
               <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-4">Want to join us</div>
-              <h3 className="font-display text-[28px] sm:text-[40px] leading-[1.1] font-semibold">
+              <h3 className="font-display text-[24px] sm:text-[30px] leading-[1.1] font-semibold">
                 We grow slowly, and only with the right people.
               </h3>
             </div>
@@ -310,7 +310,7 @@ export default function Team() {
   const [team, setTeam] = useState(TEAM);
   useEffect(() => {
     let active = true;
-    axios.get(`${API_URL}/team`)
+    apiClient.get("/team")
       .then((r) => {
         if (!active) return;
         const items = r.data.items || [];

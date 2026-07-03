@@ -26,8 +26,8 @@ export default function Navbar() {
         scrolled ? "py-3" : "py-5"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-5 lg:px-8">
-        <div className={`flex items-center justify-between gap-6 rounded-full px-4 lg:px-6 py-3 transition-all ${
+      <div className="max-w-7xl mx-auto px-3 min-[390px]:px-5 lg:px-8">
+        <div className={`flex items-center justify-between gap-3 sm:gap-6 rounded-full px-3 min-[390px]:px-4 lg:px-6 py-3 transition-all ${
           scrolled ? "glass-strong" : "glass"
         }`}>
           <Logo height={32} />
@@ -77,7 +77,7 @@ export default function Navbar() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="lg:hidden mx-5 mt-3 rounded-2xl glass-strong p-5"
+            className="lg:hidden mx-3 min-[390px]:mx-5 mt-3 rounded-2xl glass-strong p-4 min-[390px]:p-5"
             data-testid="mobile-nav-panel"
           >
             <div className="flex flex-col gap-1">

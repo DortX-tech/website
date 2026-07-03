@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { Plus, Trash2, Upload, Crown, X, Save, Image as ImageIcon } from "lucide-react";
-import { API_URL, BACKEND_URL } from "@/config/api";
-
-function api() {
-  const token = localStorage.getItem("dortx-admin-token");
-  return axios.create({ baseURL: API_URL, headers: { Authorization: `Bearer ${token}` } });
-}
+import { BACKEND_URL, adminApiClient } from "@/config/api";
 
 function fullPhoto(p) {
   if (!p) return null;
   if (p.startsWith("http")) return p;
   if (p.startsWith("/api/")) return `${BACKEND_URL}${p}`;
+  if (p.startsWith("/team/")) return p.replace("/team/", "/team-members/");
   return p;
 }
 
@@ -54,7 +49,7 @@ export default function TeamManager() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api().get("/admin/team");
+      const { data } = await adminApiClient.get("/admin/team");
       setItems(readTeamResponse({ data }));
     } catch (e) {
       setItems([]);
@@ -73,9 +68,9 @@ export default function TeamManager() {
     setBusy(true);
     try {
       if (editing.id) {
-        await api().patch(`/admin/team/${editing.id}`, editing);
+        await adminApiClient.patch(`/admin/team/${editing.id}`, editing);
       } else {
-        await api().post(`/admin/team`, editing);
+        await adminApiClient.post(`/admin/team`, editing);
       }
       await load();
       close();
@@ -85,7 +80,7 @@ export default function TeamManager() {
   const remove = async (id) => {
     if (!id) return;
     if (!window.confirm("Delete this team member?")) return;
-    await api().delete(`/admin/team/${id}`);
+    await adminApiClient.delete(`/admin/team/${id}`);
     await load();
   };
 
@@ -93,7 +88,7 @@ export default function TeamManager() {
     const fd = new FormData(); fd.append("file", file);
     setBusy(true);
     try {
-      const { data } = await api().post("/admin/team/upload-photo", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      const { data } = await adminApiClient.post("/admin/team/upload-photo", fd, { headers: { "Content-Type": "multipart/form-data" } });
       setEditing((s) => ({ ...(s ?? blank), photo: data?.url ?? null }));
     } finally { setBusy(false); }
   };

@@ -34,8 +34,8 @@ function Meta() {
 function Section({ id, title, children }) {
   return (
     <section id={id} className="scroll-mt-28 border-t border-white/8 pt-7">
-      <h2 className="font-display text-[26px] sm:text-[32px] text-white font-semibold">{title}</h2>
-      <div className="mt-4 space-y-4 text-[15px] sm:text-[15.5px] text-[#C9D2E0] leading-relaxed">
+      <h2 className="font-display text-[24px] sm:text-[28px] text-white font-semibold">{title}</h2>
+      <div className="mt-4 space-y-4 text-[15px] sm:text-[16px] text-[#C9D2E0] leading-relaxed">
         {children}
       </div>
     </section>
@@ -59,15 +59,15 @@ export default function PrivacyPolicy() {
   return (
     <div data-testid="privacy-policy-page">
       <Meta />
-      <section className="relative pt-32 pb-10 overflow-hidden">
+      <section className="relative pt-28 sm:pt-32 pb-8 overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-40" />
         <div className="absolute inset-0 bg-radial-glow" />
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Legal</div>
-          <h1 className="font-display text-[44px] sm:text-[60px] lg:text-[72px] leading-[1.02] font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display text-[36px] sm:text-[50px] lg:text-[60px] leading-[1.05] font-semibold mt-4 max-w-4xl">
             Privacy Policy
           </h1>
-          <p className="mt-6 text-[17px] text-[#9AA3B8] max-w-2xl leading-relaxed">
+          <p className="mt-6 text-[15.5px] text-[#9AA3B8] max-w-2xl leading-relaxed">
             How DortX Technologies collects, uses, protects, and manages information shared through our website, services, forms, and AI assistant.
           </p>
           <div className="mt-5 text-[13px] text-[#6B7385]">Last Updated: July 2026</div>
@@ -75,7 +75,7 @@ export default function PrivacyPolicy() {
       </section>
 
       <section className="pb-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-4">
             <nav aria-label="Privacy Policy table of contents" className="lg:sticky lg:top-28 glass rounded-2xl p-5">
               <h2 className="font-display text-white text-[15px] font-semibold mb-4">Contents</h2>

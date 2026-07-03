@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
 import { motion } from "framer-motion";
 import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Send, LayoutDashboard, Inbox, FileText, UserCog } from "lucide-react";
 import Logo from "@/components/Logo";
 import TeamManager from "@/pages/admin/TeamManager";
-import { API_URL } from "@/config/api";
+import { adminApiClient } from "@/config/api";
 
 const STATUSES = ["all", "new", "contacted", "qualified", "won", "lost"];
 const APPLICATION_STATUSES = ["new", "reviewing", "shortlisted", "rejected", "hired"];
@@ -103,11 +102,6 @@ function formatDate(value, mode = "date") {
   return mode === "datetime" ? next.toLocaleString() : next.toLocaleDateString();
 }
 
-function api() {
-  const token = localStorage.getItem("dortx-admin-token") ?? "";
-  return axios.create({ baseURL: API_URL, headers: { Authorization: `Bearer ${token}` } });
-}
-
 function isUnauthorized(result) {
   return result?.status === "rejected" && result.reason?.response?.status === 401;
 }
@@ -129,7 +123,7 @@ function StatCard({ icon: Icon, label, value, accent = "#4D8BFF" }) {
         <SafeIcon size={18} style={{ color: accent }}/>
         <span className="text-[11px] uppercase tracking-[0.14em] text-[#6B7385]">{label}</span>
       </div>
-      <div className="mt-4 font-display text-[28px] font-semibold text-white">{value}</div>
+      <div className="mt-4 font-display text-[24px] font-semibold text-white">{value}</div>
     </div>
   );
 }
@@ -160,11 +154,11 @@ export default function AdminDashboard() {
     setError("");
     try {
       const [me, analytics, leadResponse, applicationResponse, subscriberResponse] = await Promise.allSettled([
-        api().get("/auth/me"),
-        api().get("/admin/analytics"),
-        api().get(`/admin/leads?status=${status}&q=${encodeURIComponent(q)}&page=${page}&limit=20`),
-        api().get("/admin/applications"),
-        api().get("/admin/newsletter"),
+        adminApiClient.get("/auth/me"),
+        adminApiClient.get("/admin/analytics"),
+        adminApiClient.get(`/admin/leads?status=${status}&q=${encodeURIComponent(q)}&page=${page}&limit=20`),
+        adminApiClient.get("/admin/applications"),
+        adminApiClient.get("/admin/newsletter"),
       ]);
 
       if ([me, analytics, leadResponse, applicationResponse, subscriberResponse].some(isUnauthorized)) {
@@ -265,7 +259,7 @@ export default function AdminDashboard() {
 
   const updateStatus = async (id, s) => {
     if (!id) return;
-    await api().patch(`/admin/leads/${id}/status`, { status: s });
+    await adminApiClient.patch(`/admin/leads/${id}/status`, { status: s });
     fetchAll();
     if (selected?.id === id) setSelected({ ...selected, status: s });
   };
@@ -273,19 +267,19 @@ export default function AdminDashboard() {
   const remove = async (id) => {
     if (!id) return;
     if (!window.confirm("Delete this lead permanently?")) return;
-    await api().delete(`/admin/leads/${id}`);
+    await adminApiClient.delete(`/admin/leads/${id}`);
     setSelected(null);
     fetchAll();
   };
 
   const exportCsv = async () => {
-    const res = await api().get("/admin/leads/export.csv", { responseType: "blob" });
+    const res = await adminApiClient.get("/admin/leads/export.csv", { responseType: "blob" });
     downloadBlob(res.data, "dortx_leads.csv");
   };
 
   const updateApplicationStatus = async (id, s) => {
     if (!id) return;
-    await api().patch(`/admin/applications/${id}/status`, { status: s });
+    await adminApiClient.patch(`/admin/applications/${id}/status`, { status: s });
     fetchAll();
     if (selectedApplication?.id === id) setSelectedApplication({ ...selectedApplication, status: s });
   };
@@ -293,31 +287,31 @@ export default function AdminDashboard() {
   const removeApplication = async (id) => {
     if (!id) return;
     if (!window.confirm("Delete this application permanently?")) return;
-    await api().delete(`/admin/applications/${id}`);
+    await adminApiClient.delete(`/admin/applications/${id}`);
     setSelectedApplication(null);
     fetchAll();
   };
 
   const downloadResume = async (id) => {
     if (!id) return;
-    const res = await api().get(`/admin/applications/${id}/resume`, { responseType: "blob" });
+    const res = await adminApiClient.get(`/admin/applications/${id}/resume`, { responseType: "blob" });
     downloadBlob(res.data, "resume");
   };
 
   const exportApplications = async () => {
-    const res = await api().get("/admin/applications/export.csv", { responseType: "blob" });
+    const res = await adminApiClient.get("/admin/applications/export.csv", { responseType: "blob" });
     downloadBlob(res.data, "dortx_applications.csv");
   };
 
   const removeSubscriber = async (id) => {
     if (!id) return;
     if (!window.confirm("Delete this subscriber?")) return;
-    await api().delete(`/admin/newsletter/${id}`);
+    await adminApiClient.delete(`/admin/newsletter/${id}`);
     fetchAll();
   };
 
   const exportNewsletter = async () => {
-    const res = await api().get("/admin/newsletter/export.csv", { responseType: "blob" });
+    const res = await adminApiClient.get("/admin/newsletter/export.csv", { responseType: "blob" });
     downloadBlob(res.data, "dortx_newsletter.csv");
   };
 
@@ -394,7 +388,7 @@ export default function AdminDashboard() {
         {tab === "leads" && (
           <>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 flex-1 min-w-[240px] glass rounded-full px-4 py-2.5">
+              <div className="flex items-center gap-2 flex-1 w-full sm:min-w-[240px] glass rounded-full px-4 py-2.5">
                 <Search size={15} className="text-[#6B7385]"/>
                 <input
                   data-testid="leads-search"
