@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ArrowUpRight } from "lucide-react";
+import { Menu, X, ArrowUpRight, Moon, Sun } from "lucide-react";
 import Logo from "./Logo";
 import { NAV_LINKS } from "@/data/site";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("dortx-theme") === "light" ? "light" : "dark");
   const loc = useLocation();
 
   useEffect(() => {
@@ -18,6 +19,15 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => { setOpen(false); }, [loc.pathname]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("dortx-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((current) => current === "dark" ? "light" : "dark");
+  const ThemeIcon = theme === "dark" ? Sun : Moon;
+  const themeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
   return (
     <header
@@ -59,6 +69,17 @@ export default function Navbar() {
           >
             Start a project <ArrowUpRight size={14} />
           </Link>
+
+          <button
+            type="button"
+            data-testid="theme-toggle"
+            onClick={toggleTheme}
+            className="theme-toggle hidden lg:inline-flex w-10 h-10 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+            aria-label={themeLabel}
+            title={themeLabel}
+          >
+            <ThemeIcon size={17} />
+          </button>
 
           <button
             data-testid="mobile-menu-toggle"
@@ -103,6 +124,15 @@ export default function Navbar() {
               >
                 Start a project <ArrowUpRight size={16} />
               </Link>
+              <button
+                type="button"
+                data-testid="mobile-theme-toggle"
+                onClick={toggleTheme}
+                className="theme-toggle mt-2 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[14px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                aria-label={themeLabel}
+              >
+                <ThemeIcon size={16} /> {theme === "dark" ? "Light mode" : "Dark mode"}
+              </button>
             </div>
           </motion.div>
         )}

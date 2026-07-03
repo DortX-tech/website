@@ -145,7 +145,7 @@ export default function Contact() {
         <div className="absolute inset-0 bg-radial-glow" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Contact</div>
-          <h1 className="font-display text-[36px] min-[390px]:text-[40px] sm:text-[50px] lg:text-[60px] leading-[1.05] font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display page-heading font-semibold mt-4 max-w-4xl">
             Tell us about <span className="gradient-text">your problem</span>.
           </h1>
           <p className="mt-5 text-[15.5px] text-[#9AA3B8] max-w-2xl leading-relaxed">

@@ -29,7 +29,7 @@ function ScrollToTop() {
 
 function PublicLayout({ children }) {
   return (
-    <div className="min-h-screen bg-[#05080F] noise relative">
+    <div className="min-h-screen noise relative theme-surface">
       <Navbar />
       <main className="relative z-[2]">{children}</main>
       <Footer />

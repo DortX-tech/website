@@ -22,7 +22,7 @@ function Hero() {
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-[#1E6BFF]/15 blur-[100px]"/>
       <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF]">— The team behind DortX</div>
-        <h1 className="font-display text-[38px] sm:text-[54px] lg:text-[68px] leading-[0.98] font-semibold mt-6 max-w-4xl">
+        <h1 className="font-display page-heading font-semibold mt-6 max-w-4xl">
           Engineers, designers <br/>
           and builders — <span className="italic font-normal text-[#4D8BFF]">united</span> by craft.
         </h1>
@@ -125,7 +125,7 @@ function Leadership({ team }) {
     <section className="relative py-12">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">FOUNDER</div>
-        <h2 className="font-display text-[30px] sm:text-[40px] leading-[1.05] font-medium max-w-3xl">
+        <h2 className="font-display section-heading font-medium max-w-3xl">
           Thrisha J C
         </h2>
 
@@ -263,7 +263,7 @@ function TheTeam({ team }) {
         <div className="flex items-end justify-between gap-5 mb-7 flex-wrap">
           <div>
             <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— The team</div>
-            <h2 className="font-display text-[30px] sm:text-[40px] leading-[1.05] font-medium max-w-2xl">
+            <h2 className="font-display section-heading font-medium max-w-2xl">
               The people you'll actually work with.
             </h2>
           </div>

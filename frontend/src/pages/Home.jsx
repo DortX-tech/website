@@ -79,7 +79,7 @@ function Hero() {
 
             <motion.h1
               initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="font-display mt-6 text-[40px] sm:text-[56px] lg:text-[76px] leading-[1] tracking-tight font-semibold"
+              className="font-display hero-heading mt-6 font-semibold"
             >
               We solve <span className="italic font-normal text-[#4D8BFF]">business</span>
               <br/>
@@ -224,7 +224,7 @@ function Problems() {
         <div className="grid lg:grid-cols-12 gap-8">
           <div className="lg:col-span-5 lg:sticky lg:top-32 self-start">
             <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF]">— What we remove</div>
-            <h2 className="font-display text-[30px] sm:text-[40px] lg:text-[46px] leading-[1.05] font-semibold mt-5">
+            <h2 className="font-display section-heading font-semibold mt-5">
               The four frictions <br/> we hear about <br/>
               <span className="gradient-text">every week</span>.
             </h2>
@@ -272,7 +272,7 @@ function Approach() {
       <div className="absolute inset-0 hair-diag opacity-40"/>
       <div className="relative max-w-6xl mx-auto px-6 lg:px-8 text-center">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-6">— Our approach</div>
-        <h2 className="font-display text-[28px] sm:text-[38px] lg:text-[54px] leading-[1.05] font-medium max-w-4xl mx-auto">
+        <h2 className="font-display section-heading font-medium max-w-4xl mx-auto">
           One small team. <span className="text-[#4D8BFF]">Six disciplines.</span> <br className="hidden sm:block"/>
           Working as a single system.
         </h2>
@@ -402,7 +402,7 @@ function Wings() {
     <section className="relative">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-6 pt-16">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The six wings</div>
-        <h2 className="font-display text-[28px] sm:text-[38px] lg:text-[54px] leading-[1.05] font-semibold max-w-4xl">
+        <h2 className="font-display section-heading font-semibold max-w-4xl">
           Each wing is a focused practice <br/>
           in its own right.
         </h2>
@@ -426,7 +426,7 @@ function ProcessTimeline() {
     <section ref={ref} className="relative py-14">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— How we deliver</div>
-        <h2 className="font-display text-[28px] sm:text-[38px] lg:text-[52px] leading-[1.05] font-semibold max-w-3xl">
+        <h2 className="font-display section-heading font-semibold max-w-3xl">
           Seven steps. Predictable delivery. <span className="gradient-text">Zero surprises.</span>
         </h2>
 
@@ -478,7 +478,7 @@ function TechMarquee() {
     <section className="relative py-14">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-6">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The stack</div>
-        <h2 className="font-display text-[28px] sm:text-[38px] lg:text-[52px] leading-[1.05] font-semibold max-w-3xl">
+        <h2 className="font-display section-heading font-semibold max-w-3xl">
           Modern, polyglot, <br/>chosen for <span className="gradient-text">fit</span>.
         </h2>
       </div>
@@ -512,7 +512,7 @@ function TeamTeaser() {
         <div className="flex items-end justify-between gap-5 mb-6">
           <div>
             <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The team</div>
-            <h2 className="font-display text-[30px] sm:text-[40px] leading-[1.05] font-semibold max-w-2xl">
+            <h2 className="font-display section-heading font-semibold max-w-2xl">
               Passionate builders. <span className="text-[#4D8BFF]">Quality-first by habit.</span>
             </h2>
           </div>
@@ -561,7 +561,7 @@ function Industries() {
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <div className="max-w-2xl">
           <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— Industries we empower</div>
-          <h2 className="font-display text-[28px] sm:text-[38px] leading-[1.1] font-medium">
+          <h2 className="font-display section-heading font-medium">
             Industries we empower.
           </h2>
           <p className="mt-5 text-[15.5px] sm:text-[16px] text-[#9AA3B8] leading-relaxed">
@@ -610,7 +610,7 @@ function FAQTeaser() {
       <div className="max-w-5xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4">
           <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— FAQ</div>
-          <h2 className="font-display text-[32px] sm:text-[40px] leading-[1.1] font-semibold">
+          <h2 className="font-display section-heading font-semibold">
             Common questions, <br/>honestly answered.
           </h2>
           <Link to="/faq" className="mt-6 inline-flex btn-ghost">All questions <ArrowRight size={15}/></Link>
@@ -645,7 +645,7 @@ function FinalCTA() {
 
           <div className="relative">
             <Quote className="text-[#4D8BFF] mb-4" size={28}/>
-            <h3 className="font-display text-[32px] sm:text-[48px] lg:text-[58px] leading-[1.05] font-semibold max-w-3xl">
+            <h3 className="font-display section-heading font-semibold max-w-3xl">
               Have a problem worth <span className="italic font-normal text-[#4D8BFF]">solving</span>?
             </h3>
             <p className="mt-5 text-[15.5px] text-[#9AA3B8] max-w-xl leading-relaxed">

@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@/index.css";
 import App from "@/App";
 
+const savedTheme = localStorage.getItem("dortx-theme");
+document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

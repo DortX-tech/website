@@ -16,7 +16,7 @@ function Hero() {
       <div className="absolute -top-32 left-1/3 w-[500px] h-[500px] rounded-full bg-[#1E6BFF]/20 blur-[80px]"/>
       <motion.div style={{ y }} className="relative max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF]">— About DortX</div>
-        <h1 className="font-display text-[40px] sm:text-[56px] lg:text-[76px] leading-[1] font-semibold mt-6 max-w-5xl">
+        <h1 className="font-display page-heading font-semibold mt-6 max-w-5xl">
           A studio built for the <br className="hidden sm:block"/>
           <span className="italic font-normal text-[#4D8BFF]">business</span> behind the software.
         </h1>
@@ -34,7 +34,7 @@ function Story() {
     <section className="relative py-14">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-6">— Why we started DortX</div>
-        <h2 className="font-display text-[31px] sm:text-[42px] leading-[1.05] font-medium max-w-3xl">
+        <h2 className="font-display section-heading font-medium max-w-3xl">
           To build the kind of technology partner <br/>
           we always wished existed.
         </h2>
@@ -107,7 +107,7 @@ function Beliefs() {
     <section className="relative py-14">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— What makes us different</div>
-        <h2 className="font-display text-[31px] sm:text-[42px] leading-[1.05] font-medium max-w-3xl">
+        <h2 className="font-display section-heading font-medium max-w-3xl">
           Six things we genuinely believe.
         </h2>
 
@@ -138,7 +138,7 @@ function ValuesGrid() {
     <section className="relative py-14">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-5">— Our values</div>
-        <h2 className="font-display text-[31px] sm:text-[42px] leading-[1.05] font-medium max-w-3xl">
+        <h2 className="font-display section-heading font-medium max-w-3xl">
           The principles we hire, build <br/> and communicate by.
         </h2>
 
@@ -174,7 +174,7 @@ function Future() {
     <section className="relative py-14">
       <div className="max-w-5xl mx-auto px-6 lg:px-8 text-center">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-6">— Where we're going</div>
-        <h2 className="font-display text-[30px] sm:text-[40px] leading-[1.05] font-medium">
+        <h2 className="font-display section-heading font-medium">
           Build deeper. <br/>
           Stay small. <br/>
           <span className="gradient-text">Ship what matters.</span>

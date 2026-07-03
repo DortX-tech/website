@@ -14,7 +14,7 @@ export default function SectionHeader({ eyebrow, title, subtitle, align = "left"
           <span className="w-6 h-px bg-[#4D8BFF]"/> {eyebrow}
         </div>
       )}
-      <h2 className="font-display text-[30px] sm:text-[40px] lg:text-[46px] leading-[1.05] font-semibold text-white">
+      <h2 className="font-display section-heading font-semibold text-white">
         {title}
       </h2>
       {subtitle && (
