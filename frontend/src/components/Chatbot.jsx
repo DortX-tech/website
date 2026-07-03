@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Copy, MessageCircle, Send, Sparkles, X } from "lucide-react";
+import { Check, Copy, MessageCircle, RotateCcw, Send, Sparkles, X } from "lucide-react";
 import Logo from "./Logo";
 import { API_URL, apiClient } from "@/config/api";
 
@@ -55,6 +55,12 @@ const initialAssistantMessage = {
   status: "received",
 };
 
+const freshInitialAssistantMessage = () => ({
+  ...initialAssistantMessage,
+  id: `initial-assistant-${Date.now()}`,
+  createdAt: new Date().toISOString(),
+});
+
 const makeMessage = (role, content, extra = {}) => ({
   id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   role,
@@ -64,7 +70,7 @@ const makeMessage = (role, content, extra = {}) => ({
   ...extra,
 });
 
-const normalizeMessages = (items) => (Array.isArray(items) && items.length ? items : [initialAssistantMessage]).map((message, index) => ({
+const normalizeMessages = (items) => (Array.isArray(items) && items.length ? items : [freshInitialAssistantMessage()]).map((message, index) => ({
   ...message,
   id: message.id || `${message.role || "message"}-${index}-${Date.now()}`,
   createdAt: message.createdAt || new Date().toISOString(),
@@ -166,7 +172,7 @@ const deriveMemoryPatch = (text, current = {}) => {
   const phone = value.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0];
   if (phone) patch.phone = phone.trim();
 
-  const budget = value.match(/\b(?:budget|cost|price|around|under|within)\s*(?:is|of|:)?\s*([₹$€£]?\s?[\w., -]{2,40})/i)?.[1];
+  const budget = value.match(/\b(?:budget|cost|price|around|under|within)\s*(?:is|of|:)?\s*((?:INR|Rs\.?|USD|EUR|GBP|\$)?\s?[\w., -]{2,40})/i)?.[1];
   if (budget) patch.budget = budget.trim();
 
   const timeline = value.match(/\b(?:timeline|deadline|launch|deliver|within|in)\s*(?:is|by|:)?\s*([A-Za-z0-9 ,.-]{2,40})/i)?.[1];
@@ -305,7 +311,7 @@ function formatInline(text) {
 
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState(() => normalizeMessages(loadJson("dortx-chat-messages", [initialAssistantMessage])));
+  const [messages, setMessages] = useState(() => normalizeMessages(loadJson("dortx-chat-messages", [freshInitialAssistantMessage()])));
   const [memory, setMemory] = useState(() => loadJson("dortx-chat-memory", { name: "", service: "", lead: {} }));
   const [stage, setStage] = useState(() => localStorage.getItem("dortx-chat-stage") || "name");
   const [leadIndex, setLeadIndex] = useState(() => Number(localStorage.getItem("dortx-chat-lead-index") || 0));
@@ -681,6 +687,30 @@ export default function Chatbot() {
     }
   };
 
+  const resetChat = () => {
+    if (busy) return;
+    const confirmed = window.confirm("Start a new chat? This will clear the current conversation on this device.");
+    if (!confirmed) return;
+
+    const nextSession = `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem("dortx-chat-sid", nextSession);
+    localStorage.removeItem("dortx-chat-messages");
+    localStorage.removeItem("dortx-chat-memory");
+    localStorage.setItem("dortx-chat-stage", "name");
+    localStorage.setItem("dortx-chat-lead-index", "0");
+
+    abortRef.current?.abort();
+    abortRef.current = null;
+    autoScrollRef.current = true;
+    setMessages([freshInitialAssistantMessage()]);
+    setMemory({ name: "", service: "", lead: {} });
+    setStage("name");
+    setLeadIndex(0);
+    setInput("");
+    setCopied(null);
+    setShowNewMessages(false);
+  };
+
   return (
     <>
       <motion.button
@@ -725,6 +755,17 @@ export default function Chatbot() {
                 </div>
                 <div className="text-[11px] text-[#9AA3B8] flex items-center gap-1.5"><span className="dot-pulse" /> Business consulting online</div>
               </div>
+              <button
+                type="button"
+                onClick={resetChat}
+                disabled={busy}
+                title="Start new chat"
+                aria-label="Start new chat"
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 text-[11.5px] text-[#C9D2E0] transition hover:border-[#1E6BFF]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-45 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+              >
+                <RotateCcw size={12} />
+                <span className="hidden min-[390px]:inline">New Chat</span>
+              </button>
             </div>
 
             <div

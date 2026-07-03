@@ -22,7 +22,7 @@ function Hero() {
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[640px] rounded-full bg-[#1E6BFF]/15 blur-[100px]"/>
       <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF]">— The team behind DortX</div>
-        <h1 className="font-display page-heading font-semibold mt-6 max-w-4xl">
+        <h1 className="font-display page-heading text-[clamp(2rem,5vw,3.5rem)] leading-[1.12] tracking-normal font-semibold mt-6 max-w-4xl">
           Engineers, designers <br/>
           and builders — <span className="italic font-normal text-[#4D8BFF]">united</span> by craft.
         </h1>

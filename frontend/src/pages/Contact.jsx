@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, CheckCircle2, Clock, Linkedin, Loader2, Mail, Paperclip, Phone } from "lucide-react";
+import { Building2, CheckCircle2, Clock, Instagram, Loader2, Mail, Paperclip, Phone } from "lucide-react";
 import { CONTACT, SOCIALS, WINGS } from "@/data/site";
 import { apiClient } from "@/config/api";
 
@@ -131,10 +131,10 @@ export default function Contact() {
       text: "9:00 AM - 6:00 PM IST",
     },
     {
-      icon: Linkedin,
+      icon: Instagram,
       title: "Social Links",
       body: "Follow DortX updates",
-      links: [{ label: "LinkedIn", value: SOCIALS.find((item) => item.name === "LinkedIn")?.name || "LinkedIn", href: CONTACT.linkedin }],
+      links: SOCIALS.map((item) => ({ label: item.name, value: item.name, href: item.url })),
     },
   ];
 
@@ -145,7 +145,7 @@ export default function Contact() {
         <div className="absolute inset-0 bg-radial-glow" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Contact</div>
-          <h1 className="font-display page-heading font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display page-heading text-[clamp(2rem,5vw,3.5rem)] leading-[1.12] tracking-normal font-semibold mt-4 max-w-4xl">
             Tell us about <span className="gradient-text">your problem</span>.
           </h1>
           <p className="mt-5 text-[15.5px] text-[#9AA3B8] max-w-2xl leading-relaxed">

@@ -79,12 +79,10 @@ function Hero() {
 
             <motion.h1
               initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="font-display hero-heading mt-6 font-semibold"
+              className="font-display hero-heading mt-6 max-w-4xl text-[clamp(2rem,5vw,3.5rem)] leading-[1.12] tracking-normal font-semibold"
             >
-              We solve <span className="italic font-normal text-[#4D8BFF]">business</span>
-              <br/>
-              problems with <span className="shimmer-text">intelligent</span>
-              <br/>
+              We solve <span className="italic font-normal text-[#4D8BFF]">business</span>{" "}
+              problems with <span className="shimmer-text">intelligent</span>{" "}
               <span className="gradient-text">technology.</span>
             </motion.h1>
 

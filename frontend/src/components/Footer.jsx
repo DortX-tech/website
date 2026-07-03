@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, Phone, ArrowUpRight, CheckCircle2, Linkedin, Send } from "lucide-react";
+import { Mail, Phone, ArrowUpRight, CheckCircle2, Instagram, Linkedin, Send } from "lucide-react";
 import Logo from "./Logo";
 import { CONTACT, SOCIALS } from "@/data/site";
 import { apiClient } from "@/config/api";
 
-const SocialIconMap = { Linkedin };
+const SocialIconMap = { Instagram, Linkedin };
 
 export default function Footer() {
   const [email, setEmail] = useState("");

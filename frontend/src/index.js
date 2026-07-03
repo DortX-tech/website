@@ -6,6 +6,7 @@ import App from "@/App";
 
 const savedTheme = localStorage.getItem("dortx-theme");
 document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+if (document.body) document.body.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
 const queryClient = new QueryClient({
   defaultOptions: {

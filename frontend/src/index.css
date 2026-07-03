@@ -618,3 +618,14 @@ body,
   transform: translateY(-1px);
   border-color: rgba(30, 107, 255, 0.45);
 }
+
+.nav-cta {
+  background: var(--dx-heading);
+  color: var(--dx-bg);
+  border: 1px solid var(--dx-border);
+}
+
+.nav-cta:hover {
+  background: var(--dx-blue);
+  color: #FFFFFF;
+}

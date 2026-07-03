@@ -16,7 +16,7 @@ function Hero() {
       <div className="absolute -top-32 left-1/3 w-[500px] h-[500px] rounded-full bg-[#1E6BFF]/20 blur-[80px]"/>
       <motion.div style={{ y }} className="relative max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF]">— About DortX</div>
-        <h1 className="font-display page-heading font-semibold mt-6 max-w-5xl">
+        <h1 className="font-display page-heading text-[clamp(2rem,5vw,3.5rem)] leading-[1.12] tracking-normal font-semibold mt-6 max-w-5xl">
           A studio built for the <br className="hidden sm:block"/>
           <span className="italic font-normal text-[#4D8BFF]">business</span> behind the software.
         </h1>

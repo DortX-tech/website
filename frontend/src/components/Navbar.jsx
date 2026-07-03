@@ -22,6 +22,7 @@ export default function Navbar() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    if (document.body) document.body.dataset.theme = theme;
     localStorage.setItem("dortx-theme", theme);
   }, [theme]);
 
@@ -65,7 +66,7 @@ export default function Navbar() {
           <Link
             to="/contact"
             data-testid="nav-contact-cta"
-            className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white text-[#0A0F1C] text-[13.5px] font-semibold hover:bg-[#E5ECFF] transition"
+            className="nav-cta hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13.5px] font-semibold transition"
           >
             Start a project <ArrowUpRight size={14} />
           </Link>

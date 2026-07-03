@@ -64,7 +64,7 @@ export default function PrivacyPolicy() {
         <div className="absolute inset-0 bg-radial-glow" />
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#4D8BFF]">Legal</div>
-          <h1 className="font-display page-heading font-semibold mt-4 max-w-4xl">
+          <h1 className="font-display page-heading text-[clamp(2rem,5vw,3.5rem)] leading-[1.12] tracking-normal font-semibold mt-4 max-w-4xl">
             Privacy Policy
           </h1>
           <p className="mt-6 text-[15.5px] text-[#9AA3B8] max-w-2xl leading-relaxed">

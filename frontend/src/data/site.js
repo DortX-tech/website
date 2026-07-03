@@ -283,8 +283,10 @@ export const CONTACT = {
   phone: "+91 81509 90329",
   phoneHref: "tel:+918150990329",
   linkedin: "https://www.linkedin.com/company/dortxtech.com/",
+  instagram: "https://www.instagram.com/dortxtech",
 };
 
 export const SOCIALS = [
   { name: "LinkedIn",  url: CONTACT.linkedin, icon: "Linkedin"  },
+  { name: "Instagram", url: CONTACT.instagram, icon: "Instagram" },
 ];
