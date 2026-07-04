@@ -4,11 +4,26 @@ import { Building2, CheckCircle2, Clock, Instagram, Linkedin, Loader2, Mail, Pap
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import { CONTACT, WINGS } from "@/data/site";
+import { CONTACT } from "@/data/site";
 import { apiClient } from "@/config/api";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const budgetOptions = ["Not sure yet", "Under INR 50,000", "INR 50,000 - INR 1,50,000", "INR 1,50,000 - INR 5,00,000", "INR 5,00,000+"];
+const serviceOptions = [
+  "Software Development",
+  "Cognitive Automation & AI",
+  "Data Intelligence",
+  "Strategic Growth",
+  "IoT & Industrial Automation",
+  "Continuity & Security",
+  "Other / Not sure yet",
+];
+const budgetOptions = [
+  "Under ₹50,000",
+  "₹50,000 – ₹1,50,000",
+  "₹1,50,000 – ₹5,00,000",
+  "₹5,00,000+",
+  "Not sure yet / Need guidance",
+];
 const timelineOptions = ["Not sure yet", "As soon as possible", "Within 1 month", "1-3 months", "3+ months"];
 const phoneError = "Please enter a valid phone number, including the country code if outside India (e.g. +1 415 555 2671).";
 
@@ -69,6 +84,7 @@ export default function Contact() {
       next.email = "Enter a valid email address.";
     }
     if (form.phone && !isValidPhone(form.phone, "IN")) next.phone = phoneError;
+    if (!form.service) next.service = "Select the service you are interested in.";
     if (!form.description.trim()) next.description = "Message is required.";
     if (form.file && form.file.size > 8 * 1024 * 1024) next.file = "Attachment must be 8MB or smaller.";
     setErrors(next);
@@ -224,11 +240,12 @@ export default function Contact() {
                   </div>
 
                   <div>
-                    <label htmlFor="contact-service" className={label}>Service Interested In</label>
-                    <select id="contact-service" data-testid="contact-service" className={input} value={form.service} onChange={(event) => setField("service", event.target.value)}>
+                    <label htmlFor="contact-service" className={label}>Service Interested In *</label>
+                    <select id="contact-service" data-testid="contact-service" required aria-invalid={Boolean(errors.service)} aria-describedby={errors.service ? "contact-service-error" : undefined} className={input} value={form.service} onChange={(event) => setField("service", event.target.value)}>
                       <option value="">Select a service</option>
-                      {WINGS.map((wing) => <option key={wing.id} value={wing.name}>{wing.name}</option>)}
+                      {serviceOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                     </select>
+                    {errors.service && <p id="contact-service-error" className={errorText}>{errors.service}</p>}
                   </div>
 
                   <div>
