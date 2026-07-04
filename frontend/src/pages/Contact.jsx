@@ -6,6 +6,7 @@ import "react-phone-number-input/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { CONTACT } from "@/data/site";
 import { apiClient } from "@/config/api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const serviceOptions = [
@@ -50,6 +51,37 @@ const formatBackendError = (detail) => {
   }
   return String(detail);
 };
+
+function ContactSelect({ id, testId, value, onChange, placeholder, options, invalid, describedBy }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger
+        id={id}
+        data-testid={testId}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+        className="contact-field h-12 justify-between rounded-xl bg-white/5 px-4 py-3 text-left text-[16px] font-normal text-[#F7FAFF] shadow-none ring-0 focus:ring-2 focus:ring-[#1E6BFF]/20 sm:text-[14.5px] [&>span]:truncate"
+      >
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent
+        position="popper"
+        sideOffset={6}
+        className="z-[90] max-h-72 rounded-xl border border-white/10 bg-[#070B14] p-1 text-[#E7EBF3] shadow-2xl shadow-black/40 backdrop-blur-xl"
+      >
+        {options.map((option) => (
+          <SelectItem
+            key={option}
+            value={option}
+            className="cursor-pointer rounded-lg px-3 py-2.5 pr-8 text-[13.5px] text-[#DCE6F7] outline-none transition focus:bg-[#1E6BFF]/20 focus:text-white data-[state=checked]:bg-[#1E6BFF]/15 data-[state=checked]:text-white"
+          >
+            {option}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export default function Contact() {
   const [form, setForm] = useState({
@@ -241,27 +273,41 @@ export default function Contact() {
 
                   <div>
                     <label htmlFor="contact-service" className={label}>Service Interested In *</label>
-                    <select id="contact-service" data-testid="contact-service" required aria-invalid={Boolean(errors.service)} aria-describedby={errors.service ? "contact-service-error" : undefined} className={input} value={form.service} onChange={(event) => setField("service", event.target.value)}>
-                      <option value="">Select a service</option>
-                      {serviceOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
+                    <ContactSelect
+                      id="contact-service"
+                      testId="contact-service"
+                      value={form.service}
+                      onChange={(value) => setField("service", value)}
+                      placeholder="Select a service"
+                      options={serviceOptions}
+                      invalid={Boolean(errors.service)}
+                      describedBy={errors.service ? "contact-service-error" : undefined}
+                    />
                     {errors.service && <p id="contact-service-error" className={errorText}>{errors.service}</p>}
                   </div>
 
                   <div>
                     <label htmlFor="contact-budget" className={label}>Budget</label>
-                    <select id="contact-budget" data-testid="contact-budget" className={input} value={form.budget} onChange={(event) => setField("budget", event.target.value)}>
-                      <option value="">Select budget range</option>
-                      {budgetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
+                    <ContactSelect
+                      id="contact-budget"
+                      testId="contact-budget"
+                      value={form.budget}
+                      onChange={(value) => setField("budget", value)}
+                      placeholder="Select budget range"
+                      options={budgetOptions}
+                    />
                   </div>
 
                   <div>
                     <label htmlFor="contact-timeline" className={label}>Timeline</label>
-                    <select id="contact-timeline" data-testid="contact-timeline" className={input} value={form.timeline} onChange={(event) => setField("timeline", event.target.value)}>
-                      <option value="">Select timeline</option>
-                      {timelineOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
+                    <ContactSelect
+                      id="contact-timeline"
+                      testId="contact-timeline"
+                      value={form.timeline}
+                      onChange={(value) => setField("timeline", value)}
+                      placeholder="Select timeline"
+                      options={timelineOptions}
+                    />
                   </div>
                 </div>
 
