@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, CheckCircle2, Clock, Instagram, Loader2, Mail, Paperclip, Phone } from "lucide-react";
-import { CONTACT, SOCIALS, WINGS } from "@/data/site";
+import { Building2, CheckCircle2, Clock, Instagram, Linkedin, Loader2, Mail, Paperclip, Phone } from "lucide-react";
+import { CONTACT, WINGS } from "@/data/site";
 import { apiClient } from "@/config/api";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -114,8 +114,8 @@ export default function Contact() {
       title: "Email",
       body: "General support and business inquiries",
       links: [
-        { label: "General Support", value: CONTACT.support, href: `mailto:${CONTACT.support}` },
-        { label: "Business Inquiries", value: CONTACT.founder, href: `mailto:${CONTACT.founder}` },
+        { label: "General Support", value: CONTACT.support, href: "mailto:support@dortxtech.com" },
+        { label: "Business Inquiries", value: CONTACT.founder, href: "mailto:thrisha@dortxtech.com" },
       ],
     },
     {
@@ -134,7 +134,10 @@ export default function Contact() {
       icon: Instagram,
       title: "Social Links",
       body: "Follow DortX updates",
-      links: SOCIALS.map((item) => ({ label: item.name, value: item.name, href: item.url })),
+      links: [
+        { label: "LinkedIn", href: CONTACT.linkedin, icon: Linkedin },
+        { label: "Instagram", href: CONTACT.instagram, icon: Instagram },
+      ],
     },
   ];
 
@@ -280,14 +283,27 @@ export default function Contact() {
                   <div className="mt-5 font-display text-white text-[15.5px] font-semibold">{card.title}</div>
                   <p className="mt-2 text-[13px] text-[#9AA3B8]">{card.body}</p>
                   {card.text && <div className="mt-2 text-[14px] text-[#DCE6F7] break-words">{card.text}</div>}
-                  {card.links?.map((link) => (
-                    <div key={link.href} className="mt-3">
-                      <p className="text-[12.5px] text-[#9AA3B8]">{link.label}</p>
-                      <a href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined} className="mt-1 inline-block text-[14px] text-[#DCE6F7] hover:text-white hover:underline underline-offset-4 break-all rounded transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
-                        {link.value}
-                      </a>
+                  {card.title === "Social Links" ? (
+                    <div className="mt-3 flex items-center gap-2">
+                      {card.links?.map((link) => {
+                        const BrandIcon = link.icon;
+                        return (
+                          <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" aria-label={link.label} title={link.label} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#1E6BFF]/25 bg-[#1E6BFF]/15 text-[#4D8BFF] transition hover:border-[#1E6BFF]/45 hover:bg-[#1E6BFF]/20 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
+                            <BrandIcon size={26} aria-hidden="true" />
+                          </a>
+                        );
+                      })}
                     </div>
-                  ))}
+                  ) : (
+                    card.links?.map((link) => (
+                      <div key={link.href} className="mt-3">
+                        <p className="text-[12.5px] text-[#9AA3B8]">{link.label}</p>
+                        <a href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined} className="mt-1 inline-block text-[14px] text-[#DCE6F7] hover:text-white hover:underline underline-offset-4 break-all rounded transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
+                          {link.value}
+                        </a>
+                      </div>
+                    ))
+                  )}
                 </div>
               );
             })}

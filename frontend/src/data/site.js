@@ -282,7 +282,7 @@ export const CONTACT = {
   founder: "thrisha@dortxtech.com",
   phone: "+91 81509 90329",
   phoneHref: "tel:+918150990329",
-  linkedin: "https://www.linkedin.com/company/dortxtech.com/",
+  linkedin: "https://www.linkedin.com/company/dortxtech",
   instagram: "https://www.instagram.com/dortxtech",
 };
 
