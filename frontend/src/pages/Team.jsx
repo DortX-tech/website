@@ -115,10 +115,9 @@ function Avatar({ name, photo, size = 120, big = false }) {
 function Leadership({ team }) {
   const leader = team.find((m) => m.leadership) || team[0];
   const leadershipDetails = [
-    "Engineering Leadership",
-    "Software Architecture",
-    "Product Strategy",
-    "AI Solutions",
+    "💻 Full-Stack Development",
+    "🏗️ Software Architecture",
+    "📈 Product Strategy",
   ];
   if (!leader) return null;
   return (
@@ -149,7 +148,7 @@ function Leadership({ team }) {
             <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF]">{leader.role}</div>
 
             <p className="mt-6 text-[15.5px] text-[#C9D2E0] leading-[1.7] max-w-2xl">
-              DortX was founded with a simple belief: technology should solve real business problems, not create more complexity. As Founder & CEO, Thrisha leads the company's vision, product strategy, software architecture, and engineering, ensuring every solution is practical, scalable, and built for long-term business value.
+              DortX was founded with a simple belief: technology should solve real business problems, not create more complexity. As Founder & CEO and Founding Engineer, Thrisha leads the company's vision, product strategy, software architecture, and software development, ensuring every solution is practical, scalable, and built for long-term business value.
             </p>
 
             <div className="mt-6 grid sm:grid-cols-2 gap-2.5 max-w-lg">
