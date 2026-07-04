@@ -127,7 +127,7 @@ export default function PrivacyPolicy() {
             </Section>
 
             <Section id="user-rights" title="User Rights">
-              <p>Users may request access to their information, correction, deletion, or withdrawal of consent where applicable. To make a request, contact us at <a href="mailto:support@dortxtech.com" className="text-[#4D8BFF] hover:text-white">support@dortxtech.com</a>.</p>
+              <p>Users may request access to their information, correction, deletion, or withdrawal of consent where applicable. To make a request, contact us at <a href="mailto:support@dortxtech.com" className="text-[#4D8BFF] hover:text-white hover:underline underline-offset-4 transition">support@dortxtech.com</a>.</p>
             </Section>
 
             <Section id="childrens-privacy" title="Children's Privacy">
@@ -146,8 +146,8 @@ export default function PrivacyPolicy() {
             <Section id="contact" title="Contact">
               <p>For privacy questions or requests, contact DortX Technologies:</p>
               <div className="space-y-2">
-                <p><a href="mailto:support@dortxtech.com" className="text-[#4D8BFF] hover:text-white">support@dortxtech.com</a></p>
-                <p><a href="mailto:thrisha@dortxtech.com" className="text-[#4D8BFF] hover:text-white">thrisha@dortxtech.com</a></p>
+                <p><a href="mailto:support@dortxtech.com" className="text-[#4D8BFF] hover:text-white hover:underline underline-offset-4 transition">support@dortxtech.com</a></p>
+                <p><a href="mailto:thrisha@dortxtech.com" className="text-[#4D8BFF] hover:text-white hover:underline underline-offset-4 transition">thrisha@dortxtech.com</a></p>
                 <p><a href="tel:+918150990329" className="text-[#4D8BFF] hover:text-white">+91 81509 90329</a></p>
               </div>
             </Section>

@@ -84,10 +84,10 @@ export default function Footer() {
           <div className="lg:col-span-3">
             <h4 className="font-display text-white text-[13px] font-semibold mb-4 tracking-wide">Get in touch</h4>
             <div className="space-y-1.5 text-[13.5px]">
-              <a href={`mailto:${CONTACT.support}`} className="text-[#C9D2E0] hover:text-white flex items-center gap-2">
+              <a href={`mailto:${CONTACT.support}`} className="text-[#C9D2E0] hover:text-white hover:underline underline-offset-4 flex items-center gap-2 transition">
                 <Mail size={13}/> {CONTACT.support}
               </a>
-              <a href={`mailto:${CONTACT.founder}`} className="text-[#9AA3B8] hover:text-white flex items-center gap-2">
+              <a href={`mailto:${CONTACT.founder}`} className="text-[#9AA3B8] hover:text-white hover:underline underline-offset-4 flex items-center gap-2 transition">
                 <Mail size={13}/> {CONTACT.founder}
               </a>
               <a href={CONTACT.phoneHref} className="text-[#9AA3B8] hover:text-white flex items-center gap-2">

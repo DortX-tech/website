@@ -196,7 +196,7 @@ export const TEAM = [
   },
   {
     name: "Lalith S",
-    role: "Chief Product Officer (CPO) | Data Engineer & Automation Architect",
+    role: "Data Engineer & Automation Architect",
     photo: "/team-members/lalith-s.jpeg",
     bio: "Designs the data pipelines, warehouses and automation flows that turn scattered information into clear, dependable signals for the business.",
     expertise: "Data Engineering | BI | Workflow Automation",
@@ -214,7 +214,7 @@ export const TEAM = [
   },
    {
     name: "Chandana",
-    role: "Creative Head",
+    role: "Chief Product Officer (CPO) | Creative Head",
     photo: "/team-members/chandana.jpeg",
     bio: "Shapes the visual and experiential identity of DortX - translating product strategy into interfaces, brand systems and design language people connect with.",
     expertise: "Product Design | Brand Identity",

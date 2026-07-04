@@ -112,10 +112,10 @@ export default function Contact() {
     {
       icon: Mail,
       title: "Email",
-      body: "Support Email",
+      body: "General support and business inquiries",
       links: [
-        { label: "Support Email", value: CONTACT.support, href: `mailto:${CONTACT.support}` },
-        { label: "Founder Email", value: CONTACT.founder, href: `mailto:${CONTACT.founder}` },
+        { label: "General Support", value: CONTACT.support, href: `mailto:${CONTACT.support}` },
+        { label: "Business Inquiries", value: CONTACT.founder, href: `mailto:${CONTACT.founder}` },
       ],
     },
     {
@@ -283,7 +283,7 @@ export default function Contact() {
                   {card.links?.map((link) => (
                     <div key={link.href} className="mt-3">
                       <p className="text-[12.5px] text-[#9AA3B8]">{link.label}</p>
-                      <a href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined} className="mt-1 inline-block text-[14px] text-[#DCE6F7] hover:text-white break-all rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
+                      <a href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined} className="mt-1 inline-block text-[14px] text-[#DCE6F7] hover:text-white hover:underline underline-offset-4 break-all rounded transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
                         {link.value}
                       </a>
                     </div>

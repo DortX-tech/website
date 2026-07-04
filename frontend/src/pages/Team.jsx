@@ -166,7 +166,7 @@ function Leadership({ team }) {
                   <Linkedin size={14}/>
                 </a>
               )}
-              <a href={`mailto:${leader.email_address || CONTACT.founder}`} aria-label="Email Founder" title="Email Founder" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
+              <a href={`mailto:${leader.email_address || CONTACT.founder}`} aria-label="Email Thrisha J C" title="Email Thrisha J C" className="w-9 h-9 rounded-full glass flex items-center justify-center text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 transition">
                 <Mail size={14}/>
               </a>
             </div>

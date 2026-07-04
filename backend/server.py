@@ -223,7 +223,7 @@ SEED_TEAM = [
      "responsibilities": ["AI solutions", "AI agents", "Automation", "Machine learning"],
      "photo": "/team-members/mallikaarjun.jpeg",
      "linkedin": "https://www.linkedin.com/in/mallikarjun25", "order": 2},
-    {"name": "Lalith S", "role": "Chief Product Officer (CPO) | Data Engineer & Automation Architect", "leadership": False,
+    {"name": "Lalith S", "role": "Data Engineer & Automation Architect", "leadership": False,
      "bio": "Designs the data pipelines, warehouses and automation flows that turn scattered information into clear, dependable signals for the business.",
      "expertise": "Data Engineering | BI | Workflow Automation",
      "responsibilities": ["Data engineering", "Analytics", "Business intelligence", "Workflow automation"],
@@ -235,7 +235,7 @@ SEED_TEAM = [
      "responsibilities": ["Software development", "Application features", "Quality improvements", "Testing support"],
      "photo": "/team-members/anusha-r.jpeg",
      "linkedin": "https://www.linkedin.com/in/anusha-r-a82307260", "order": 4},
-    {"name": "Chandana", "role": "Creative Head", "leadership": False,
+    {"name": "Chandana", "role": "Chief Product Officer (CPO) | Creative Head", "leadership": False,
      "bio": "Shapes the visual and experiential identity of DortX - translating product strategy into interfaces, brand systems and design language people connect with.",
      "expertise": "Product Design | Brand Identity",
      "responsibilities": ["UI/UX design", "Brand identity", "Visual design", "Creative direction"],
@@ -293,6 +293,14 @@ async def startup():
                  "created_at": now_iso(), "updated_at": now_iso()} for m in SEED_TEAM]
         await db.team_members.insert_many(docs)
         logger.info(f"Seeded {len(docs)} team members")
+    await db.team_members.update_one(
+        {"name": "Lalith S"},
+        {"$set": {"role": "Data Engineer & Automation Architect", "updated_at": now_iso()}},
+    )
+    await db.team_members.update_one(
+        {"name": "Chandana"},
+        {"$set": {"role": "Chief Product Officer (CPO) | Creative Head", "updated_at": now_iso()}},
+    )
 
 
 @app.on_event("shutdown")
@@ -704,7 +712,7 @@ Company:
 - Tagline: "Empowering Business Through Technology".
 - Philosophy: DortX does not sell technology for its own sake; it studies the business problem and recommends practical technology.
 - Contact: support@dortxtech.com, founder thrisha@dortxtech.com, phone +91 81509 90329.
-- Current team: Thrisha J C (Founder & CEO | Founding Engineer), Venu P K (Co-Founder | CMO), Mallikarjun (CTO | AI & Autonomous Systems Engineer), Lalith S (CPO | Data Engineer & Automation Architect), Anusha R (Software Developer), Chandana (Creative Head), Kavyashree (Full Stack Developer).
+- Current team: Thrisha J C (Founder & CEO | Founding Engineer), Venu P K (Co-Founder | CMO), Mallikarjun (CTO | AI & Autonomous Systems Engineer), Lalith S (Data Engineer & Automation Architect), Anusha R (Software Developer), Chandana (Chief Product Officer (CPO) | Creative Head), Kavyashree (Full Stack Developer).
 - Mission: help organizations adopt useful technology that improves operations, customer experience, growth and decision-making.
 - Vision: make practical software, AI and automation accessible to ambitious businesses without overengineering.
 - Values: clarity before build, honest scoping, measurable business value, maintainable engineering, security-minded delivery and long-term support.

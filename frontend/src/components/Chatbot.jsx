@@ -35,15 +35,15 @@ const QUICK_ACTIONS = [
 ];
 
 const LEAD_FIELDS = [
-  { key: "company", label: "Company", question: "Which company are you representing? You can type 'skip' if this is personal." },
-  { key: "email", label: "Email", question: "What email should the DortX team use to contact you?" },
-  { key: "phone", label: "Phone", question: "What phone number can the team use? You can type 'skip' if you prefer email." },
-  { key: "country", label: "Country", question: "Which country are you based in?" },
-  { key: "budget", label: "Budget", question: "Do you have a budget range in mind?" },
-  { key: "project_type", label: "Project type", question: "What type of project is this?" },
-  { key: "timeline", label: "Timeline", question: "What timeline are you hoping for?" },
-  { key: "requirements", label: "Requirements", question: "Please describe your requirements in a few lines." },
-  { key: "preferred_contact_method", label: "Preferred contact", question: "How would you prefer DortX to contact you: email, phone, or WhatsApp?" },
+  { key: "preferred_contact_method", label: "Contact preference", required: true, question: "How would you prefer DortX to contact you: email, phone, or WhatsApp?" },
+  { key: "phone", label: "Phone number", required: true, question: "Great. Please enter your phone number." },
+  { key: "name", label: "Name", required: true, question: "Thank you. What name should the DortX team use when contacting you?" },
+  { key: "email", label: "Email", required: true, question: "Please share a valid email address so DortX can create your request record." },
+  { key: "company", label: "Company", required: false, question: "Which company are you representing? You can type 'skip' if this is personal." },
+  { key: "project_type", label: "Project type", required: false, question: "What type of project is this? You can type 'skip' if you are not sure yet." },
+  { key: "requirements", label: "Project details", required: true, question: "Briefly describe your project or requirement." },
+  { key: "budget", label: "Budget", required: false, question: "Do you have a budget range in mind? You can type 'skip' if not sure yet." },
+  { key: "timeline", label: "Timeline", required: false, question: "What timeline are you hoping for? You can type 'skip' if flexible." },
 ];
 
 const initialAssistantMessage = {
@@ -142,6 +142,21 @@ const isBuyingIntent = (text) => {
 };
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+const normalizeContactMethod = (value) => {
+  const text = String(value || "").trim().toLowerCase();
+  if (text.includes("whatsapp") || text.includes("whats app")) return "WhatsApp";
+  if (text.includes("phone") || text.includes("call")) return "Phone";
+  if (text.includes("email") || text.includes("mail")) return "Email";
+  return "";
+};
+
+const isPhone = (value) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+};
+
+const contactRequiresPhone = (lead = {}) => ["Phone", "WhatsApp"].includes(lead.preferred_contact_method);
 
 const SERVICE_MEMORY_PATTERNS = [
   { service: "Website Development", pattern: /\b(website|web site|landing page|redesign|cms)\b/i },
@@ -520,12 +535,54 @@ export default function Chatbot() {
     });
   };
 
+  const leadProgress = (lead = {}) => [
+    lead.preferred_contact_method ? "✓ Contact preference selected" : "",
+    lead.phone ? "✓ Phone number received" : "",
+    lead.email ? "✓ Email received" : "",
+    (lead.name || memory.name) ? "✓ Name received" : "",
+    lead.requirements ? "✓ Project details received" : "",
+  ].filter(Boolean).join("\n");
+
+  const shouldSkipLeadField = (field, lead = {}, contextMemory = memory) => {
+    if (field.key === "phone") return !contactRequiresPhone(lead) && !lead.phone;
+    if (field.key === "name") return Boolean(lead.name || contextMemory.name);
+    if (field.key === "email") return isEmail(lead.email || "");
+    if (field.key === "project_type") return Boolean(lead.project_type || contextMemory.service);
+    return false;
+  };
+
+  const nextLeadIndex = (fromIndex, lead = {}, contextMemory = memory) => {
+    for (let index = fromIndex; index < LEAD_FIELDS.length; index += 1) {
+      if (!shouldSkipLeadField(LEAD_FIELDS[index], lead, contextMemory)) return index;
+    }
+    return -1;
+  };
+
+  const leadQuestion = (field, lead = {}) => {
+    if (field.key === "phone" && lead.preferred_contact_method === "WhatsApp") {
+      return "Great. Please enter the WhatsApp phone number DortX should use.";
+    }
+    return field.question;
+  };
+
   const startLeadFlow = (contextMemory = memory) => {
+    const lead = {
+      ...(contextMemory.lead || {}),
+      name: contextMemory.lead?.name || contextMemory.name || "",
+      email: contextMemory.lead?.email || contextMemory.email || "",
+      phone: contextMemory.lead?.phone || contextMemory.phone || "",
+      project_type: contextMemory.lead?.project_type || contextMemory.service || "",
+      requirements: contextMemory.lead?.requirements || contextMemory.requirements || "",
+      budget: contextMemory.lead?.budget || contextMemory.budget || "",
+      timeline: contextMemory.lead?.timeline || contextMemory.timeline || "",
+    };
+    const firstIndex = nextLeadIndex(0, lead, contextMemory);
     setStage("lead");
-    setLeadIndex(0);
+    setLeadIndex(firstIndex === -1 ? 0 : firstIndex);
+    setMemory((current) => ({ ...current, lead }));
     append({
       role: "assistant",
-      content: `${contextMemory.name ? `${contextMemory.name}, ` : ""}I can collect the key details and connect you with the DortX team.\n\n${LEAD_FIELDS[0].question}`,
+      content: `${contextMemory.name ? `${contextMemory.name}, ` : ""}I can collect the key details and connect you with the DortX team.\n\n${firstIndex === -1 ? "Please confirm your details so I can submit them." : leadQuestion(LEAD_FIELDS[firstIndex], lead)}`,
     });
   };
 
@@ -536,9 +593,9 @@ export default function Chatbot() {
       `Preferred contact: ${lead.preferred_contact_method || "Not provided"}`,
     ].filter(Boolean).join("\n");
 
-    await apiClient.post("/chat/lead", {
+    const response = await apiClient.post("/chat/lead", {
       session_id: sid(),
-      name: memory.name || lead.name || "Website visitor",
+      name: lead.name || memory.name,
       company: lead.company || undefined,
       email: lead.email,
       phone: lead.phone || undefined,
@@ -549,13 +606,41 @@ export default function Chatbot() {
       preferred_contact_method: lead.preferred_contact_method || undefined,
       requirements,
     }, { timeout: 25000 });
+    return response;
   };
 
   const handleLeadAnswer = async (answer) => {
     const field = LEAD_FIELDS[leadIndex];
-    const value = answer.toLowerCase() === "skip" ? "" : answer;
+    const rawValue = String(answer || "").trim();
+    const isSkip = rawValue.toLowerCase() === "skip";
+
+    if (!field) {
+      append({ role: "assistant", content: "I still need a few details before submitting your request." });
+      return;
+    }
+    if (isSkip && field.required) {
+      append({ role: "assistant", content: `${field.label} is required before I can submit your request. ${leadQuestion(field, memory.lead || {})}` });
+      return;
+    }
+
+    let value = isSkip ? "" : rawValue;
+    if (field.key === "preferred_contact_method") {
+      value = normalizeContactMethod(value);
+      if (!value) {
+        append({ role: "assistant", content: "Please choose one contact method: email, phone, or WhatsApp." });
+        return;
+      }
+    }
+    if (field.key === "phone" && !isPhone(value)) {
+      append({ role: "assistant", content: "Please enter a valid phone number with 8 to 15 digits." });
+      return;
+    }
     if (field.key === "email" && !isEmail(value)) {
-      append({ role: "assistant", content: "Please enter a valid email address so the DortX team can reach you." });
+      append({ role: "assistant", content: "Please enter a valid email address so DortX can create your request record." });
+      return;
+    }
+    if (field.key === "name" && value.length < 2) {
+      append({ role: "assistant", content: "Please enter your name before I submit the request." });
       return;
     }
     if (field.key === "requirements" && value.length < 10) {
@@ -563,32 +648,46 @@ export default function Chatbot() {
       return;
     }
 
-    const lead = { ...memory.lead, [field.key]: value };
-    setMemory((current) => ({ ...current, lead }));
+    const lead = {
+      ...(memory.lead || {}),
+      [field.key]: value,
+      name: field.key === "name" ? value : (memory.lead?.name || memory.name || ""),
+      project_type: field.key === "project_type" ? value : (memory.lead?.project_type || memory.service || ""),
+    };
+    setMemory((current) => ({
+      ...current,
+      name: field.key === "name" ? value : current.name,
+      lead,
+    }));
 
-    const nextIndex = leadIndex + 1;
-    if (nextIndex < LEAD_FIELDS.length) {
+    const nextIndex = nextLeadIndex(leadIndex + 1, lead, { ...memory, lead });
+    if (nextIndex !== -1) {
       setLeadIndex(nextIndex);
-      append({ role: "assistant", content: LEAD_FIELDS[nextIndex].question });
+      append({
+        role: "assistant",
+        content: `${leadProgress(lead)}\n\n${leadQuestion(LEAD_FIELDS[nextIndex], lead)}`.trim(),
+      });
       return;
     }
 
     setBusy(true);
     try {
-      await submitLead(lead);
+      append({ role: "assistant", content: `${leadProgress(lead)}\n\nSubmitting your request...` });
+      const response = await submitLead(lead);
+      if (![200, 201].includes(response?.status) || response?.data?.success === false) throw new Error("Lead submission failed");
       setStage("chat");
       setLeadIndex(0);
       append({
         role: "assistant",
         content:
-          "Thank you. I've shared your project details with the DortX team.\n\nThey can follow up using your preferred contact method. Meanwhile, I can still help you refine scope, features, architecture or timeline.",
+          `Thank you${lead.name ? `, ${lead.name}` : ""}! Your request has been successfully submitted to the DortX team. We'll contact you by ${String(lead.preferred_contact_method || "your preferred method").toLowerCase()} as soon as possible.`,
         actions: ["Refine project scope", "What should I prepare?", "Contact Us"],
       });
     } catch {
       append({
         role: "assistant",
         content:
-          "I could not submit the lead right now. Please email **support@dortxtech.com** or call **+91 81509 90329**. I can still help you prepare the project brief here.",
+          "Sorry, I couldn't submit your request due to a temporary issue. Please try again in a few moments or contact us directly at **support@dortxtech.com** or **+91 81509 90329**. I have kept your details here so you do not need to retype them.",
       });
     } finally {
       setBusy(false);

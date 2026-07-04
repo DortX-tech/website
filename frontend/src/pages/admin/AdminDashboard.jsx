@@ -428,7 +428,13 @@ export default function AdminDashboard() {
                     {!busy && safeLeads.map((l, index) => (
                       <tr key={l?.id ?? index} onClick={() => setSelected(l ?? {})} className="hover:bg-white/[0.03] cursor-pointer transition" data-testid={`lead-row-${l?.id ?? index}`}>
                         <td className="px-5 py-3 text-white font-medium">{l?.name || "-"}</td>
-                        <td className="px-5 py-3 text-[#C9D2E0]">{l?.email || "-"}</td>
+                        <td className="px-5 py-3 text-[#C9D2E0]">
+                          {l?.email ? (
+                            <a href={`mailto:${l.email}`} onClick={(event) => event.stopPropagation()} className="hover:text-white hover:underline underline-offset-4 transition">
+                              {l.email}
+                            </a>
+                          ) : "-"}
+                        </td>
                         <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{l?.service || "-"}</td>
                         <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{l?.budget || "-"}</td>
                         <td className="px-5 py-3">
@@ -483,7 +489,13 @@ export default function AdminDashboard() {
                     {!busy && safeApplications.map((a, index) => (
                       <tr key={a?.id ?? index} onClick={() => setSelectedApplication(a ?? {})} className="hover:bg-white/[0.03] cursor-pointer transition">
                         <td className="px-5 py-3 text-white font-medium">{a?.name || "-"}</td>
-                        <td className="px-5 py-3 text-[#C9D2E0]">{a?.email || "-"}</td>
+                        <td className="px-5 py-3 text-[#C9D2E0]">
+                          {a?.email ? (
+                            <a href={`mailto:${a.email}`} onClick={(event) => event.stopPropagation()} className="hover:text-white hover:underline underline-offset-4 transition">
+                              {a.email}
+                            </a>
+                          ) : "-"}
+                        </td>
                         <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{a?.phone || "-"}</td>
                         <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{a?.position || "-"}</td>
                         <td className="px-5 py-3">
@@ -525,7 +537,13 @@ export default function AdminDashboard() {
                     )}
                     {!busy && safeSubscribers.map((s, index) => (
                       <tr key={s?.id ?? index} className="hover:bg-white/[0.03]">
-                        <td className="px-5 py-3 text-white">{s?.email || "-"}</td>
+                        <td className="px-5 py-3 text-white">
+                          {s?.email ? (
+                            <a href={`mailto:${s.email}`} className="hover:text-[#9DB8FF] hover:underline underline-offset-4 transition">
+                              {s.email}
+                            </a>
+                          ) : "-"}
+                        </td>
                         <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{s?.source || "-"}</td>
                         <td className="px-5 py-3 text-[#6B7385] hidden lg:table-cell">{formatDate(s?.created_at)}</td>
                         <td className="px-5 py-3 text-right">
@@ -590,7 +608,7 @@ export default function AdminDashboard() {
               <div>
                 <div className="font-display text-[22px] font-semibold text-white">{selected?.name || "Lead"}</div>
                 {selected?.email ? (
-                  <a href={`mailto:${selected.email}`} className="text-[13.5px] text-[#4D8BFF]">{selected.email}</a>
+                  <a href={`mailto:${selected.email}`} className="text-[13.5px] text-[#4D8BFF] hover:text-white hover:underline underline-offset-4 transition">{selected.email}</a>
                 ) : (
                   <div className="text-[13.5px] text-[#6B7385]">No email provided</div>
                 )}
@@ -632,7 +650,7 @@ export default function AdminDashboard() {
               <div>
                 <div className="font-display text-[22px] font-semibold text-white">{selectedApplication?.name || "Application"}</div>
                 {selectedApplication?.email ? (
-                  <a href={`mailto:${selectedApplication.email}`} className="text-[13.5px] text-[#4D8BFF]">{selectedApplication.email}</a>
+                  <a href={`mailto:${selectedApplication.email}`} className="text-[13.5px] text-[#4D8BFF] hover:text-white hover:underline underline-offset-4 transition">{selectedApplication.email}</a>
                 ) : (
                   <div className="text-[13.5px] text-[#6B7385]">No email provided</div>
                 )}
