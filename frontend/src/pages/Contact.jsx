@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Building2, CheckCircle2, Clock, Instagram, Linkedin, Loader2, Mail, Paperclip, Phone } from "lucide-react";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { CONTACT, WINGS } from "@/data/site";
 import { apiClient } from "@/config/api";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const budgetOptions = ["Not sure yet", "Under INR 50,000", "INR 50,000 - INR 1,50,000", "INR 1,50,000 - INR 5,00,000", "INR 5,00,000+"];
 const timelineOptions = ["Not sure yet", "As soon as possible", "Within 1 month", "1-3 months", "3+ months"];
+const phoneError = "Please enter a valid phone number, including the country code if outside India (e.g. +1 415 555 2671).";
+
+function isValidPhone(input, defaultCountry = "IN") {
+  const phoneNumber = parsePhoneNumberFromString(input, defaultCountry);
+  return phoneNumber ? phoneNumber.isValid() : false;
+}
 
 const formatBackendError = (detail) => {
   if (!detail) return "Could not send your message. Please try again.";
@@ -59,6 +68,7 @@ export default function Contact() {
     } else if (!emailPattern.test(form.email.trim())) {
       next.email = "Enter a valid email address.";
     }
+    if (form.phone && !isValidPhone(form.phone, "IN")) next.phone = phoneError;
     if (!form.description.trim()) next.description = "Message is required.";
     if (form.file && form.file.size > 8 * 1024 * 1024) next.file = "Attachment must be 8MB or smaller.";
     setErrors(next);
@@ -197,7 +207,20 @@ export default function Contact() {
 
                   <div>
                     <label htmlFor="contact-phone" className={label}>Phone <span className="text-[#6B7385]">(Optional)</span></label>
-                    <input id="contact-phone" data-testid="contact-phone" type="tel" autoComplete="tel" placeholder="+91 00000 00000" className={input} value={form.phone} onChange={(event) => setField("phone", event.target.value)} />
+                    <PhoneInput
+                      id="contact-phone"
+                      data-testid="contact-phone"
+                      international
+                      defaultCountry="IN"
+                      countryCallingCodeEditable={false}
+                      placeholder="+91 98765 43210"
+                      className="contact-phone-input"
+                      value={form.phone}
+                      onChange={(value) => setField("phone", value || "")}
+                      aria-invalid={Boolean(errors.phone)}
+                      aria-describedby={errors.phone ? "contact-phone-error" : undefined}
+                    />
+                    {errors.phone && <p id="contact-phone-error" className={errorText}>{errors.phone}</p>}
                   </div>
 
                   <div>

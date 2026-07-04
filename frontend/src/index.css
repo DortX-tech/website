@@ -439,6 +439,53 @@ select:-moz-autofill {
   box-shadow: 0 0 0 2px rgba(30, 107, 255, 0.2);
 }
 
+.contact-phone-input {
+  --PhoneInputCountryFlag-height: 1.05rem;
+  --PhoneInputCountrySelectArrow-color: var(--dx-text-muted);
+  --PhoneInputCountrySelectArrow-opacity: 1;
+  --PhoneInput-color--focus: var(--dx-blue-light);
+  width: 100%;
+  min-height: 48px;
+  background-color: var(--dx-input-bg);
+  border: 1px solid var(--dx-border);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--dx-text);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.contact-phone-input:focus-within {
+  border-color: var(--dx-blue-light);
+  box-shadow: 0 0 0 2px rgba(30, 107, 255, 0.2);
+}
+
+.contact-phone-input .PhoneInputCountry {
+  margin-right: 0.75rem;
+}
+
+.contact-phone-input .PhoneInputInput {
+  min-height: 24px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--dx-text);
+  -webkit-text-fill-color: var(--dx-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+@media (min-width: 640px) {
+  .contact-phone-input .PhoneInputInput {
+    font-size: 14.5px;
+  }
+}
+
+.contact-phone-input .PhoneInputInput::placeholder {
+  color: var(--dx-text-faint);
+  -webkit-text-fill-color: var(--dx-text-faint);
+}
+
 .contact-field:-webkit-autofill,
 .contact-field:-webkit-autofill:hover,
 .contact-field:-webkit-autofill:focus,

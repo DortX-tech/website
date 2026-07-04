@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Copy, MessageCircle, RotateCcw, Send, Sparkles, X } from "lucide-react";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Logo from "./Logo";
 import { API_URL, apiClient } from "@/config/api";
 
@@ -151,9 +152,13 @@ const normalizeContactMethod = (value) => {
   return "";
 };
 
+function isValidPhone(input, defaultCountry = "IN") {
+  const phoneNumber = parsePhoneNumberFromString(input, defaultCountry);
+  return phoneNumber ? phoneNumber.isValid() : false;
+}
+
 const isPhone = (value) => {
-  const digits = String(value || "").replace(/\D/g, "");
-  return digits.length >= 8 && digits.length <= 15;
+  return isValidPhone(value, "IN");
 };
 
 const contactRequiresPhone = (lead = {}) => ["Phone", "WhatsApp"].includes(lead.preferred_contact_method);
@@ -632,7 +637,7 @@ export default function Chatbot() {
       }
     }
     if (field.key === "phone" && !isPhone(value)) {
-      append({ role: "assistant", content: "Please enter a valid phone number with 8 to 15 digits." });
+      append({ role: "assistant", content: "Please enter a valid phone number, including the country code if outside India (e.g. +1 415 555 2671)." });
       return;
     }
     if (field.key === "email" && !isEmail(value)) {
