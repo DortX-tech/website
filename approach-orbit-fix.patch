@@ -1,0 +1,58 @@
+diff --git a/frontend/src/pages/Home.jsx b/frontend/src/pages/Home.jsx
+index bf925f8..6aeeb57 100644
+--- a/frontend/src/pages/Home.jsx
++++ b/frontend/src/pages/Home.jsx
+@@ -278,22 +278,22 @@ function Approach() {
+           Most agencies separate engineering, design, AI, growth, industrial automation and security into different silos. We don't. They reinforce each other - so we run them as one practice, on one project, with one team.
+         </p>
+ 
+-        <div className="mt-6 relative h-[260px] sm:h-[320px]">
+-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 320" preserveAspectRatio="xMidYMid meet">
++        <div className="mt-6 relative mx-auto aspect-square w-full max-w-[360px] sm:max-w-[440px] lg:max-w-[480px]">
++          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
+             <defs>
+               <radialGradient id="cg" cx="50%" cy="50%" r="50%">
+                 <stop offset="0%" stopColor="#1E6BFF" stopOpacity="0.5"/>
+                 <stop offset="100%" stopColor="#1E6BFF" stopOpacity="0"/>
+               </radialGradient>
+             </defs>
+-            <circle cx="400" cy="160" r="120" fill="url(#cg)"/>
++            <circle cx="200" cy="200" r="150" fill="url(#cg)"/>
+             {WINGS.map((_, i) => {
+               const a = (i / WINGS.length) * Math.PI * 2 - Math.PI / 2;
+-              const x = 400 + Math.cos(a) * 120;
+-              const y = 160 + Math.sin(a) * 120;
++              const x = 200 + Math.cos(a) * 150;
++              const y = 200 + Math.sin(a) * 150;
+               return (
+                 <g key={i}>
+-                  <line x1="400" y1="160" x2={x} y2={y} stroke="#1E6BFF" strokeOpacity="0.25" strokeDasharray="3 3"/>
++                  <line x1="200" y1="200" x2={x} y2={y} stroke="#1E6BFF" strokeOpacity="0.25" strokeDasharray="3 3"/>
+                 </g>
+               );
+             })}
+@@ -309,18 +309,19 @@ function Approach() {
+                 transition={{ delay: 0.1 + i * 0.1, duration: 0.5 }}
+                 className="absolute"
+                 style={{
+-                  left: `calc(50% + ${Math.cos((a * Math.PI) / 180) * 38}% - 50px)`,
+-                  top: `calc(50% + ${Math.sin((a * Math.PI) / 180) * 38}% - 26px)`,
++                  left: `${50 + Math.cos((a * Math.PI) / 180) * 37.5}%`,
++                  top: `${50 + Math.sin((a * Math.PI) / 180) * 37.5}%`,
++                  transform: "translate(-50%, -50%)",
+                 }}
+               >
+-                <div className="px-4 py-2.5 rounded-full glass text-[12.5px] text-white whitespace-nowrap">
++                <div className="px-3 py-2 sm:px-4 sm:py-2.5 rounded-full glass text-[11px] sm:text-[12.5px] text-white whitespace-nowrap">
+                   {w.name.split(" & ")[0]}
+                 </div>
+               </motion.div>
+             );
+           })}
+-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-2xl gradient-blue flex items-center justify-center shadow-[0_0_60px_-10px_rgba(30,107,255,0.8)]">
+-            <Sparkles className="text-white" size={20}/>
++          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl gradient-blue flex items-center justify-center shadow-[0_0_60px_-10px_rgba(30,107,255,0.8)]">
++            <Sparkles className="text-white" size={18}/>
+           </div>
+         </div>
+       </div>
