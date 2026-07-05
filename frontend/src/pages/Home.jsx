@@ -336,109 +336,79 @@ function Approach() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="relative py-14">
-      <div className="absolute inset-0 hair-diag opacity-40"/>
-      <div className="relative max-w-6xl mx-auto px-6 lg:px-8 text-center">
-        <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-6">— Our approach</div>
-        <h2 className="font-display section-heading font-medium max-w-4xl mx-auto">
-          One small team. <span className="text-[#4D8BFF]">Six disciplines.</span> <br className="hidden sm:block"/>
-          Working as a single system.
-        </h2>
-        <p className="mt-5 text-[15.5px] text-[#9AA3B8] max-w-2xl mx-auto leading-relaxed">
-          Most agencies separate engineering, design, AI, growth, industrial automation and security into different silos. We don't. They reinforce each other - so we run them as one practice, on one project, with one team.
-        </p>
+    <section className="relative py-14 lg:py-16 overflow-hidden">
+      <div className="absolute inset-0 hair-diag opacity-35"/>
+      <div className="absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1E6BFF]/10 blur-[90px]"/>
+      <motion.div
+        variants={staggerGroup}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.25 }}
+        className="relative max-w-7xl mx-auto px-6 lg:px-8"
+      >
+        <div className="text-center max-w-4xl mx-auto">
+          <motion.div variants={fadeUp} transition={{ duration: 0.55, ease: MOTION_EASE }} className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-6">— Our approach</motion.div>
+          <motion.h2 variants={fadeUp} transition={{ duration: 0.65, ease: MOTION_EASE }} className="font-display section-heading font-medium">
+            One small team. <span className="text-[#4D8BFF]">Six disciplines.</span> <br className="hidden sm:block"/>
+            Working as a single system.
+          </motion.h2>
+          <motion.p variants={fadeUp} transition={{ duration: 0.65, ease: MOTION_EASE }} className="mt-5 text-[15.5px] text-[#9AA3B8] max-w-2xl mx-auto leading-relaxed">
+            Most agencies separate engineering, design, AI, growth, industrial automation and security into different silos. We don't. They reinforce each other - so we run them as one practice, on one project, with one team.
+          </motion.p>
+        </div>
 
-        <div className="mt-8 relative mx-auto aspect-square w-full max-w-[320px] min-[390px]:max-w-[350px] sm:max-w-[440px] lg:max-w-[480px]">
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <radialGradient id="cg" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#1E6BFF" stopOpacity="0.5"/>
-                <stop offset="100%" stopColor="#1E6BFF" stopOpacity="0"/>
-              </radialGradient>
-            </defs>
-            <motion.circle
-              cx="200"
-              cy="200"
-              r="150"
-              fill="url(#cg)"
-              animate={reduceMotion ? {} : { rotate: 360 }}
-              transition={{ duration: 34, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: "200px 200px" }}
-            />
-            <motion.circle
-              cx="200"
-              cy="200"
-              r="154"
-              fill="none"
-              stroke="#4D8BFF"
-              strokeOpacity="0.16"
-              strokeDasharray="7 13"
-              animate={reduceMotion ? {} : { rotate: -360 }}
-              transition={{ duration: 46, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: "200px 200px" }}
-            />
-            {WINGS.map((_, i) => {
-              const a = (i / WINGS.length) * Math.PI * 2 - Math.PI / 2;
-              const x = 200 + Math.cos(a) * 150;
-              const y = 200 + Math.sin(a) * 150;
+        <motion.div variants={fadeUp} transition={{ duration: 0.7, ease: MOTION_EASE }} className="relative mt-9">
+          <div className="absolute left-4 right-4 top-12 hidden lg:block h-px bg-[#1E6BFF]/18"/>
+          <motion.div
+            className="absolute left-4 right-4 top-12 hidden lg:block h-px origin-left bg-gradient-to-r from-transparent via-[#4D8BFF] to-transparent"
+            initial={reduceMotion ? false : { scaleX: 0, opacity: 0 }}
+            whileInView={reduceMotion ? {} : { scaleX: 1, opacity: 1 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 1.1, ease: MOTION_EASE }}
+          />
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4">
+            {WINGS.map((w, i) => {
+              const Icon = WingIcons[w.icon] || Sparkles;
               return (
-                <g key={i}>
-                  <motion.line
-                    x1="200"
-                    y1="200"
-                    x2={x}
-                    y2={y}
-                    stroke="#4D8BFF"
-                    strokeOpacity="0.48"
-                    strokeDasharray="5 7"
-                    initial={reduceMotion ? false : { pathLength: 0, opacity: 0 }}
-                    whileInView={reduceMotion ? {} : { pathLength: 1, opacity: 1 }}
-                    viewport={{ once: true, amount: 0.6 }}
-                    transition={{ duration: 0.9, delay: 0.12 + i * 0.09, ease: MOTION_EASE }}
-                  />
-                </g>
+                <motion.div
+                  key={w.id}
+                  variants={fadeUp}
+                  whileHover={{ y: -8, scale: 1.015 }}
+                  whileTap={{ scale: 0.985 }}
+                  transition={{ duration: 0.32, delay: i * 0.035 }}
+                  className="premium-card min-h-[178px] p-4 sm:p-5 text-left"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="w-11 h-11 rounded-2xl border border-[#1E6BFF]/25 bg-[#1E6BFF]/12 flex items-center justify-center text-[#4D8BFF] shadow-[0_0_28px_-16px_rgba(77,139,255,0.9)]">
+                      <Icon size={19}/>
+                    </div>
+                    <span className="font-display text-[12px] text-[#3B4660]">{w.number}</span>
+                  </div>
+                  <h3 className="font-display mt-5 text-[15.5px] font-semibold leading-tight text-white">{w.name}</h3>
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-[#8892A6]">{w.short}</p>
+                </motion.div>
               );
             })}
-          </svg>
-          {WINGS.map((w, i) => {
-            const a = (i / WINGS.length) * 360 - 90;
-            return (
-              <div
-                key={i}
-                className="absolute"
-                style={{
-                  left: `${50 + Math.cos((a * Math.PI) / 180) * 37.5}%`,
-                  top: `${50 + Math.sin((a * Math.PI) / 180) * 37.5}%`,
-                  transform: "translate(-50%, -50%)",
-                }}
-              >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  animate={reduceMotion ? {} : { y: [0, -5 - (i % 3), 0] }}
-                  viewport={{ once: true }}
-                  transition={{
-                    opacity: { delay: 0.1 + i * 0.1, duration: 0.5, ease: MOTION_EASE },
-                    scale: { delay: 0.1 + i * 0.1, duration: 0.5, ease: MOTION_EASE },
-                    y: { duration: 4.8 + i * 0.35, delay: i * 0.4, repeat: Infinity, ease: "easeInOut" },
-                  }}
-                >
-                  <div className="min-w-[104px] min-[390px]:min-w-[112px] sm:min-w-[138px] px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-full glass text-[10px] min-[390px]:text-[10.5px] sm:text-[12px] text-white text-center leading-tight whitespace-normal sm:whitespace-nowrap">
-                    {w.name.split(" & ")[0]}
-                  </div>
-                </motion.div>
-              </div>
-            );
-          })}
+          </div>
+
           <motion.div
-            animate={reduceMotion ? {} : { scale: [1, 1.08, 1] }}
-            transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl gradient-blue flex items-center justify-center shadow-[0_0_60px_-10px_rgba(30,107,255,0.8)]"
+            animate={reduceMotion ? {} : { opacity: [0.7, 1, 0.7], scale: [1, 1.03, 1] }}
+            transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }}
+            className="premium-shell mt-4 sm:mt-5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 text-left"
           >
-            <Sparkles className="text-white" size={18}/>
+            <div className="w-11 h-11 rounded-2xl gradient-blue flex items-center justify-center shrink-0 shadow-[0_0_44px_-16px_rgba(30,107,255,0.9)]">
+              <Sparkles className="text-white" size={18}/>
+            </div>
+            <div>
+              <div className="font-display text-white text-[16px] font-semibold">A connected delivery system, not a vendor menu.</div>
+              <p className="mt-1 text-[13.5px] text-[#9AA3B8] leading-relaxed max-w-3xl">
+                Product, AI, data, growth, IoT and continuity share context from day one, so decisions compound instead of drifting into separate silos.
+              </p>
+            </div>
           </motion.div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }

@@ -21,6 +21,9 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminErrorBoundary from "@/pages/admin/AdminErrorBoundary";
 import NotFound from "@/pages/NotFound";
 
+const BUILD_ID = process.env.REACT_APP_BUILD_ID || "development";
+const BUILD_TIME = process.env.REACT_APP_BUILD_TIME || "";
+
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
 
@@ -41,7 +44,12 @@ function ScrollToTop() {
 
 function PublicLayout({ children }) {
   return (
-    <div className="min-h-screen noise relative theme-surface">
+    <div
+      className="min-h-screen noise relative theme-surface"
+      data-build-id={BUILD_ID}
+      data-build-time={BUILD_TIME}
+      title={`DortX build ${BUILD_ID}`}
+    >
       <Navbar />
       <main className="relative z-[2]">{children}</main>
       <Footer />
@@ -57,6 +65,10 @@ function RequireAdmin({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    console.log(`DortX build: ${BUILD_ID}${BUILD_TIME ? ` (${BUILD_TIME})` : ""}`);
+  }, []);
+
   return (
     <BrowserRouter>
       <ScrollToTop />
