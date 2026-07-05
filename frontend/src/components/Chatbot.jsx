@@ -52,7 +52,7 @@ const initialAssistantMessage = {
   id: "initial-assistant",
   role: "assistant",
   content:
-    "Hi! Welcome to DortX. I'm the DortX AI Assistant.\n\nYou can ask me about the company, team, services, technologies, process, careers, policies, or how DortX can help with a project. If you want a quote or consultation, I can collect the details and connect you with the team.",
+    "👋 Hello! Welcome to **DortX Technologies**.\n\nI'm the **DortX AI Assistant**, and I'm here to help you learn about our company, services, projects, technologies, or answer any questions you may have.\n\nBefore we begin, what should I call you?",
   createdAt: new Date().toISOString(),
   status: "received",
 };
@@ -75,7 +75,10 @@ const makeMessage = (role, content, extra = {}) => ({
 const normalizeMessages = (items) => (Array.isArray(items) && items.length ? items : [freshInitialAssistantMessage()]).map((message, index) => ({
   ...message,
   id: message.id || `${message.role || "message"}-${index}-${Date.now()}`,
-  content: index === 0 && message.role === "assistant" && String(message.content || "").includes("What is your name?")
+  content: index === 0 && message.role === "assistant" && (
+    String(message.content || "").includes("What is your name?") ||
+    String(message.content || "").includes("You can ask me about the company")
+  )
     ? initialAssistantMessage.content
     : message.content,
   createdAt: message.createdAt || new Date().toISOString(),
@@ -139,7 +142,27 @@ const saveJson = (key, value) => {
 
 const loadChatStage = () => {
   const saved = localStorage.getItem("dortx-chat-stage");
-  return saved === "lead" ? "lead" : "chat";
+  const savedMemory = loadJson("dortx-chat-memory", { name: "" });
+  if (saved === "lead") return "lead";
+  if (savedMemory?.name) return "chat";
+  return "name";
+};
+
+const looksLikeName = (value) => {
+  const text = String(value || "").trim();
+  if (!text || text.length > 60) return false;
+  if (/[?@:/\\]|\d/.test(text)) return false;
+  const lowered = text.toLowerCase();
+  if (looksLikeConsultingRequest(text) || isBuyingIntent(text)) return false;
+  if (["hi", "hello", "hey", "help", "services", "pricing", "contact"].includes(lowered)) return false;
+  return /^[a-zA-Z][a-zA-Z.' -]{1,59}$/.test(text);
+};
+
+const withVisitorName = (reply, name) => {
+  const visitor = String(name || "").trim();
+  if (!visitor || !reply) return reply;
+  if (/^(hi|hello|nice to meet you|thanks|absolutely|that's)/i.test(reply)) return reply;
+  return `Absolutely, ${visitor}.\n\n${reply}`;
 };
 
 const isBuyingIntent = (text) => {
@@ -727,6 +750,28 @@ export default function Chatbot() {
     };
     if (Object.keys(memoryPatch).length > 0) setMemory(effectiveMemory);
 
+    if (stage === "name") {
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
+      if (looksLikeName(msg)) {
+        const name = msg.split(/\s+/).slice(0, 4).join(" ");
+        const namedMemory = { ...effectiveMemory, name, lead: { ...(effectiveMemory.lead || {}), name } };
+        setMemory(namedMemory);
+        setStage("chat");
+        append({
+          role: "assistant",
+          content: `Nice to meet you, ${name}! 😊\n\nHow can I help you today?`,
+        });
+        return;
+      }
+
+      const localReply = getCompanyAssistantReply(msg);
+      append({
+        role: "assistant",
+        content: `${localReply || "I can help with that."}\n\nBefore we continue, what should I call you?`,
+      });
+      return;
+    }
+
     if (stage !== "lead" && isBuyingIntent(msg)) {
       patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
       startLeadFlow(effectiveMemory);
@@ -740,27 +785,10 @@ export default function Chatbot() {
         setStage("chat");
         append({
           role: "assistant",
-          content: localReply,
-          actions: QUICK_ACTIONS,
+          content: withVisitorName(localReply, effectiveMemory.name),
         });
         return;
       }
-    }
-
-    if (stage === "name") {
-      if (looksLikeConsultingRequest(msg)) {
-        setStage("chat");
-        setBusy(true);
-        await assistantReply(msg, effectiveMemory, userMessage.id);
-        setBusy(false);
-        return;
-      }
-      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
-      const name = msg.split(/\s+/).slice(0, 4).join(" ");
-      setMemory((current) => ({ ...current, name }));
-      setStage("service");
-      askService(name);
-      return;
     }
 
     if (stage === "service") {
@@ -824,7 +852,7 @@ export default function Chatbot() {
     localStorage.setItem("dortx-chat-sid", nextSession);
     localStorage.removeItem("dortx-chat-messages");
     localStorage.removeItem("dortx-chat-memory");
-    localStorage.setItem("dortx-chat-stage", "chat");
+    localStorage.setItem("dortx-chat-stage", "name");
     localStorage.setItem("dortx-chat-lead-index", "0");
 
     abortRef.current?.abort();
@@ -832,7 +860,7 @@ export default function Chatbot() {
     autoScrollRef.current = true;
     setMessages([freshInitialAssistantMessage()]);
     setMemory({ name: "", service: "", lead: {} });
-    setStage("chat");
+    setStage("name");
     setLeadIndex(0);
     setInput("");
     setCopied(null);
@@ -1003,22 +1031,6 @@ export default function Chatbot() {
                 </button>
               )}
             </div>
-
-            {stage === "chat" && (
-              <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-                {QUICK_ACTIONS.slice(0, 6).map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    data-testid={`chat-suggestion-${suggestion.slice(0, 10)}`}
-                    onClick={() => onAction(suggestion)}
-                    disabled={busy}
-                    className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#C9D2E0] border border-white/8 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
 
             <form
               onSubmit={(event) => { event.preventDefault(); send(); }}

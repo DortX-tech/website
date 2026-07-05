@@ -1,4 +1,4 @@
-import { CONTACT, FAQS, MISSION, PROCESS_STEPS, TEAM, TECH_GROUPS, VALUES, VISION, WINGS } from "./site";
+import { CONTACT, FAQS, INDUSTRIES, MISSION, PROCESS_STEPS, TEAM, TECH_GROUPS, VALUES, VISION, WINGS } from "./site";
 
 const OFFICIAL_LAUNCH_ANSWER =
   "DortX Technologies officially launched on 7 July 2026. The company was founded with the vision of helping businesses solve real-world challenges through high-quality software development, automation, AI-driven solutions, IoT, and digital transformation.";
@@ -49,6 +49,7 @@ export const COMPANY_KNOWLEDGE = {
   faqs: FAQS,
   technologies: TECH_GROUPS,
   process: PROCESS_STEPS,
+  industries: INDUSTRIES,
 };
 
 const teamSummary = () => TEAM.map((member) => `- **${member.name}**: ${member.role}`).join("\n");
@@ -61,6 +62,8 @@ const servicesSummary = () => WINGS.map((wing) => {
 const technologiesSummary = () => TECH_GROUPS.map((group) => `- **${group.group}**: ${group.items.join(", ")}`).join("\n");
 
 const processSummary = () => PROCESS_STEPS.map((step) => `${step.num}. ${step.title}`).join("\n");
+
+const industriesSummary = () => list(INDUSTRIES.map((industry) => industry.name));
 
 const faqReply = (text) => {
   const match = FAQS.find((faq) => {
@@ -148,6 +151,10 @@ export function getCompanyAssistantReply(message) {
 
   if (includesAny(text, ["technology", "tech stack", "tools", "stack"])) {
     return `DortX uses a practical modern technology stack:\n\n${technologiesSummary()}`;
+  }
+
+  if (includesAny(text, ["industries", "industry", "sectors", "serve", "clients"])) {
+    return `DortX can work across industries where software, automation, AI, data or connected systems can improve operations. Key sectors include ${industriesSummary()}.`;
   }
 
   if (includesAny(text, ["process", "how do you work", "project steps", "engagement"])) {
