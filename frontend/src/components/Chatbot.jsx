@@ -52,7 +52,7 @@ const initialAssistantMessage = {
   id: "initial-assistant",
   role: "assistant",
   content:
-    "👋 **Hi! Welcome to DortX.**\n\nI'm the **DortX AI Assistant**. I'm here to help answer your questions about our company, services, or anything you'd like to know.\n\n**Before we get started, what should I call you?**",
+    "👋 Hi! Welcome to DortX.\n\nI'm the DortX AI Assistant. I'm here to answer your questions about our company, services, projects, technologies, or anything else you'd like to know.\n\nBefore we get started, what should I call you?",
   createdAt: new Date().toISOString(),
   status: "received",
 };
@@ -72,13 +72,21 @@ const makeMessage = (role, content, extra = {}) => ({
   ...extra,
 });
 
+const isStaleInitialGreeting = (content) => {
+  const text = String(content || "").toLowerCase();
+  return (
+    text.includes("what is your name?") ||
+    text.includes("you can ask me about the company") ||
+    (text.includes("welcome to dortx") && text.includes("technologies")) ||
+    (text.includes("hi! welcome to dortx.") && text.includes("**")) ||
+    text.includes("i'm the **dortx ai assistant**")
+  );
+};
+
 const normalizeMessages = (items) => (Array.isArray(items) && items.length ? items : [freshInitialAssistantMessage()]).map((message, index) => ({
   ...message,
   id: message.id || `${message.role || "message"}-${index}-${Date.now()}`,
-  content: index === 0 && message.role === "assistant" && (
-    String(message.content || "").includes("What is your name?") ||
-    String(message.content || "").includes("You can ask me about the company")
-  )
+  content: index === 0 && message.role === "assistant" && isStaleInitialGreeting(message.content)
     ? initialAssistantMessage.content
     : message.content,
   createdAt: message.createdAt || new Date().toISOString(),
