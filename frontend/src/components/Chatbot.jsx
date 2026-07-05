@@ -52,7 +52,7 @@ const initialAssistantMessage = {
   id: "initial-assistant",
   role: "assistant",
   content:
-    "👋 Hello! Welcome to **DortX Technologies**.\n\nI'm the **DortX AI Assistant**, and I'm here to help you learn about our company, services, projects, technologies, or answer any questions you may have.\n\nBefore we begin, what should I call you?",
+    "👋 **Hi! Welcome to DortX.**\n\nI'm the **DortX AI Assistant**. I'm here to help answer your questions about our company, services, or anything you'd like to know.\n\n**Before we get started, what should I call you?**",
   createdAt: new Date().toISOString(),
   status: "received",
 };
