@@ -76,13 +76,10 @@ function Philosophy() {
 }
 
 /* —————————————————— Initials / photo avatar —————————————————— */
-function Avatar({ name, photo, size = 120, big = false, flush = false, member = false }) {
+function Avatar({ name, photo, size = 120, big = false }) {
   const initials = name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
   return (
-    <div
-      className={`relative overflow-hidden ${flush ? "" : "rounded-2xl border border-white/10"}`}
-      style={{ width: "100%", aspectRatio: big ? "1 / 1.05" : member ? "1 / 1" : "1 / 0.82" }}
-    >
+    <div className="relative rounded-2xl overflow-hidden border border-white/10" style={{ width: "100%", aspectRatio: big ? "1 / 1.05" : "1 / 1" }}>
       {/* Always render the gradient + glow as a background so transparent / loading
           photos still feel premium. */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0F1830] via-[#0A0F1C] to-[#16204A]"/>
@@ -197,23 +194,23 @@ function MemberCard({ member, index }) {
       }}
       whileHover={{ y: -6 }}
       whileTap={{ scale: 0.985 }}
-      className="spotlight premium-card relative group rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden h-full min-h-[390px] flex flex-col"
+      className="spotlight premium-card relative group rounded-2xl border border-white/8 bg-white/[0.02] p-5 overflow-hidden h-full flex flex-col"
       data-testid={`team-card-${member.name.toLowerCase()}`}
     >
       {/* subtle floating gradient */}
       <div className="absolute -top-16 -right-12 w-44 h-44 rounded-full bg-[#1E6BFF]/10 blur-3xl pointer-events-none group-hover:bg-[#1E6BFF]/20 transition-all duration-500"/>
 
-      <div className="relative p-3 pb-0">
-        <Avatar name={member.name} photo={fullPhoto(member.photo)} flush member />
+      <div className="relative">
+        <Avatar name={member.name} photo={fullPhoto(member.photo)} />
       </div>
 
-      <div className="relative mt-3 flex flex-1 flex-col px-3 pb-4">
-        <div className="font-display text-[16.5px] font-semibold text-white">{member.name}</div>
-        <div className="text-[11px] tracking-[0.14em] uppercase text-[#4D8BFF] mt-1">{member.role}</div>
-        <p className="mt-2.5 text-[13px] text-[#9AA3B8] leading-relaxed">{member.bio}</p>
+      <div className="relative mt-5 flex flex-1 flex-col">
+        <div className="font-display text-[18px] font-semibold text-white">{member.name}</div>
+        <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF] mt-1.5">{member.role}</div>
+        <p className="mt-3 text-[13.5px] text-[#9AA3B8] leading-relaxed">{member.bio}</p>
 
         {/* Expertise pill */}
-        <div className="mt-4 inline-flex w-fit items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/4 border border-white/8 text-[11px] text-[#C9D2E0]">
+        <div className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/4 border border-white/8 text-[11px] text-[#C9D2E0]">
           <Sparkles size={10} className="text-[#4D8BFF]"/> {member.expertise}
         </div>
 
@@ -276,7 +273,7 @@ function TheTeam({ team }) {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-x-3 lg:gap-y-4 items-stretch max-w-[720px] mx-auto">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch">
           {others.map((m, i) => <MemberCard key={m.id || m.name} member={m} index={i}/>)}
         </div>
       </div>
