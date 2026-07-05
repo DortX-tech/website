@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Building2, Clock, Instagram, Linkedin, Mail, Paperclip, Phone } from "lucide-react";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
@@ -185,7 +186,16 @@ export default function Contact() {
 
       <section className="pb-10 sm:pb-14">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-              <form onSubmit={submit} data-testid="contact-form" className="glass rounded-2xl p-4 min-[390px]:p-5 sm:p-5 lg:p-6 space-y-4" noValidate>
+              <motion.form
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
+                onSubmit={submit}
+                data-testid="contact-form"
+                className="premium-shell rounded-2xl p-4 min-[390px]:p-5 sm:p-5 lg:p-6 space-y-4"
+                noValidate
+              >
                 <div>
                   <div className="inline-flex items-center gap-2 text-[11.5px] tracking-[0.16em] uppercase text-[#4D8BFF]">
                     <Building2 size={14} /> Project enquiry
@@ -310,7 +320,7 @@ export default function Contact() {
                 <button data-testid="contact-submit" className="btn-primary w-full justify-center">
                   Send message
                 </button>
-              </form>
+              </motion.form>
         </div>
       </section>
 
@@ -327,10 +337,19 @@ export default function Contact() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {contactCards.map((card) => {
+            {contactCards.map((card, index) => {
               const Icon = card.icon;
               return (
-                <div key={card.title} className="glass rounded-2xl p-5 transition hover:-translate-y-1 hover:border-[#1E6BFF]/40">
+                <motion.div
+                  key={card.title}
+                  initial={{ opacity: 0, y: 18 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ delay: index * 0.05, duration: 0.45 }}
+                  whileHover={{ y: -6 }}
+                  whileTap={{ scale: 0.985 }}
+                  className="premium-card rounded-2xl p-5"
+                >
                   <div className="w-10 h-10 rounded-xl bg-[#1E6BFF]/15 border border-[#1E6BFF]/25 flex items-center justify-center text-[#4D8BFF]">
                     <Icon size={18} />
                   </div>
@@ -358,7 +377,7 @@ export default function Contact() {
                       </div>
                     ))
                   )}
-                </div>
+                </motion.div>
               );
             })}
           </div>

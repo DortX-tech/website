@@ -55,7 +55,7 @@ export default function Careers() {
           <SectionHeader eyebrow="Culture" title="Why people stay." />
           <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {CULTURE.map((c, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} className="card-glow p-5">
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -6 }} whileTap={{ scale: 0.985 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} className="premium-card p-5">
                 <c.i className="text-[#4D8BFF] mb-4" size={22}/>
                 <div className="font-display text-white font-semibold text-[15px]">{c.t}</div>
                 <p className="mt-2 text-[13.5px] text-[#9AA3B8] leading-relaxed">{c.d}</p>
@@ -67,7 +67,7 @@ export default function Careers() {
 
       <section className="pb-14">
         <div className="max-w-3xl mx-auto px-6 lg:px-8">
-          <div className="glass rounded-2xl p-5 sm:p-5 mb-5 border border-white/8">
+          <div className="premium-shell rounded-2xl p-5 sm:p-5 mb-5 border border-white/8">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-[#1E6BFF]/15 border border-[#1E6BFF]/25 flex items-center justify-center shrink-0">
                 <Briefcase size={18} className="text-[#4D8BFF]"/>
@@ -90,7 +90,7 @@ export default function Careers() {
               <p className="mt-3 text-[15px] text-[#9AA3B8]">Thanks for reaching out. We read every application and will contact you if there is a strong fit.</p>
             </motion.div>
           ) : (
-            <form onSubmit={submit} data-testid="careers-form" className="glass rounded-2xl p-5 sm:p-5 space-y-3.5 border border-white/8">
+            <form onSubmit={submit} data-testid="careers-form" className="premium-shell rounded-2xl p-5 sm:p-5 space-y-3.5 border border-white/8">
               <div className="grid sm:grid-cols-2 gap-3.5">
                 <div>
                   <label htmlFor="career-name" className={label}>Full Name *</label>

@@ -52,7 +52,7 @@ function Story() {
             </p>
           </div>
           <div className="lg:col-span-5">
-            <div className="sticky top-32 glass rounded-2xl p-5">
+            <div className="sticky top-32 premium-shell rounded-2xl p-5">
               <Quote className="text-[#4D8BFF] mb-4" size={22}/>
               <p className="font-display text-[18px] text-white leading-[1.5]">
                 "We don't sell technology. We solve business problems using intelligent technology."
@@ -82,7 +82,9 @@ function MissionVision() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="bg-[#070B17] p-5 lg:p-8"
+            whileHover={{ y: -6 }}
+            whileTap={{ scale: 0.985 }}
+            className="premium-card bg-[#070B17] p-5 lg:p-8"
           >
             <div className="text-[11.5px] tracking-[0.22em] uppercase text-[#4D8BFF] mb-6">— {b.label}</div>
             <p className="font-display text-[22px] sm:text-[28px] leading-[1.25] font-medium text-white">{b.body}</p>
@@ -119,7 +121,9 @@ function Beliefs() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, amount: 0.6 }}
               transition={{ delay: i * 0.06, duration: 0.45 }}
-              className="grid lg:grid-cols-12 gap-5 py-7 group hover:bg-white/[0.02] px-4 -mx-4 rounded-2xl transition"
+              whileHover={{ y: -4 }}
+              whileTap={{ scale: 0.99 }}
+              className="premium-card grid lg:grid-cols-12 gap-5 py-7 group px-4 -mx-4 rounded-2xl transition"
             >
               <div className="lg:col-span-1 font-display text-[#3B4660] text-[18px]">0{i + 1}</div>
               <div className="lg:col-span-4 font-display text-white text-[18px] font-semibold">{x.t}</div>
@@ -155,7 +159,9 @@ function ValuesGrid() {
                 e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
                 e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
               }}
-              className="spotlight rounded-2xl border border-white/8 bg-white/[0.02] p-5"
+              whileHover={{ y: -6 }}
+              whileTap={{ scale: 0.985 }}
+              className="spotlight premium-card rounded-2xl border border-white/8 bg-white/[0.02] p-5"
             >
               <div className="text-[10.5px] uppercase tracking-[0.16em] text-[#6B7385]">0{i + 1}</div>
               <div className="mt-3 font-display text-white text-[18px] font-semibold">{v.t}</div>

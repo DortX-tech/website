@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useScroll, useTransform, useSpring, useInView, useReducedMotion, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform, useInView, useReducedMotion, AnimatePresence } from "framer-motion";
 import * as Lucide from "lucide-react";
 import { ArrowUpRight, ArrowRight, Sparkles, Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck, Plus, Quote } from "lucide-react";
 import MagneticButton from "@/components/MagneticButton";
@@ -418,9 +418,11 @@ function Approach() {
                 style={{
                   left: `${50 + Math.cos((a * Math.PI) / 180) * 37.5}%`,
                   top: `${50 + Math.sin((a * Math.PI) / 180) * 37.5}%`,
+                  x: "-50%",
+                  y: "-50%",
                 }}
               >
-                <div className="-translate-x-1/2 -translate-y-1/2 min-w-[104px] min-[390px]:min-w-[112px] sm:min-w-[138px] px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-full glass text-[10px] min-[390px]:text-[10.5px] sm:text-[12px] text-white text-center leading-tight whitespace-normal sm:whitespace-nowrap">
+                <div className="min-w-[104px] min-[390px]:min-w-[112px] sm:min-w-[138px] px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-full glass text-[10px] min-[390px]:text-[10.5px] sm:text-[12px] text-white text-center leading-tight whitespace-normal sm:whitespace-nowrap">
                   {w.name.split(" & ")[0]}
                 </div>
               </motion.div>
@@ -530,7 +532,7 @@ function Wings() {
 function ProcessTimeline() {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 70%", "end 30%"] });
-  const lineH = useSpring(useTransform(scrollYProgress, [0, 1], ["0%", "100%"]), { stiffness: 60, damping: 18 });
+  const lineH = useTransform(scrollYProgress, [0, 1], ["0%", "100%"], { clamp: true });
 
   return (
     <section ref={ref} className="relative py-14">

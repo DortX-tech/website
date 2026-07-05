@@ -26,9 +26,11 @@ export default function Technologies() {
               key={g.group}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
+              whileHover={{ y: -6 }}
+              whileTap={{ scale: 0.985 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ delay: i * 0.05, duration: 0.5 }}
-              className="card-glow p-5"
+              className="premium-card p-5"
             >
               <div className="flex items-center justify-between mb-5">
                 <div className="font-display text-white font-semibold text-[15.5px]">{g.group}</div>

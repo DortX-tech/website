@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 
 const portfolioItems = [];
@@ -29,11 +30,17 @@ export default function Portfolio() {
       )}
 
       <section className="py-14">
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 glass rounded-3xl p-5 sm:p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-4xl mx-auto px-6 lg:px-8 premium-shell rounded-3xl p-5 sm:p-8 text-center"
+        >
           <h3 className="font-display text-[24px] font-semibold">Want to be one of our launch case studies?</h3>
           <p className="mt-4 text-[15px] text-[#9AA3B8]">We're partnering with a small cohort of early clients to co-build flagship projects with full transparency.</p>
           <Link to="/contact" data-testid="portfolio-cta" className="mt-6 inline-flex btn-primary">Apply to partner with us <ArrowUpRight size={16}/></Link>
-        </div>
+        </motion.div>
       </section>
     </div>
   );
