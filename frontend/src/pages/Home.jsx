@@ -1,6 +1,6 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useInView, useReducedMotion, AnimatePresence } from "framer-motion";
 import * as Lucide from "lucide-react";
 import { ArrowUpRight, ArrowRight, Sparkles, Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck, Plus, Quote } from "lucide-react";
 import MagneticButton from "@/components/MagneticButton";
@@ -8,12 +8,36 @@ import useMouseParallax from "@/hooks/useMouseParallax";
 import { WINGS, PROCESS_STEPS, TECH_GROUPS, INDUSTRIES, FAQS, TEAM } from "@/data/site";
 
 const WingIcons = { Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck };
+const MOTION_EASE = [0.22, 1, 0.36, 1];
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerGroup = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.12, delayChildren: 0.05 },
+  },
+};
+
+const heroWords = [
+  { text: "We" },
+  { text: "solve" },
+  { text: "business", className: "italic font-normal text-[#4D8BFF]" },
+  { text: "problems" },
+  { text: "with" },
+  { text: "intelligent", className: "shimmer-text" },
+  { text: "technology.", className: "gradient-text" },
+];
 
 /* ========================================================================
    01. HERO — cinematic, mouse-parallax, magnetic CTAs, animated orbs
    ======================================================================== */
 function Hero() {
   const mouse = useMouseParallax();
+  const reduceMotion = useReducedMotion();
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const y1 = useTransform(scrollYProgress, [0, 1], [0, -120]);
@@ -31,7 +55,7 @@ function Hero() {
           width: 520, height: 520,
           background: "radial-gradient(circle, #1E6BFF 0%, transparent 70%)",
           opacity: 0.35,
-          left: `${20 + mouse.x * 12}%`, top: `${5 + mouse.y * 8}%`,
+          left: `${18 + mouse.x * 18}%`, top: `${3 + mouse.y * 12}%`,
           transition: "left 800ms ease-out, top 800ms ease-out",
         }}
       />
@@ -41,7 +65,7 @@ function Hero() {
           width: 420, height: 420,
           background: "radial-gradient(circle, #4D8BFF 0%, transparent 70%)",
           opacity: 0.22,
-          right: `${10 + mouse.x * 8}%`, bottom: `${5 + (1 - mouse.y) * 10}%`,
+          right: `${7 + mouse.x * 13}%`, bottom: `${3 + (1 - mouse.y) * 14}%`,
           transition: "right 1000ms ease-out, bottom 1000ms ease-out",
         }}
       />
@@ -69,32 +93,49 @@ function Hero() {
 
       <motion.div style={{ y: y1, opacity }} className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full">
         <div className="grid lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-8">
+          <motion.div
+            variants={staggerGroup}
+            initial="hidden"
+            animate="visible"
+            className="lg:col-span-8"
+          >
             <motion.div
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+              variants={fadeUp}
+              transition={{ duration: 0.65, ease: MOTION_EASE }}
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass text-[12px] text-[#C9D2E0]"
             >
               <span className="dot-pulse"/> A technology studio for businesses that need more than templates
             </motion.div>
 
             <motion.h1
-              initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              variants={fadeUp}
+              transition={{ duration: 0.75, ease: MOTION_EASE }}
               className="font-display hero-heading mt-6 max-w-4xl text-[clamp(2rem,5vw,3.5rem)] leading-[1.12] tracking-normal font-semibold"
             >
-              We solve <span className="italic font-normal text-[#4D8BFF]">business</span>{" "}
-              problems with <span className="shimmer-text">intelligent</span>{" "}
-              <span className="gradient-text">technology.</span>
+              {heroWords.map((word, i) => (
+                <motion.span
+                  key={`${word.text}-${i}`}
+                  initial={reduceMotion ? false : { opacity: 0, y: 22, filter: "blur(8px)" }}
+                  animate={reduceMotion ? false : { opacity: 1, y: 0, filter: "blur(0px)" }}
+                  transition={{ duration: 0.58, delay: 0.24 + i * 0.055, ease: MOTION_EASE }}
+                  className={`inline-block mr-[0.28em] ${word.className || ""}`}
+                >
+                  {word.text}
+                </motion.span>
+              ))}
             </motion.h1>
 
             <motion.p
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}
+              variants={fadeUp}
+              transition={{ duration: 0.75, ease: MOTION_EASE }}
               className="mt-6 text-[15.5px] sm:text-[18px] text-[#9AA3B8] max-w-xl leading-[1.55]"
             >
               DortX builds high-quality AI solutions, software, and automation systems that solve real business problems. Every project is engineered with precision, tested thoroughly, and delivered on time.
             </motion.p>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.35 }}
+              variants={fadeUp}
+              transition={{ duration: 0.7, ease: MOTION_EASE }}
               className="mt-6 flex flex-wrap items-center gap-3"
             >
               <Link to="/services" data-testid="hero-cta-services" className="btn-ghost">
@@ -106,20 +147,36 @@ function Hero() {
                 </Link>
               </MagneticButton>
             </motion.div>
-          </div>
+          </motion.div>
 
           {/* Right side: floating technology orbit (decorative) */}
-          <motion.div style={{ y: y2 }} className="hidden lg:block lg:col-span-4 relative h-[440px]">
-            <div className="absolute inset-0 flex items-center justify-center">
+          <motion.div
+            style={{
+              y: y2,
+              x: reduceMotion ? 0 : (mouse.x - 0.5) * 34,
+            }}
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.9, rotate: -4 }}
+            animate={reduceMotion ? false : { opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ duration: 0.9, delay: 0.45, ease: MOTION_EASE }}
+            className="hidden lg:block lg:col-span-4 relative h-[440px]"
+          >
+            <div className="absolute inset-0 flex items-center justify-center hero-orbit-stage">
               {/* Concentric rings */}
               {[180, 280, 380].map((s, i) => (
                 <div key={i} className="absolute rounded-full border border-[#1E6BFF]/15" style={{ width: s, height: s }}/>
               ))}
               {/* Centre core */}
               <motion.div
-                animate={{ scale: [1, 1.08, 1] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="relative w-20 h-20 rounded-2xl glass flex items-center justify-center shadow-[0_0_60px_-10px_rgba(30,107,255,0.7)]"
+                animate={reduceMotion ? {} : {
+                  scale: [1, 1.08, 1],
+                  boxShadow: [
+                    "0 0 44px -12px rgba(30,107,255,0.6)",
+                    "0 0 76px -8px rgba(77,139,255,0.9)",
+                    "0 0 44px -12px rgba(30,107,255,0.6)",
+                  ],
+                }}
+                transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
+                className="relative w-20 h-20 rounded-2xl glass flex items-center justify-center"
               >
                 <Sparkles className="text-[#4D8BFF]" size={26}/>
               </motion.div>
@@ -135,7 +192,7 @@ function Hero() {
                 const Icon = Lucide[o.icon];
                 return (
                   <div key={i} className="absolute orbit" style={{ "--r": `${o.r}px`, animationDelay: `-${o.d}s` }}>
-                    <div className="w-10 h-10 rounded-xl glass flex items-center justify-center text-[#C9D2E0]">
+                    <div className="hero-orbit-node w-10 h-10 rounded-xl glass flex items-center justify-center text-[#C9D2E0]" style={{ animationDelay: `${i * 0.45}s` }}>
                       <Icon size={15}/>
                     </div>
                   </div>
@@ -172,35 +229,38 @@ function Hero() {
    ======================================================================== */
 function WhyExist() {
   const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const op1 = useTransform(scrollYProgress, [0.2, 0.5], [0.3, 1]);
-  const op2 = useTransform(scrollYProgress, [0.4, 0.7], [0.2, 1]);
 
   return (
     <section ref={ref} className="relative py-14 lg:py-16">
-      <div className="max-w-5xl mx-auto px-6 lg:px-8">
+      <motion.div
+        variants={staggerGroup}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.35 }}
+        className="max-w-5xl mx-auto px-6 lg:px-8"
+      >
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-6">— Why we exist</div>
 
-        <motion.p style={{ opacity: op1 }} className="font-display text-[28px] sm:text-[38px] lg:text-[48px] leading-[1.15] font-medium">
+        <motion.p variants={fadeUp} transition={{ duration: 0.65, ease: MOTION_EASE }} className="font-display text-[28px] sm:text-[38px] lg:text-[48px] leading-[1.15] font-medium">
           We kept seeing the same pattern.
         </motion.p>
 
         <div className="grid lg:grid-cols-2 gap-x-16 gap-y-8 mt-6">
-          <motion.p style={{ opacity: op2 }} className="text-[15.5px] sm:text-[16px] text-[#C9D2E0] leading-[1.7]">
+          <motion.p variants={fadeUp} transition={{ duration: 0.65, ease: MOTION_EASE }} className="text-[15.5px] sm:text-[16px] text-[#C9D2E0] leading-[1.7]">
             Companies investing heavily in software — and getting back generic outputs. Slow products. Dashboards no one opens. AI experiments that never see production. Marketing money that disappears into the void.
           </motion.p>
-          <motion.p style={{ opacity: op2 }} className="text-[15.5px] sm:text-[16px] text-[#9AA3B8] leading-[1.7]">
+          <motion.p variants={fadeUp} transition={{ duration: 0.65, ease: MOTION_EASE }} className="text-[15.5px] sm:text-[16px] text-[#9AA3B8] leading-[1.7]">
             DortX was started to be the opposite of that. A small, focused team that treats every engagement like our own product — with care, ownership and the standards we'd expect for ourselves.
           </motion.p>
         </div>
 
-        <div className="mt-6 flex items-center gap-5">
+        <motion.div variants={fadeUp} transition={{ duration: 0.6, ease: MOTION_EASE }} className="mt-6 flex items-center gap-5">
           <div className="h-px flex-1 bg-gradient-to-r from-[#1E6BFF]/40 to-transparent"/>
           <Link to="/about" className="text-[13px] text-[#C9D2E0] hover:text-white flex items-center gap-2">
             Read the full story <ArrowRight size={14}/>
           </Link>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }
@@ -220,7 +280,13 @@ function Problems() {
     <section className="relative py-14">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="grid lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-5 lg:sticky lg:top-32 self-start">
+          <motion.div
+            initial={{ opacity: 0, x: -24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.65, ease: MOTION_EASE }}
+            className="lg:col-span-5 lg:sticky lg:top-32 self-start"
+          >
             <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF]">— What we remove</div>
             <h2 className="font-display section-heading font-semibold mt-5">
               The four frictions <br/> we hear about <br/>
@@ -229,22 +295,24 @@ function Problems() {
             <p className="mt-6 text-[15.5px] text-[#9AA3B8] leading-relaxed max-w-md">
               Most of our engagements start with one of these stories. They sound different on the surface — but the underlying problem is almost always the same.
             </p>
-          </div>
+          </motion.div>
 
           <div className="lg:col-span-7 space-y-3">
             {items.map((it, i) => (
               <motion.div
                 key={it.n}
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, x: 36, y: 10 }}
+                whileInView={{ opacity: 1, x: 0, y: 0 }}
                 viewport={{ once: true, amount: 0.5 }}
-                transition={{ duration: 0.5, delay: i * 0.08 }}
+                whileHover={{ y: -8, rotateX: 1.2, rotateY: -1.2, boxShadow: "0 22px 55px -32px rgba(77,139,255,0.65)" }}
+                whileTap={{ scale: 0.985, y: -2 }}
+                transition={{ duration: 0.58, delay: i * 0.11, ease: MOTION_EASE }}
                 onMouseMove={(e) => {
                   const r = e.currentTarget.getBoundingClientRect();
                   e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
                   e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
                 }}
-                className="spotlight glass rounded-2xl p-5 flex items-start gap-5 group"
+                className="spotlight glass rounded-2xl p-5 flex items-start gap-5 group motion-card"
               >
                 <div className="font-display text-[34px] text-[#243049] leading-none">{it.n}</div>
                 <div className="flex-1">
@@ -265,6 +333,8 @@ function Problems() {
    04. APPROACH — How we work as a system
    ======================================================================== */
 function Approach() {
+  const reduceMotion = useReducedMotion();
+
   return (
     <section className="relative py-14">
       <div className="absolute inset-0 hair-diag opacity-40"/>
@@ -278,7 +348,7 @@ function Approach() {
           Most agencies separate engineering, design, AI, growth, industrial automation and security into different silos. We don't. They reinforce each other - so we run them as one practice, on one project, with one team.
         </p>
 
-        <div className="mt-6 relative mx-auto aspect-square w-full max-w-[360px] sm:max-w-[440px] lg:max-w-[480px]">
+        <div className="mt-8 relative mx-auto aspect-square w-full max-w-[320px] min-[390px]:max-w-[350px] sm:max-w-[440px] lg:max-w-[480px]">
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
             <defs>
               <radialGradient id="cg" cx="50%" cy="50%" r="50%">
@@ -286,14 +356,46 @@ function Approach() {
                 <stop offset="100%" stopColor="#1E6BFF" stopOpacity="0"/>
               </radialGradient>
             </defs>
-            <circle cx="200" cy="200" r="150" fill="url(#cg)"/>
+            <motion.circle
+              cx="200"
+              cy="200"
+              r="150"
+              fill="url(#cg)"
+              animate={reduceMotion ? {} : { rotate: 360 }}
+              transition={{ duration: 34, repeat: Infinity, ease: "linear" }}
+              style={{ transformOrigin: "200px 200px" }}
+            />
+            <motion.circle
+              cx="200"
+              cy="200"
+              r="154"
+              fill="none"
+              stroke="#4D8BFF"
+              strokeOpacity="0.16"
+              strokeDasharray="7 13"
+              animate={reduceMotion ? {} : { rotate: -360 }}
+              transition={{ duration: 46, repeat: Infinity, ease: "linear" }}
+              style={{ transformOrigin: "200px 200px" }}
+            />
             {WINGS.map((_, i) => {
               const a = (i / WINGS.length) * Math.PI * 2 - Math.PI / 2;
               const x = 200 + Math.cos(a) * 150;
               const y = 200 + Math.sin(a) * 150;
               return (
                 <g key={i}>
-                  <line x1="200" y1="200" x2={x} y2={y} stroke="#1E6BFF" strokeOpacity="0.25" strokeDasharray="3 3"/>
+                  <motion.line
+                    x1="200"
+                    y1="200"
+                    x2={x}
+                    y2={y}
+                    stroke="#4D8BFF"
+                    strokeOpacity="0.48"
+                    strokeDasharray="5 7"
+                    initial={reduceMotion ? false : { pathLength: 0, opacity: 0 }}
+                    whileInView={reduceMotion ? {} : { pathLength: 1, opacity: 1 }}
+                    viewport={{ once: true, amount: 0.6 }}
+                    transition={{ duration: 0.9, delay: 0.12 + i * 0.09, ease: MOTION_EASE }}
+                  />
                 </g>
               );
             })}
@@ -305,24 +407,32 @@ function Approach() {
                 key={i}
                 initial={{ opacity: 0, scale: 0.7 }}
                 whileInView={{ opacity: 1, scale: 1 }}
+                animate={reduceMotion ? {} : { y: [0, -5 - (i % 3), 0] }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.1 + i * 0.1, duration: 0.5 }}
+                transition={{
+                  opacity: { delay: 0.1 + i * 0.1, duration: 0.5, ease: MOTION_EASE },
+                  scale: { delay: 0.1 + i * 0.1, duration: 0.5, ease: MOTION_EASE },
+                  y: { duration: 4.8 + i * 0.35, delay: i * 0.4, repeat: Infinity, ease: "easeInOut" },
+                }}
                 className="absolute"
                 style={{
                   left: `${50 + Math.cos((a * Math.PI) / 180) * 37.5}%`,
                   top: `${50 + Math.sin((a * Math.PI) / 180) * 37.5}%`,
-                  transform: "translate(-50%, -50%)",
                 }}
               >
-                <div className="px-3 py-2 sm:px-4 sm:py-2.5 rounded-full glass text-[11px] sm:text-[12.5px] text-white whitespace-nowrap">
+                <div className="-translate-x-1/2 -translate-y-1/2 min-w-[104px] min-[390px]:min-w-[112px] sm:min-w-[138px] px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-full glass text-[10px] min-[390px]:text-[10.5px] sm:text-[12px] text-white text-center leading-tight whitespace-normal sm:whitespace-nowrap">
                   {w.name.split(" & ")[0]}
                 </div>
               </motion.div>
             );
           })}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl gradient-blue flex items-center justify-center shadow-[0_0_60px_-10px_rgba(30,107,255,0.8)]">
+          <motion.div
+            animate={reduceMotion ? {} : { scale: [1, 1.08, 1] }}
+            transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl gradient-blue flex items-center justify-center shadow-[0_0_60px_-10px_rgba(30,107,255,0.8)]"
+          >
             <Sparkles className="text-white" size={18}/>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
@@ -342,7 +452,9 @@ function WingCard({ wing, index }) {
       ref={ref}
       initial={{ opacity: 0, y: 24 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.55, delay: index * 0.05 }}
+      whileHover={{ y: -10, boxShadow: "0 28px 70px -42px rgba(77,139,255,0.75)" }}
+      whileTap={{ scale: 0.985, y: -3 }}
+      transition={{ duration: 0.58, delay: index * 0.09, ease: MOTION_EASE }}
       onMouseMove={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
         e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
@@ -350,13 +462,19 @@ function WingCard({ wing, index }) {
       }}
       className="wing-overview-card spotlight rounded-2xl border border-white/8 bg-white/[0.02] p-5 sm:p-6 min-h-[260px] flex flex-col overflow-hidden relative"
     >
-      <div className="wing-overview-num" aria-hidden="true">
+      <motion.div
+        className="wing-overview-num"
+        aria-hidden="true"
+        initial={{ opacity: 0, y: 16, scale: 0.96 }}
+        animate={inView ? { opacity: 0.55, y: 0, scale: 1 } : {}}
+        transition={{ duration: 0.75, delay: 0.18 + index * 0.08, ease: MOTION_EASE }}
+      >
         {wing.number}
-      </div>
+      </motion.div>
 
       <div className="relative z-10 flex h-full flex-col">
         <div className="flex items-center justify-between gap-4">
-          <div className="w-12 h-12 rounded-xl glass flex items-center justify-center text-[#4D8BFF] shrink-0">
+          <div className="wing-card-icon w-12 h-12 rounded-xl glass flex items-center justify-center text-[#4D8BFF] shrink-0">
             <Icon size={21}/>
           </div>
           <div className="text-[11px] tracking-[0.18em] uppercase text-[#6B7385] whitespace-nowrap">Wing {wing.number}</div>
@@ -422,7 +540,7 @@ function ProcessTimeline() {
           Seven steps. Predictable delivery. <span className="gradient-text">Zero surprises.</span>
         </h2>
 
-        <div className="relative mt-6 pl-12 sm:pl-20">
+        <div className="relative mt-6 pl-10 min-[390px]:pl-12 sm:pl-20">
           {/* Track */}
           <div className="absolute left-3 sm:left-7 top-0 bottom-0 w-px bg-white/8"/>
           <motion.div style={{ height: lineH }} className="absolute left-3 sm:left-7 top-0 w-px bg-gradient-to-b from-[#1E6BFF] via-[#4D8BFF] to-transparent"/>
@@ -439,10 +557,16 @@ function ProcessTimeline() {
                   transition={{ duration: 0.5 }}
                   className="relative"
                 >
-                  <div className="absolute -left-[34px] sm:-left-[58px] top-1">
-                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full glass-strong flex items-center justify-center text-[#4D8BFF]">
+                  <div className="absolute -left-[31px] min-[390px]:-left-[34px] sm:-left-[58px] top-1">
+                    <motion.div
+                      initial={{ scale: 0.45, opacity: 0 }}
+                      whileInView={{ scale: 1, opacity: 1 }}
+                      viewport={{ once: true, amount: 0.7 }}
+                      transition={{ duration: 0.42, delay: i * 0.08, ease: MOTION_EASE }}
+                      className="w-7 h-7 sm:w-9 sm:h-9 rounded-full glass-strong flex items-center justify-center text-[#4D8BFF]"
+                    >
                       <Icon size={13}/>
-                    </div>
+                    </motion.div>
                   </div>
                   <div className="flex items-baseline gap-4">
                     <span className="font-display text-[#3B4660] text-[14px]">{s.num}</span>
@@ -465,7 +589,8 @@ function ProcessTimeline() {
 function TechMarquee() {
   const all = TECH_GROUPS.flatMap((g) => g.items);
   const row1 = [...all, ...all];
-  const row2 = [...all.reverse(), ...all];
+  const reversed = [...all].reverse();
+  const row2 = [...reversed, ...reversed];
   return (
     <section className="relative py-14">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-6">
@@ -474,7 +599,7 @@ function TechMarquee() {
           Modern, polyglot, <br/>chosen for <span className="gradient-text">fit</span>.
         </h2>
       </div>
-      <div className="space-y-3 [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
+      <div className="marquee-shell space-y-3 [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
         <div className="overflow-hidden">
           <div className="flex gap-3 marquee-track w-max">
             {row1.map((t, i) => (
@@ -568,7 +693,7 @@ function Industries() {
               initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.3, delay: Math.min(i, 14) * 0.015 }}
+              transition={{ duration: 0.34, delay: Math.min(i, 18) * 0.035, ease: MOTION_EASE }}
               className="px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.02] text-[13px] text-[#C9D2E0] hover:text-white hover:border-[#1E6BFF]/40 hover:bg-white/[0.04] transition-colors duration-200"
             >
               {ind.name}
@@ -609,13 +734,34 @@ function FAQTeaser() {
         </div>
         <div className="lg:col-span-8 glass rounded-2xl divide-y divide-white/8">
           {list.map((f, i) => (
-            <button key={i} data-testid={`faq-item-${i}`} onClick={() => setOpen(open === i ? -1 : i)} className="w-full text-left px-6 py-5 hover:bg-white/[0.03] transition">
+            <motion.button
+              key={i}
+              data-testid={`faq-item-${i}`}
+              onClick={() => setOpen(open === i ? -1 : i)}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.42, delay: i * 0.055, ease: MOTION_EASE }}
+              className="w-full text-left px-4 sm:px-6 py-5 hover:bg-white/[0.03] transition"
+            >
               <div className="flex items-center justify-between gap-4">
                 <span className="font-display text-white font-medium text-[15.5px]">{f.q}</span>
                 <Plus size={16} className={`text-[#4D8BFF] transition-transform ${open === i ? "rotate-45" : ""}`}/>
               </div>
-              {open === i && <p className="mt-3 text-[14px] text-[#9AA3B8] leading-relaxed">{f.a}</p>}
-            </button>
+              <AnimatePresence initial={false}>
+                {open === i && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.28, ease: MOTION_EASE }}
+                    className="overflow-hidden"
+                  >
+                    <p className="mt-3 text-[14px] text-[#9AA3B8] leading-relaxed">{f.a}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
           ))}
         </div>
       </div>
@@ -627,13 +773,30 @@ function FAQTeaser() {
    11. FINAL CTA — large editorial moment
    ======================================================================== */
 function FinalCTA() {
+  const reduceMotion = useReducedMotion();
+
   return (
     <section className="relative py-14">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        <div className="relative rounded-3xl overflow-hidden border border-white/10 p-5 lg:p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 28, scale: 0.985 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 0.72, ease: MOTION_EASE }}
+          className="relative rounded-3xl overflow-hidden border border-white/10 p-5 sm:p-6 lg:p-8"
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-[#0A1430] via-[#05080F] to-[#0A1430]"/>
           <div className="absolute inset-0 bg-grid opacity-30"/>
-          <div className="absolute -top-32 -right-24 w-[480px] h-[480px] rounded-full bg-[#1E6BFF]/20 blur-[80px]"/>
+          <motion.div
+            animate={reduceMotion ? {} : { scale: [1, 1.14, 1], opacity: [0.16, 0.3, 0.16] }}
+            transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-32 -right-24 w-[480px] h-[480px] rounded-full bg-[#1E6BFF]/20 blur-[80px]"
+          />
+          <motion.div
+            animate={reduceMotion ? {} : { x: ["-8%", "8%", "-8%"], opacity: [0.08, 0.2, 0.08] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -bottom-32 -left-24 w-[360px] h-[360px] rounded-full bg-[#4D8BFF]/15 blur-[72px]"
+          />
 
           <div className="relative">
             <Quote className="text-[#4D8BFF] mb-4" size={28}/>
@@ -652,7 +815,7 @@ function FinalCTA() {
               <a href="mailto:support@dortxtech.com" className="btn-ghost">support@dortxtech.com</a>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

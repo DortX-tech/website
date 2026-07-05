@@ -521,12 +521,28 @@ textarea.contact-field:-webkit-autofill:focus {
 }
 .marquee-track { animation: marquee 38s linear infinite; }
 
+@media (hover: hover) and (pointer: fine) {
+  .marquee-shell:hover .marquee-track {
+    animation-play-state: paused;
+  }
+}
+
 /* Premium effects */
 @keyframes orbit {
   from { transform: rotate(0deg) translateX(var(--r, 220px)) rotate(0deg); }
   to   { transform: rotate(360deg) translateX(var(--r, 220px)) rotate(-360deg); }
 }
 .orbit { animation: orbit 18s linear infinite; }
+
+@keyframes orbit-node-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-7px) rotate(4deg); }
+}
+
+.hero-orbit-node {
+  animation: orbit-node-bob 5.8s ease-in-out infinite;
+  will-change: transform;
+}
 
 @keyframes float-y {
   0%, 100% { transform: translateY(0); }
@@ -583,6 +599,24 @@ textarea.contact-field:-webkit-autofill:focus {
 
 .wing-overview-card {
   isolation: isolate;
+  transition: border-color 220ms ease, background-color 220ms ease;
+  will-change: transform;
+}
+
+.wing-card-icon {
+  transition: transform 220ms ease, border-color 220ms ease, color 220ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wing-overview-card:hover {
+    border-color: rgba(77, 139, 255, 0.46);
+    background-color: rgba(255, 255, 255, 0.045);
+  }
+
+  .wing-overview-card:hover .wing-card-icon {
+    transform: scale(1.1);
+    border-color: rgba(77, 139, 255, 0.35);
+  }
 }
 
 .wing-overview-num {
@@ -607,6 +641,25 @@ textarea.contact-field:-webkit-autofill:focus {
     bottom: -0.2rem;
     font-size: 4.4rem;
     opacity: 0.42;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  .marquee-track,
+  .orbit,
+  .hero-orbit-node,
+  .shimmer-text,
+  .float-y,
+  .dot-pulse {
+    animation: none !important;
   }
 }
 
