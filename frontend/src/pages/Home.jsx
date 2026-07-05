@@ -357,40 +357,58 @@ function Approach() {
           </motion.p>
         </div>
 
-        <motion.div variants={fadeUp} transition={{ duration: 0.7, ease: MOTION_EASE }} className="relative mt-9">
-          <div className="absolute left-4 right-4 top-12 hidden lg:block h-px bg-[#1E6BFF]/18"/>
-          <motion.div
-            className="absolute left-4 right-4 top-12 hidden lg:block h-px origin-left bg-gradient-to-r from-transparent via-[#4D8BFF] to-transparent"
-            initial={reduceMotion ? false : { scaleX: 0, opacity: 0 }}
-            whileInView={reduceMotion ? {} : { scaleX: 1, opacity: 1 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 1.1, ease: MOTION_EASE }}
-          />
+        <motion.div variants={fadeUp} transition={{ duration: 0.7, ease: MOTION_EASE }} className="relative mt-9 mx-auto aspect-square w-full max-w-[300px] sm:max-w-[400px] lg:max-w-[460px]">
+          {/* static rings */}
+          <div className="absolute inset-[6%] rounded-full border border-[#1E6BFF]/15"/>
+          <div className="absolute inset-[13%] rounded-full border border-dashed border-[#1E6BFF]/10"/>
+          <div className="absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1E6BFF]/10 blur-[60px]"/>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4">
+          {/* orbiting icons — one continuous rotation on the group, counter-rotated per icon so they stay upright */}
+          <motion.div
+            className="absolute inset-0"
+            animate={reduceMotion ? {} : { rotate: 360 }}
+            transition={{ duration: 42, repeat: Infinity, ease: "linear" }}
+          >
             {WINGS.map((w, i) => {
               const Icon = WingIcons[w.icon] || Sparkles;
+              const a = (i / WINGS.length) * 360 - 90;
               return (
-                <motion.div
+                <div
                   key={w.id}
-                  variants={fadeUp}
-                  whileHover={{ y: -8, scale: 1.015 }}
-                  whileTap={{ scale: 0.985 }}
-                  transition={{ duration: 0.32, delay: i * 0.035 }}
-                  className="premium-card min-h-[178px] p-4 sm:p-5 text-left"
+                  className="absolute"
+                  style={{
+                    left: `${50 + Math.cos((a * Math.PI) / 180) * 42}%`,
+                    top: `${50 + Math.sin((a * Math.PI) / 180) * 42}%`,
+                    transform: "translate(-50%, -50%)",
+                  }}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="w-11 h-11 rounded-2xl border border-[#1E6BFF]/25 bg-[#1E6BFF]/12 flex items-center justify-center text-[#4D8BFF] shadow-[0_0_28px_-16px_rgba(77,139,255,0.9)]">
-                      <Icon size={19}/>
-                    </div>
-                    <span className="font-display text-[12px] text-[#3B4660]">{w.number}</span>
-                  </div>
-                  <h3 className="font-display mt-5 text-[15.5px] font-semibold leading-tight text-white">{w.name}</h3>
-                  <p className="mt-2 text-[12.5px] leading-relaxed text-[#8892A6]">{w.short}</p>
-                </motion.div>
+                  <motion.div
+                    animate={reduceMotion ? {} : { rotate: -360 }}
+                    whileHover={{ scale: 1.18 }}
+                    transition={{ rotate: { duration: 42, repeat: Infinity, ease: "linear" }, scale: { duration: 0.25 } }}
+                    className="group relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl border border-[#1E6BFF]/25 bg-[#0B1220]/90 backdrop-blur flex items-center justify-center text-[#4D8BFF] shadow-[0_0_28px_-14px_rgba(77,139,255,0.9)] cursor-default"
+                  >
+                    <Icon size={19}/>
+                    <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#0B1220] border border-white/10 px-2.5 py-1 text-[10.5px] text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      {w.name.split(" & ")[0]}
+                    </span>
+                  </motion.div>
+                </div>
               );
             })}
-          </div>
+          </motion.div>
+
+          {/* center hub */}
+          <motion.div
+            animate={reduceMotion ? {} : { scale: [1, 1.08, 1] }}
+            transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl gradient-blue flex items-center justify-center shadow-[0_0_60px_-10px_rgba(30,107,255,0.8)] z-10"
+          >
+            <Sparkles className="text-white" size={22}/>
+          </motion.div>
+        </motion.div>
+
+        <div className="mt-9">
 
           <motion.div
             animate={reduceMotion ? {} : { opacity: [0.7, 1, 0.7], scale: [1, 1.03, 1] }}
@@ -407,7 +425,7 @@ function Approach() {
               </p>
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       </motion.div>
     </section>
   );
