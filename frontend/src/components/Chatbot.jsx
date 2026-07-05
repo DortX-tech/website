@@ -4,6 +4,7 @@ import { Check, Copy, MessageCircle, RotateCcw, Send, Sparkles, X } from "lucide
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Logo from "./Logo";
 import { API_URL, apiClient } from "@/config/api";
+import { getCompanyAssistantReply } from "@/data/companyKnowledge";
 
 const SERVICE_OPTIONS = [
   "AI Agents",
@@ -51,7 +52,7 @@ const initialAssistantMessage = {
   id: "initial-assistant",
   role: "assistant",
   content:
-    "Hi! Welcome to DortX!\n\nI'm the DortX AI Assistant.\n\nBefore we begin, I'd love to know a little about you.\n\n**What is your name?**",
+    "Hi! Welcome to DortX. I'm the DortX AI Assistant.\n\nYou can ask me about the company, team, services, technologies, process, careers, policies, or how DortX can help with a project. If you want a quote or consultation, I can collect the details and connect you with the team.",
   createdAt: new Date().toISOString(),
   status: "received",
 };
@@ -74,6 +75,9 @@ const makeMessage = (role, content, extra = {}) => ({
 const normalizeMessages = (items) => (Array.isArray(items) && items.length ? items : [freshInitialAssistantMessage()]).map((message, index) => ({
   ...message,
   id: message.id || `${message.role || "message"}-${index}-${Date.now()}`,
+  content: index === 0 && message.role === "assistant" && String(message.content || "").includes("What is your name?")
+    ? initialAssistantMessage.content
+    : message.content,
   createdAt: message.createdAt || new Date().toISOString(),
   status: message.status || (message.role === "user" ? "sent" : "received"),
 }));
@@ -133,12 +137,18 @@ const saveJson = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
+const loadChatStage = () => {
+  const saved = localStorage.getItem("dortx-chat-stage");
+  return saved === "lead" ? "lead" : "chat";
+};
+
 const isBuyingIntent = (text) => {
   const value = text.toLowerCase();
   return [
     "book", "book consultation", "consultation", "talk to sales", "hire",
     "start project", "build for me", "contact me", "call me", "whatsapp me",
-    "send proposal", "schedule", "connect me",
+    "send proposal", "proposal", "quotation", "quote", "estimate", "demo",
+    "callback", "call back", "project discussion", "schedule", "connect me",
   ].some((token) => value.includes(token));
 };
 
@@ -333,7 +343,7 @@ export default function Chatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState(() => normalizeMessages(loadJson("dortx-chat-messages", [freshInitialAssistantMessage()])));
   const [memory, setMemory] = useState(() => loadJson("dortx-chat-memory", { name: "", service: "", lead: {} }));
-  const [stage, setStage] = useState(() => localStorage.getItem("dortx-chat-stage") || "name");
+  const [stage, setStage] = useState(loadChatStage);
   const [leadIndex, setLeadIndex] = useState(() => Number(localStorage.getItem("dortx-chat-lead-index") || 0));
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -717,6 +727,26 @@ export default function Chatbot() {
     };
     if (Object.keys(memoryPatch).length > 0) setMemory(effectiveMemory);
 
+    if (stage !== "lead" && isBuyingIntent(msg)) {
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
+      startLeadFlow(effectiveMemory);
+      return;
+    }
+
+    if (stage !== "lead") {
+      const localReply = getCompanyAssistantReply(msg);
+      if (localReply) {
+        patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
+        setStage("chat");
+        append({
+          role: "assistant",
+          content: localReply,
+          actions: QUICK_ACTIONS,
+        });
+        return;
+      }
+    }
+
     if (stage === "name") {
       if (looksLikeConsultingRequest(msg)) {
         setStage("chat");
@@ -749,12 +779,6 @@ export default function Chatbot() {
     if (stage === "lead") {
       patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
       await handleLeadAnswer(msg);
-      return;
-    }
-
-    if (isBuyingIntent(msg)) {
-      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
-      startLeadFlow(effectiveMemory);
       return;
     }
 
@@ -800,7 +824,7 @@ export default function Chatbot() {
     localStorage.setItem("dortx-chat-sid", nextSession);
     localStorage.removeItem("dortx-chat-messages");
     localStorage.removeItem("dortx-chat-memory");
-    localStorage.setItem("dortx-chat-stage", "name");
+    localStorage.setItem("dortx-chat-stage", "chat");
     localStorage.setItem("dortx-chat-lead-index", "0");
 
     abortRef.current?.abort();
@@ -808,7 +832,7 @@ export default function Chatbot() {
     autoScrollRef.current = true;
     setMessages([freshInitialAssistantMessage()]);
     setMemory({ name: "", service: "", lead: {} });
-    setStage("name");
+    setStage("chat");
     setLeadIndex(0);
     setInput("");
     setCopied(null);
