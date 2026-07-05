@@ -81,7 +81,7 @@ function Avatar({ name, photo, size = 120, big = false, flush = false }) {
   return (
     <div
       className={`relative overflow-hidden ${flush ? "" : "rounded-2xl border border-white/10"}`}
-      style={{ width: "100%", aspectRatio: big ? "1 / 1.05" : "1 / 1" }}
+      style={{ width: "100%", aspectRatio: big ? "1 / 1.05" : "1 / 0.82" }}
     >
       {/* Always render the gradient + glow as a background so transparent / loading
           photos still feel premium. */}
@@ -207,10 +207,10 @@ function MemberCard({ member, index }) {
         <Avatar name={member.name} photo={fullPhoto(member.photo)} flush />
       </div>
 
-      <div className="relative mt-5 flex flex-1 flex-col px-5 pb-5">
-        <div className="font-display text-[18px] font-semibold text-white">{member.name}</div>
-        <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF] mt-1.5">{member.role}</div>
-        <p className="mt-3 text-[13.5px] text-[#9AA3B8] leading-relaxed">{member.bio}</p>
+      <div className="relative mt-4 flex flex-1 flex-col px-4 pb-4">
+        <div className="font-display text-[16.5px] font-semibold text-white">{member.name}</div>
+        <div className="text-[11px] tracking-[0.14em] uppercase text-[#4D8BFF] mt-1">{member.role}</div>
+        <p className="mt-2.5 text-[13px] text-[#9AA3B8] leading-relaxed">{member.bio}</p>
 
         {/* Expertise pill */}
         <div className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/4 border border-white/8 text-[11px] text-[#C9D2E0]">
