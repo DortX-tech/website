@@ -192,9 +192,7 @@ function MemberCard({ member, index }) {
         e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
         e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
       }}
-      whileHover={{ y: -6 }}
-      whileTap={{ scale: 0.985 }}
-      className="spotlight premium-card relative group rounded-2xl border border-white/8 bg-white/[0.02] p-5 overflow-hidden h-full flex flex-col"
+      className="spotlight relative group rounded-2xl border border-white/8 bg-white/[0.02] p-5 overflow-hidden"
       data-testid={`team-card-${member.name.toLowerCase()}`}
     >
       {/* subtle floating gradient */}
@@ -204,10 +202,10 @@ function MemberCard({ member, index }) {
         <Avatar name={member.name} photo={fullPhoto(member.photo)} />
       </div>
 
-      <div className="relative mt-5 flex flex-1 flex-col">
+      <div className="relative mt-5">
         <div className="font-display text-[18px] font-semibold text-white">{member.name}</div>
         <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF] mt-1.5">{member.role}</div>
-        <p className="mt-3 text-[13.5px] text-[#9AA3B8] leading-relaxed">{member.bio}</p>
+        <p className="mt-3 text-[13.5px] text-[#9AA3B8] leading-relaxed line-clamp-3">{member.bio}</p>
 
         {/* Expertise pill */}
         <div className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/4 border border-white/8 text-[11px] text-[#C9D2E0]">
@@ -238,7 +236,7 @@ function MemberCard({ member, index }) {
           )}
         </AnimatePresence>
 
-        <div className="mt-auto pt-5 flex items-center gap-2">
+        <div className="mt-5 flex items-center gap-2">
           {member.linkedin && (
             <a href={member.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${member.name} LinkedIn`} className="w-8 h-8 rounded-full bg-white/4 border border-white/8 flex items-center justify-center text-[#9AA3B8] hover:text-white hover:border-[#1E6BFF]/40 transition">
               <Linkedin size={12}/>
@@ -273,7 +271,7 @@ function TheTeam({ team }) {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {others.map((m, i) => <MemberCard key={m.id || m.name} member={m} index={i}/>)}
         </div>
       </div>
@@ -286,7 +284,7 @@ function CTA() {
   return (
     <section className="relative py-14">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">
-        <div className="premium-shell relative rounded-3xl border border-white/10 overflow-hidden p-5 lg:p-8">
+        <div className="relative rounded-3xl border border-white/10 overflow-hidden p-5 lg:p-8">
           <div className="absolute inset-0 bg-gradient-to-br from-[#0A1430] via-[#05080F] to-[#0A1430]"/>
           <div className="absolute -top-24 -right-16 w-80 h-80 rounded-full bg-[#1E6BFF]/20 blur-[60px]"/>
           <div className="relative grid lg:grid-cols-2 gap-8 items-center">
