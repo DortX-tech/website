@@ -403,29 +403,31 @@ function Approach() {
           {WINGS.map((w, i) => {
             const a = (i / WINGS.length) * 360 - 90;
             return (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, scale: 0.7 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                animate={reduceMotion ? {} : { y: [0, -5 - (i % 3), 0] }}
-                viewport={{ once: true }}
-                transition={{
-                  opacity: { delay: 0.1 + i * 0.1, duration: 0.5, ease: MOTION_EASE },
-                  scale: { delay: 0.1 + i * 0.1, duration: 0.5, ease: MOTION_EASE },
-                  y: { duration: 4.8 + i * 0.35, delay: i * 0.4, repeat: Infinity, ease: "easeInOut" },
-                }}
                 className="absolute"
                 style={{
                   left: `${50 + Math.cos((a * Math.PI) / 180) * 37.5}%`,
                   top: `${50 + Math.sin((a * Math.PI) / 180) * 37.5}%`,
-                  x: "-50%",
-                  y: "-50%",
+                  transform: "translate(-50%, -50%)",
                 }}
               >
-                <div className="min-w-[104px] min-[390px]:min-w-[112px] sm:min-w-[138px] px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-full glass text-[10px] min-[390px]:text-[10.5px] sm:text-[12px] text-white text-center leading-tight whitespace-normal sm:whitespace-nowrap">
-                  {w.name.split(" & ")[0]}
-                </div>
-              </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.7 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  animate={reduceMotion ? {} : { y: [0, -5 - (i % 3), 0] }}
+                  viewport={{ once: true }}
+                  transition={{
+                    opacity: { delay: 0.1 + i * 0.1, duration: 0.5, ease: MOTION_EASE },
+                    scale: { delay: 0.1 + i * 0.1, duration: 0.5, ease: MOTION_EASE },
+                    y: { duration: 4.8 + i * 0.35, delay: i * 0.4, repeat: Infinity, ease: "easeInOut" },
+                  }}
+                >
+                  <div className="min-w-[104px] min-[390px]:min-w-[112px] sm:min-w-[138px] px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-full glass text-[10px] min-[390px]:text-[10.5px] sm:text-[12px] text-white text-center leading-tight whitespace-normal sm:whitespace-nowrap">
+                    {w.name.split(" & ")[0]}
+                  </div>
+                </motion.div>
+              </div>
             );
           })}
           <motion.div
