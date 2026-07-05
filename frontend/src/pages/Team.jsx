@@ -76,10 +76,13 @@ function Philosophy() {
 }
 
 /* —————————————————— Initials / photo avatar —————————————————— */
-function Avatar({ name, photo, size = 120, big = false }) {
+function Avatar({ name, photo, size = 120, big = false, flush = false }) {
   const initials = name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-white/10" style={{ width: "100%", aspectRatio: big ? "1 / 1.05" : "1 / 1" }}>
+    <div
+      className={`relative overflow-hidden ${flush ? "" : "rounded-2xl border border-white/10"}`}
+      style={{ width: "100%", aspectRatio: big ? "1 / 1.05" : "1 / 1" }}
+    >
       {/* Always render the gradient + glow as a background so transparent / loading
           photos still feel premium. */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0F1830] via-[#0A0F1C] to-[#16204A]"/>
@@ -194,17 +197,17 @@ function MemberCard({ member, index }) {
       }}
       whileHover={{ y: -6 }}
       whileTap={{ scale: 0.985 }}
-      className="spotlight premium-card relative group rounded-2xl border border-white/8 bg-white/[0.02] p-5 overflow-hidden h-full flex flex-col"
+      className="spotlight premium-card relative group rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden h-full flex flex-col"
       data-testid={`team-card-${member.name.toLowerCase()}`}
     >
       {/* subtle floating gradient */}
       <div className="absolute -top-16 -right-12 w-44 h-44 rounded-full bg-[#1E6BFF]/10 blur-3xl pointer-events-none group-hover:bg-[#1E6BFF]/20 transition-all duration-500"/>
 
       <div className="relative">
-        <Avatar name={member.name} photo={fullPhoto(member.photo)} />
+        <Avatar name={member.name} photo={fullPhoto(member.photo)} flush />
       </div>
 
-      <div className="relative mt-5 flex flex-1 flex-col">
+      <div className="relative mt-5 flex flex-1 flex-col px-5 pb-5">
         <div className="font-display text-[18px] font-semibold text-white">{member.name}</div>
         <div className="text-[11.5px] tracking-[0.14em] uppercase text-[#4D8BFF] mt-1.5">{member.role}</div>
         <p className="mt-3 text-[13.5px] text-[#9AA3B8] leading-relaxed">{member.bio}</p>
