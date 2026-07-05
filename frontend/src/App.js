@@ -22,8 +22,20 @@ import AdminErrorBoundary from "@/pages/admin/AdminErrorBoundary";
 import NotFound from "@/pages/NotFound";
 
 function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  const { pathname, hash } = useLocation();
+
+  useEffect(() => {
+    if (!hash) {
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    const id = decodeURIComponent(hash.replace("#", ""));
+    window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ block: "start" });
+    }, 0);
+  }, [pathname, hash]);
+
   return null;
 }
 

@@ -329,84 +329,77 @@ function Approach() {
 }
 
 /* ========================================================================
-   05. WINGS — six disciplines, each in a unique row layout (not a grid)
+   05. WINGS - compact home overview cards
    ======================================================================== */
-function WingRow({ wing, index }) {
+function WingCard({ wing, index }) {
   const Icon = WingIcons[wing.icon] || Sparkles;
-  const isReverse = index % 2 === 1;
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, amount: 0.3 });
 
   return (
-    <div ref={ref} id={wing.id} className="relative py-14 lg:py-16 scroll-mt-32">
-      <div className={`absolute ${isReverse ? "right-0" : "left-0"} top-0 rail-num`}>
+    <motion.article
+      ref={ref}
+      initial={{ opacity: 0, y: 24 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.55, delay: index * 0.05 }}
+      onMouseMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+        e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+      }}
+      className="wing-overview-card spotlight rounded-2xl border border-white/8 bg-white/[0.02] p-5 sm:p-6 min-h-[260px] flex flex-col overflow-hidden relative"
+    >
+      <div className="wing-overview-num" aria-hidden="true">
         {wing.number}
       </div>
 
-      <div className={`relative max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-8 items-center ${isReverse ? "lg:flex-row-reverse" : ""}`}>
-        <motion.div
-          initial={{ opacity: 0, x: isReverse ? 40 : -40 }}
-          animate={inView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.7 }}
-          className={`lg:col-span-6 ${isReverse ? "lg:col-start-7" : ""}`}
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-11 h-11 rounded-xl glass flex items-center justify-center text-[#4D8BFF]">
-              <Icon size={20}/>
-            </div>
-            <div className="text-[11.5px] tracking-[0.18em] uppercase text-[#6B7385]">Wing {wing.number}</div>
+      <div className="relative z-10 flex h-full flex-col">
+        <div className="flex items-center justify-between gap-4">
+          <div className="w-12 h-12 rounded-xl glass flex items-center justify-center text-[#4D8BFF] shrink-0">
+            <Icon size={21}/>
           </div>
-          <h3 className="font-display text-[28px] sm:text-[38px] leading-[1.05] font-semibold">{wing.name}</h3>
-          <p className="mt-5 text-[15px] text-[#9AA3B8] leading-relaxed max-w-lg">{wing.description}</p>
-          <Link to={`/services#${wing.id}`} className="mt-6 inline-flex btn-ghost">
+          <div className="text-[11px] tracking-[0.18em] uppercase text-[#6B7385] whitespace-nowrap">Wing {wing.number}</div>
+        </div>
+
+        <h3 className="font-display mt-7 text-[22px] sm:text-[25px] leading-[1.15] font-semibold">{wing.name}</h3>
+        <p className="mt-3 text-[14.5px] text-[#9AA3B8] leading-relaxed">{wing.short}</p>
+
+        <div className="mt-auto pt-7">
+          <Link
+            to={`/services#${wing.id}`}
+            data-testid={`home-wing-link-${wing.id}`}
+            className="inline-flex btn-ghost"
+          >
             Explore this wing <ArrowUpRight size={15}/>
           </Link>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: isReverse ? -40 : 40 }}
-          animate={inView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className={`lg:col-span-6 ${isReverse ? "lg:col-start-1 lg:row-start-1" : ""}`}
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {wing.services.map((s, i) => (
-              <div
-                key={i}
-                onMouseMove={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
-                  e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
-                }}
-                className="spotlight rounded-2xl border border-white/8 bg-white/[0.02] p-5 hover:border-[#1E6BFF]/35 transition"
-              >
-                <div className="flex items-center gap-2 text-[#4D8BFF] mb-3">
-                  <Plus size={14}/>
-                  <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#6B7385]">0{i + 1}</span>
-                </div>
-                <div className="font-display text-white font-semibold text-[15.5px] leading-tight">{s.title}</div>
-                <p className="mt-2 text-[12.5px] text-[#8892A6] leading-relaxed">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+        </div>
       </div>
-    </div>
+    </motion.article>
   );
 }
 
 function Wings() {
   return (
-    <section className="relative">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-6 pt-16">
+    <section className="relative py-14 lg:py-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-[11.5px] tracking-[0.2em] uppercase text-[#4D8BFF] mb-5">— The six wings</div>
-        <h2 className="font-display section-heading font-semibold max-w-4xl">
-          Each wing is a focused practice <br/>
-          in its own right.
-        </h2>
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+          <div>
+            <h2 className="font-display section-heading font-semibold max-w-4xl">
+              Six focused practices. <br/>
+              One connected system.
+            </h2>
+            <p className="mt-5 text-[15.5px] text-[#9AA3B8] leading-relaxed max-w-2xl">
+              A quick overview of what we do. Each wing opens into the full service detail when you need the depth.
+            </p>
+          </div>
+          <Link to="/services" className="btn-ghost shrink-0">
+            View all service details <ArrowRight size={15}/>
+          </Link>
+        </div>
       </div>
-      <div className="divide-y divide-white/6">
-        {WINGS.map((w, i) => <WingRow key={w.id} wing={w} index={i}/>)}
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {WINGS.map((w, i) => <WingCard key={w.id} wing={w} index={i}/>)}
       </div>
     </section>
   );
