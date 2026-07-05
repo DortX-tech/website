@@ -139,6 +139,10 @@ export function getCompanyAssistantReply(message) {
     return `You can contact DortX at **${CONTACT.support}** or **${CONTACT.phone}**. You can also reach the founder at **${CONTACT.founder}**.`;
   }
 
+  if (includesAny(text, ["pricing", "budget", "cost"])) {
+    return "DortX pricing depends on the scope, complexity, integrations, timeline and level of ongoing support needed. The team shares a transparent estimate after understanding the requirement, so there are no hidden fees or vague assumptions. If you want a formal quotation, I can collect the project details and connect you with the team.";
+  }
+
   if (includesAny(text, ["services", "what services", "wings", "offer", "provide"])) {
     return `DortX works through six service wings:\n\n${servicesSummary()}`;
   }

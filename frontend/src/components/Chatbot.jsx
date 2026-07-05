@@ -23,17 +23,17 @@ const SERVICE_OPTIONS = [
   "Not sure yet",
 ];
 
-const QUICK_ACTIONS = [
-  "Build an AI Agent",
-  "Create a Website",
-  "Need Automation",
-  "Book Consultation",
-  "Talk to Sales",
-  "View Portfolio",
-  "Our Technologies",
-  "IoT Automation",
-  "Pricing",
-  "Contact Us",
+const SMART_QUICK_QUESTIONS = [
+  { label: "🏢 About DortX", prompt: "What is DortX?" },
+  { label: "🚀 Our Services", prompt: "What services do you provide?" },
+  { label: "👥 Meet Our Team", prompt: "Who is on the DortX team?" },
+  { label: "💼 Start a Project", prompt: "I want to start a project with DortX." },
+  { label: "💰 Pricing & Budget", prompt: "How does DortX pricing and budget work?" },
+  { label: "📅 Project Timeline", prompt: "How long does a typical DortX project take?" },
+  { label: "🤖 AI & Automation", prompt: "What AI and automation services does DortX provide?" },
+  { label: "💻 Website & Software Development", prompt: "Can DortX build websites and custom software?" },
+  { label: "📱 Mobile App Development", prompt: "Can DortX build mobile apps?" },
+  { label: "📞 Contact Our Team", prompt: "I want the DortX team to contact me." },
 ];
 
 const LEAD_FIELDS = [
@@ -807,7 +807,6 @@ export default function Chatbot() {
       append({
         role: "assistant",
         content: `Great, ${memory.name || "there"}. I'll keep **${msg}** in mind.\n\nWhat would you like to know or plan first?`,
-        actions: QUICK_ACTIONS,
       });
       return;
     }
@@ -825,12 +824,8 @@ export default function Chatbot() {
 
   const onAction = (action) => {
     if (busy) return;
-    if (["Book Consultation", "Talk to Sales"].includes(action)) {
-      append(makeMessage("user", action, { status: "sent" }));
-      startLeadFlow();
-      return;
-    }
-    send(action);
+    const smartQuestion = SMART_QUICK_QUESTIONS.find((item) => item.label === action);
+    send(smartQuestion?.prompt || action);
   };
 
   const retryMessage = async (message) => {
@@ -1039,6 +1034,23 @@ export default function Chatbot() {
                 </button>
               )}
             </div>
+
+            {stage === "chat" && memory.name && (
+              <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+                {SMART_QUICK_QUESTIONS.map((question) => (
+                  <button
+                    key={question.label}
+                    type="button"
+                    data-testid={`chat-suggestion-${question.label.replace(/[^\w]+/g, "-").slice(0, 24)}`}
+                    onClick={() => onAction(question.label)}
+                    disabled={busy}
+                    className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#C9D2E0] border border-white/8 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                  >
+                    {question.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <form
               onSubmit={(event) => { event.preventDefault(); send(); }}
