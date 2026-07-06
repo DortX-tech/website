@@ -4,6 +4,7 @@ import { Building2, Clock, Instagram, Linkedin, Mail, Paperclip, Phone } from "l
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { apiClient } from "@/config/api";
 import { CONTACT } from "@/data/site";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -26,7 +27,20 @@ const budgetOptions = [
 ];
 const timelineOptions = ["Not sure yet", "As soon as possible", "Within 1 month", "1-3 months", "3+ months"];
 const phoneError = "Please enter a valid phone number, including the country code if outside India (e.g. +1 415 555 2671).";
-const contactRecipient = CONTACT.support;
+const successMessage = "✅ Message received successfully! Our team will contact you within 24 hours.";
+
+function getSubmitError(error) {
+  const detail = error?.response?.data?.detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item?.msg).filter(Boolean).join(" ") || "Could not submit your message. Please try again.";
+  }
+  if (typeof detail === "string") return detail;
+  return "Could not submit your message. Please try again.";
+}
+
+function shouldShowEmailFallback(error) {
+  return !error?.response || error.response.status >= 500;
+}
 
 function isValidPhone(input, defaultCountry = "IN") {
   const phoneNumber = parsePhoneNumberFromString(input, defaultCountry);
@@ -78,11 +92,13 @@ export default function Contact() {
   });
   const [errors, setErrors] = useState({});
   const [err, setErr] = useState("");
-  const [mailtoFallback, setMailtoFallback] = useState(false);
+  const [emailFallback, setEmailFallback] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const setField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
-    if (mailtoFallback) setMailtoFallback(false);
+    if (success) setSuccess("");
     if (errors[field]) {
       setErrors((current) => ({ ...current, [field]: "" }));
     }
@@ -104,32 +120,47 @@ export default function Contact() {
     return Object.keys(next).length === 0;
   };
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
-    if (!validate()) return;
+    if (submitting || !validate()) return;
 
     setErr("");
-    setMailtoFallback(false);
+    setEmailFallback(false);
+    setSuccess("");
+    setSubmitting(true);
 
-    const subject = `${form.service} enquiry from ${form.name.trim()}`;
-    const body = [
-      `Name: ${form.name.trim()}`,
-      `Email: ${form.email.trim()}`,
-      `Phone: ${form.phone.trim() || "Not provided"}`,
-      `Company: ${form.company.trim() || "Not provided"}`,
-      `Service Interested In: ${form.service}`,
-      `Budget: ${form.budget || "Not provided"}`,
-      `Timeline: ${form.timeline || "Not provided"}`,
-      "",
-      "Message / Requirements:",
-      form.description.trim(),
-      "",
-      form.file ? `Attachment note: ${form.file.name} was selected in the website form, but mail apps require attaching files manually.` : "Attachment: Not provided",
-    ].join("\n");
-
-    const mailto = `mailto:${contactRecipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.setTimeout(() => setMailtoFallback(true), 1000);
-    window.location.href = mailto;
+    try {
+      await apiClient.post("/leads", {
+        name: form.name.trim(),
+        company: form.company.trim() || undefined,
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        subject: `${form.service} enquiry from ${form.name.trim()}`,
+        service: form.service,
+        budget: form.budget || undefined,
+        timeline: form.timeline || undefined,
+        description: form.description.trim(),
+        file_name: form.file?.name || undefined,
+      });
+      setSuccess(successMessage);
+      setEmailFallback(false);
+      setForm({
+        name: "",
+        company: "",
+        email: "",
+        phone: "",
+        service: "",
+        budget: "",
+        timeline: "",
+        description: "",
+        file: null,
+      });
+    } catch (error) {
+      setErr(getSubmitError(error));
+      setEmailFallback(shouldShowEmailFallback(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const input = "contact-field w-full";
@@ -307,18 +338,27 @@ export default function Contact() {
                   {errors.file && <p className={errorText}>{errors.file}</p>}
                 </div>
 
-                {err && <div role="alert" className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-red-200 text-[13px]">{err}</div>}
-                {mailtoFallback && (
+                {err && (
+                  <div role="alert" className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-red-200 text-[13px] leading-relaxed">
+                    {err}
+                    {emailFallback && (
+                      <>
+                        {" "}If the issue continues, contact{" "}
+                        <a href={`mailto:${CONTACT.support}`} className="text-red-100 hover:text-white hover:underline underline-offset-4">
+                          {CONTACT.support}
+                        </a>.
+                      </>
+                    )}
+                  </div>
+                )}
+                {success && (
                   <div role="status" className="rounded-xl border border-[#1E6BFF]/25 bg-[#1E6BFF]/10 px-4 py-3 text-[#C9D2E0] text-[13px] leading-relaxed">
-                    If your email app didn't open, please email us directly at{" "}
-                    <a href={`mailto:${contactRecipient}`} className="text-[#9DB8FF] hover:text-white hover:underline underline-offset-4">
-                      {contactRecipient}
-                    </a>.
+                    {success}
                   </div>
                 )}
 
-                <button data-testid="contact-submit" className="btn-primary w-full justify-center">
-                  Send message
+                <button data-testid="contact-submit" className="btn-primary w-full justify-center disabled:cursor-not-allowed disabled:opacity-70" disabled={submitting}>
+                  {submitting ? "Sending..." : "Send message"}
                 </button>
               </motion.form>
         </div>
