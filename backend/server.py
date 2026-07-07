@@ -9,9 +9,9 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query, WebSocket, WebSocketDisconnect, Request, Body
 from fastapi.security import OAuth2PasswordBearer
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
@@ -50,6 +50,29 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=Fals
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("dortx")
 
+LIVE_METRICS_ID = "dortx-live"
+active_visitor_sessions: Dict[str, int] = {}
+visitor_sockets: set[WebSocket] = set()
+DOCUMENT_DIR = UPLOAD_DIR / "documents"
+DOCUMENT_DIR.mkdir(parents=True, exist_ok=True)
+
+LEAD_STATUSES = (
+    "new", "contacted", "requirement_discussion", "proposal_generated", "proposal_sent",
+    "proposal_accepted", "agreement_generated", "agreement_signed", "invoice_generated",
+    "advance_paid", "project_started", "in_progress", "delivered", "completed", "lost",
+)
+PROJECT_STATUSES = ("not_started", "in_progress", "testing", "delivered", "completed", "on_hold", "cancelled")
+COMPLETION_CHECKLIST_KEYS = (
+    "proposal_approved",
+    "agreement_signed",
+    "advance_payment_received",
+    "final_payment_received",
+    "source_code_delivered",
+    "credentials_shared",
+    "documentation_delivered",
+    "client_approval_received",
+)
+
 
 # --- Models ---
 def now_iso() -> str:
@@ -73,17 +96,135 @@ class LeadCreate(BaseModel):
 class Lead(LeadCreate):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    status: str = "new"  # new, contacted, qualified, won, lost
+    status: str = "new"
+    status_history: List[Dict[str, Any]] = Field(default_factory=list)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
 
 class LeadStatusUpdate(BaseModel):
     status: str
+    notes: Optional[str] = Field("", max_length=1000)
+    override: bool = False
+    data: Optional[Dict[str, Any]] = None
 
 
 class ApplicationStatusUpdate(BaseModel):
     status: str
+
+
+class LiveMetricsUpdate(BaseModel):
+    active_projects: int = Field(..., ge=0)
+    projects_delivered: int = Field(..., ge=0)
+
+
+class ProposalPayload(BaseModel):
+    lead_id: Optional[str] = None
+    client_name: str = Field("", max_length=200)
+    company_name: Optional[str] = Field("", max_length=200)
+    email: Optional[str] = Field("", max_length=200)
+    phone: Optional[str] = Field("", max_length=50)
+    project_name: str = Field("", max_length=240)
+    project_type: Optional[str] = Field("", max_length=160)
+    project_description: Optional[str] = Field("", max_length=8000)
+    required_services: Optional[str] = Field("", max_length=4000)
+    modules_included: Optional[str] = Field("", max_length=4000)
+    timeline: Optional[str] = Field("", max_length=1000)
+    milestones: Optional[str] = Field("", max_length=4000)
+    total_price: Optional[str] = Field("", max_length=120)
+    advance_amount: Optional[str] = Field("", max_length=120)
+    payment_schedule: Optional[str] = Field("", max_length=3000)
+    notes: Optional[str] = Field("", max_length=4000)
+
+
+class AgreementPayload(BaseModel):
+    lead_id: Optional[str] = None
+    proposal_id: Optional[str] = None
+    agreement_id: Optional[str] = None
+    client_details: Optional[str] = Field("", max_length=3000)
+    project_name: str = Field("", max_length=240)
+    project_scope: Optional[str] = Field("", max_length=8000)
+    included_deliverables: Optional[str] = Field("", max_length=5000)
+    not_included: Optional[str] = Field("", max_length=5000)
+    timeline: Optional[str] = Field("", max_length=1200)
+    milestones: Optional[str] = Field("", max_length=4000)
+    total_project_cost: Optional[str] = Field("", max_length=120)
+    payment_schedule: Optional[str] = Field("", max_length=3000)
+    revision_policy: Optional[str] = Field("", max_length=3000)
+    client_responsibilities: Optional[str] = Field("", max_length=4000)
+    dortx_responsibilities: Optional[str] = Field("", max_length=4000)
+    support_period: Optional[str] = Field("", max_length=1000)
+    change_request_policy: Optional[str] = Field("", max_length=3000)
+    cancellation_policy: Optional[str] = Field("", max_length=3000)
+    confidentiality: Optional[str] = Field("", max_length=3000)
+    intellectual_property: Optional[str] = Field("", max_length=3000)
+    governing_law: Optional[str] = Field("", max_length=1200)
+    signature_section: Optional[str] = Field("", max_length=3000)
+
+
+class InvoicePayload(BaseModel):
+    lead_id: Optional[str] = None
+    agreement_id: Optional[str] = None
+    invoice_id: Optional[str] = None
+    client_name: str = Field("", max_length=200)
+    company_name: Optional[str] = Field("", max_length=200)
+    project_name: str = Field("", max_length=240)
+    invoice_date: Optional[str] = Field("", max_length=80)
+    due_date: Optional[str] = Field("", max_length=80)
+    total_amount: Optional[str] = Field("", max_length=120)
+    advance_amount: Optional[str] = Field("", max_length=120)
+    balance_amount: Optional[str] = Field("", max_length=120)
+    payment_status: Optional[str] = Field("pending", max_length=80)
+    payment_mode: Optional[str] = Field("", max_length=120)
+    notes: Optional[str] = Field("", max_length=4000)
+
+
+class AdvancePaymentPayload(BaseModel):
+    amount: Optional[str] = Field("", max_length=120)
+    transaction_id: Optional[str] = Field("", max_length=200)
+    payment_mode: Optional[str] = Field("", max_length=120)
+    notes: Optional[str] = Field("", max_length=2000)
+
+
+class ProjectPayload(BaseModel):
+    lead_id: Optional[str] = None
+    invoice_id: Optional[str] = None
+    project_name: str = Field("", max_length=240)
+    client_name: Optional[str] = Field("", max_length=200)
+    project_type: Optional[str] = Field("", max_length=160)
+    status: Optional[str] = "not_started"
+    start_date: Optional[str] = Field("", max_length=80)
+    expected_delivery_date: Optional[str] = Field("", max_length=80)
+    timeline: Optional[str] = Field("", max_length=1200)
+    milestones: Optional[str] = Field("", max_length=4000)
+    assigned_team: Optional[str] = Field("", max_length=2000)
+    files: Optional[str] = Field("", max_length=4000)
+    notes: Optional[str] = Field("", max_length=4000)
+
+
+class CompletionChecklistUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    proposal_approved: Optional[bool] = None
+    agreement_signed: Optional[bool] = None
+    advance_payment_received: Optional[bool] = None
+    final_payment_received: Optional[bool] = None
+    source_code_delivered: Optional[bool] = None
+    credentials_shared: Optional[bool] = None
+    documentation_delivered: Optional[bool] = None
+    client_approval_received: Optional[bool] = None
+
+
+class FeedbackPayload(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = Field("", max_length=2000)
+
+
+class FinalNotesPayload(BaseModel):
+    final_notes: str = Field("", max_length=8000)
+
+
+class ArchivePayload(BaseModel):
+    archive: bool = True
 
 
 class LoginRequest(BaseModel):
@@ -261,6 +402,305 @@ def apply_team_profile_updates(items: List[dict]) -> List[dict]:
             item.update(updates)
     return items
 
+
+async def ensure_live_metrics() -> dict:
+    doc = await db.live_metrics.find_one({"id": LIVE_METRICS_ID}, {"_id": 0})
+    if doc:
+        return doc
+    doc = {
+        "id": LIVE_METRICS_ID,
+        "active_projects": 0,
+        "projects_delivered": 0,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.live_metrics.update_one({"id": LIVE_METRICS_ID}, {"$setOnInsert": doc}, upsert=True)
+    return doc
+
+
+async def read_live_metrics() -> dict:
+    doc = await ensure_live_metrics()
+    return {
+        "visitors_online": len(active_visitor_sessions),
+        "active_projects": int(doc.get("active_projects") or 0),
+        "projects_delivered": int(doc.get("projects_delivered") or 0),
+    }
+
+
+async def broadcast_visitor_count() -> None:
+    if not visitor_sockets:
+        return
+    payload = await read_live_metrics()
+    stale = []
+    for socket in list(visitor_sockets):
+        try:
+            await socket.send_json(payload)
+        except Exception:
+            stale.append(socket)
+    for socket in stale:
+        visitor_sockets.discard(socket)
+
+
+def compact_id(prefix: str) -> str:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return f"{prefix}-{stamp}-{uuid.uuid4().hex[:6].upper()}"
+
+
+def clean_status(value: Optional[str], allowed: tuple[str, ...], fallback: str) -> str:
+    return value if value in allowed else fallback
+
+
+def pdf_escape(value: Any) -> str:
+    return str(value or "").replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def wrap_pdf_lines(text: str, max_chars: int = 96) -> List[str]:
+    lines: List[str] = []
+    for raw in str(text or "").replace("\r", "").split("\n"):
+        words = raw.split()
+        if not words:
+            lines.append("")
+            continue
+        current = ""
+        for word in words:
+            next_line = f"{current} {word}".strip()
+            if len(next_line) > max_chars and current:
+                lines.append(current)
+                current = word
+            else:
+                current = next_line
+        lines.append(current)
+    return lines
+
+
+def make_pdf(title: str, doc_id: str, sections: List[tuple[str, Any]]) -> bytes:
+    pages: List[List[str]] = [[]]
+    lines_left = 42
+    header = [
+        "DORTX TECHNOLOGIES",
+        "Registered MSME (Udyam) | UDYAM-KR-25-0108099",
+        "www.dortxtech.com | support@dortxtech.com",
+        "",
+        f"{title} | {doc_id}",
+        "",
+    ]
+
+    def push(line: str = "") -> None:
+        nonlocal lines_left
+        if lines_left <= 0:
+            pages.append([])
+            lines_left = 48
+        pages[-1].append(line)
+        lines_left -= 1
+
+    for line in header:
+        push(line)
+    for heading, body in sections:
+        push("")
+        push(heading.upper())
+        for line in wrap_pdf_lines(str(body or "-")):
+            push(line)
+    push("")
+    push("Footer: www.dortxtech.com")
+
+    objects: List[str] = []
+    page_refs: List[int] = []
+    font_obj = 3
+    objects.append("<< /Type /Catalog /Pages 2 0 R >>")
+    objects.append("<< /Type /Pages /Kids [] /Count 0 >>")
+    objects.append("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+
+    for page_lines in pages:
+        content = ["0.07 0.10 0.18 rg 0 0 612 792 re f", "0.95 0.97 1 rg", "BT /F1 11 Tf 44 748 Td"]
+        first = True
+        for line in page_lines:
+            if not first:
+                content.append("0 -15 Td")
+            first = False
+            content.append(f"({pdf_escape(line)}) Tj")
+        content.append("ET")
+        stream = "\n".join(content)
+        content_obj = len(objects) + 1
+        objects.append(f"<< /Length {len(stream.encode('latin-1', errors='replace'))} >>\nstream\n{stream}\nendstream")
+        page_obj = len(objects) + 1
+        objects.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 {font_obj} 0 R >> >> /Contents {content_obj} 0 R >>")
+        page_refs.append(page_obj)
+
+    objects[1] = f"<< /Type /Pages /Kids [{' '.join(f'{ref} 0 R' for ref in page_refs)}] /Count {len(page_refs)} >>"
+    output = ["%PDF-1.4\n%\xE2\xE3\xCF\xD3\n"]
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(sum(len(part.encode("latin-1", errors="replace")) for part in output))
+        output.append(f"{index} 0 obj\n{obj}\nendobj\n")
+    xref = sum(len(part.encode("latin-1", errors="replace")) for part in output)
+    output.append(f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        output.append(f"{offset:010d} 00000 n \n")
+    output.append(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n")
+    return "".join(output).encode("latin-1", errors="replace")
+
+
+def save_document_pdf(kind: str, doc_id: str, title: str, sections: List[tuple[str, Any]]) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "-", doc_id or str(uuid.uuid4()))
+    path = DOCUMENT_DIR / f"{kind}-{safe}.pdf"
+    path.write_bytes(make_pdf(title, doc_id, sections))
+    return str(path)
+
+
+def status_history_entry(old_status: str, new_status: str, admin: Optional[dict], notes: str = "") -> dict:
+    now = datetime.now(timezone.utc)
+    admin_name = (admin or {}).get("name") or (admin or {}).get("email") or "DortX Admin"
+    return {
+        "old_status": old_status or "",
+        "new_status": new_status,
+        "date": now.date().isoformat(),
+        "time": now.strftime("%H:%M:%S UTC"),
+        "admin": admin_name,
+        "notes": notes or "",
+        "created_at": now.isoformat(),
+    }
+
+
+def default_completion_checklist() -> dict:
+    return {**{key: False for key in COMPLETION_CHECKLIST_KEYS}, "updated_at": None, "updated_by": ""}
+
+
+def default_completion() -> dict:
+    return {
+        "completed_at": None,
+        "completed_by": "",
+        "duration_days": None,
+        "completion_report_path": "",
+        "completion_certificate_path": "",
+        "final_notes": "",
+        "is_archived": False,
+        "archived_at": None,
+    }
+
+
+def default_feedback() -> dict:
+    return {
+        "rating": None,
+        "comment": "",
+        "submitted_at": None,
+        "feedback_token": "",
+        "token_expires_at": None,
+        "token_consumed": False,
+    }
+
+
+def merge_completion_defaults(project: dict) -> dict:
+    checklist = {**default_completion_checklist(), **(project.get("completion_checklist") or {})}
+    completion = {**default_completion(), **(project.get("completion") or {})}
+    feedback = {**default_feedback(), **(project.get("feedback") or {})}
+    return {**project, "completion_checklist": checklist, "completion": completion, "feedback": feedback}
+
+
+async def ensure_project_completion_fields(project: dict) -> dict:
+    merged = merge_completion_defaults(project)
+    changed = any(project.get(key) != merged.get(key) for key in ("completion_checklist", "completion", "feedback"))
+    if changed:
+        await db.projects.update_one(
+            {"id": project["id"]},
+            {"$set": {
+                "completion_checklist": merged["completion_checklist"],
+                "completion": merged["completion"],
+                "feedback": merged["feedback"],
+            }},
+        )
+    return merged
+
+
+def completion_unmet_items(checklist: dict) -> List[str]:
+    return [key for key in COMPLETION_CHECKLIST_KEYS if not bool((checklist or {}).get(key))]
+
+
+def parse_iso_datetime(value: Any) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        text = str(value).replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(text)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def project_duration_days(project: dict, completed_at: datetime) -> int:
+    start = parse_iso_datetime(project.get("start_date")) or parse_iso_datetime(project.get("created_at")) or completed_at
+    return max(0, (completed_at.date() - start.date()).days)
+
+
+def admin_display_name(admin: Optional[dict]) -> str:
+    return (admin or {}).get("name") or (admin or {}).get("email") or "DortX Admin"
+
+
+async def log_lead_activity(lead_id: Optional[str], admin: Optional[dict], notes: str) -> Optional[dict]:
+    if not lead_id:
+        return None
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        return None
+    status_value = lead.get("status") or "new"
+    entry = status_history_entry(status_value, status_value, admin, notes)
+    await db.leads.update_one(
+        {"id": lead_id},
+        {"$set": {"updated_at": now_iso(), "updatedAt": now_iso(), "updatedBy": entry["admin"]},
+         "$push": {"status_history": entry, "statusHistory": entry}},
+    )
+    return entry
+
+
+async def set_lead_status(lead_id: str, new_status: str, admin: Optional[dict], notes: str = "", override: bool = True) -> dict:
+    if new_status not in LEAD_STATUSES:
+        raise HTTPException(400, "Status is not supported.")
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+    old_status = lead.get("status") or "new"
+    if old_status == new_status:
+        return {"lead": lead, "activity": None}
+    entry = status_history_entry(old_status, new_status, admin, notes)
+    updated_at = now_iso()
+    if new_status == "project_started":
+        existing_project = await db.projects.find_one({"lead_id": lead_id}, {"_id": 0})
+        if not existing_project:
+            await db.projects.insert_one({
+                "id": compact_id("PRJ"),
+                "lead_id": lead_id,
+                "invoice_id": "",
+                "project_name": lead.get("subject") or lead.get("service") or "DortX Project",
+                "client_name": lead.get("name") or "",
+                "project_type": lead.get("service") or "",
+                "status": "not_started",
+                "start_date": updated_at[:10],
+                "expected_delivery_date": "",
+                "timeline": lead.get("timeline") or "",
+                "milestones": "",
+                "assigned_team": "",
+                "files": "",
+                "notes": "Created automatically when the CRM moved to Project Started.",
+                "completion_checklist": default_completion_checklist(),
+                "completion": default_completion(),
+                "feedback": default_feedback(),
+                "created_at": updated_at,
+                "updated_at": updated_at,
+            })
+    await db.leads.update_one(
+        {"id": lead_id},
+        {
+            "$set": {
+                "status": new_status,
+                "updated_at": updated_at,
+                "updatedAt": updated_at,
+                "updatedBy": entry["admin"],
+            },
+            "$push": {"status_history": entry, "statusHistory": entry},
+        },
+    )
+    doc = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    return {"lead": doc or lead, "activity": entry}
+
 # --- Startup: seed admin ---
 @app.on_event("startup")
 async def startup():
@@ -323,6 +763,7 @@ async def health():
 @api.post("/leads", response_model=Lead, status_code=201)
 async def create_lead(payload: LeadCreate):
     lead = Lead(**payload.model_dump())
+    lead.status_history = [status_history_entry("", "new", {"name": "System"}, "Lead received")]
     await db.leads.insert_one(lead.model_dump())
     logger.info(f"New lead: {lead.email} - {lead.subject or lead.service or 'Contact form'}")
     return lead
@@ -357,6 +798,7 @@ async def create_lead_with_file(
         phone=phone, subject=subject, service=service, budget=budget, timeline=timeline,
         file_name=file_name, file_path=file_path,
     )
+    lead.status_history = [status_history_entry("", "new", {"name": "System"}, "Lead received")]
     await db.leads.insert_one(lead.model_dump())
     return lead
 
@@ -388,6 +830,44 @@ async def subscribe_newsletter(payload: NewsletterSubscribe):
     }
     await db.newsletter_subscribers.insert_one(doc)
     return {"success": True, "id": doc["id"]}
+
+
+# --- DortX Live ---
+@api.get("/live/metrics")
+async def public_live_metrics():
+    return await read_live_metrics()
+
+
+@api.get("/live-metrics")
+async def public_live_metrics_alias():
+    return await read_live_metrics()
+
+
+@app.get("/live-metrics")
+async def public_live_metrics_root_alias():
+    return await read_live_metrics()
+
+
+@api.websocket("/live/visitors/ws")
+async def live_visitors_socket(websocket: WebSocket):
+    await websocket.accept()
+    session_id = websocket.query_params.get("session_id") or str(uuid.uuid4())
+    visitor_sockets.add(websocket)
+    active_visitor_sessions[session_id] = active_visitor_sessions.get(session_id, 0) + 1
+    await broadcast_visitor_count()
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        current = active_visitor_sessions.get(session_id, 0)
+        if current <= 1:
+            active_visitor_sessions.pop(session_id, None)
+        else:
+            active_visitor_sessions[session_id] = current - 1
+        visitor_sockets.discard(websocket)
+        await broadcast_visitor_count()
 
 
 # --- Auth ---
@@ -432,15 +912,54 @@ async def list_leads(
 
 @api.patch("/admin/leads/{lead_id}/status")
 async def update_lead_status(lead_id: str, payload: LeadStatusUpdate, admin: dict = Depends(get_current_admin)):
-    if payload.status not in ("new", "contacted", "qualified", "won", "lost"):
-        raise HTTPException(400, "Invalid status")
-    res = await db.leads.update_one(
-        {"id": lead_id},
-        {"$set": {"status": payload.status, "updated_at": now_iso()}},
-    )
-    if res.matched_count == 0:
+    result = await set_lead_status(lead_id, payload.status, admin, payload.notes or "", True)
+    if payload.data:
+        safe_data = json.loads(json.dumps(payload.data, default=str)) if isinstance(payload.data, dict) else {}
+        await db.leads.update_one(
+            {"id": lead_id},
+            {"$set": {f"crm_workflow.{payload.status}": {
+                "data": safe_data,
+                "notes": payload.notes or "",
+                "updated_at": now_iso(),
+                "updated_by": admin_display_name(admin),
+            }}},
+        )
+        lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+        if lead:
+            result["lead"] = lead
+    return {"success": True, "lead": result["lead"], "activity": result["activity"]}
+
+
+@api.get("/leads")
+async def list_leads_alias(
+    admin: dict = Depends(get_current_admin),
+    q: Optional[str] = None,
+    status: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=200),
+):
+    return await list_leads(admin=admin, q=q, status=status, page=page, limit=limit)
+
+
+@api.get("/leads/{lead_id}")
+async def get_lead_alias(lead_id: str, admin: dict = Depends(get_current_admin)):
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
         raise HTTPException(404, "Lead not found")
-    return {"success": True}
+    return lead
+
+
+@api.get("/leads/{lead_id}/timeline")
+async def get_lead_timeline(lead_id: str, admin: dict = Depends(get_current_admin)):
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0, "status_history": 1, "statusHistory": 1})
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+    return {"items": lead.get("status_history") or lead.get("statusHistory") or []}
+
+
+@api.patch("/leads/{lead_id}/status")
+async def update_lead_status_alias(lead_id: str, payload: LeadStatusUpdate, admin: dict = Depends(get_current_admin)):
+    return await update_lead_status(lead_id, payload, admin)
 
 
 @api.delete("/admin/leads/{lead_id}")
@@ -488,6 +1007,598 @@ async def analytics(admin: dict = Depends(get_current_admin)):
     }
 
 
+@app.get("/admin/live-metrics")
+@api.get("/admin/live-metrics")
+async def get_admin_live_metrics(admin: dict = Depends(get_current_admin)):
+    return await read_live_metrics()
+
+
+@app.patch("/admin/live-metrics")
+@api.patch("/admin/live-metrics")
+async def update_admin_live_metrics(payload: LiveMetricsUpdate, admin: dict = Depends(get_current_admin)):
+    update = {
+        "active_projects": payload.active_projects,
+        "projects_delivered": payload.projects_delivered,
+        "updated_at": now_iso(),
+    }
+    await db.live_metrics.update_one(
+        {"id": LIVE_METRICS_ID},
+        {"$set": update, "$setOnInsert": {"id": LIVE_METRICS_ID, "created_at": now_iso()}},
+        upsert=True,
+    )
+    await broadcast_visitor_count()
+    return await read_live_metrics()
+
+
+async def get_doc_or_404(collection: str, doc_id: str) -> dict:
+    doc = await db[collection].find_one({"id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, f"{collection.rstrip('s').title()} not found")
+    return doc
+
+
+async def list_collection(collection: str, lead_id: Optional[str] = None) -> dict:
+    query = {"lead_id": lead_id} if lead_id else {}
+    items = await db[collection].find(query, {"_id": 0}).sort("created_at", -1).to_list(length=1000)
+    return {"items": items, "total": len(items)}
+
+
+@api.get("/proposals")
+async def list_proposals(admin: dict = Depends(get_current_admin), lead_id: Optional[str] = None):
+    return await list_collection("proposals", lead_id)
+
+
+@api.post("/proposals", status_code=201)
+async def create_proposal(payload: ProposalPayload, admin: dict = Depends(get_current_admin)):
+    doc = {"id": compact_id("PROP"), **payload.model_dump(), "status": "draft", "created_at": now_iso(), "updated_at": now_iso()}
+    await db.proposals.insert_one(doc)
+    if payload.lead_id:
+        await set_lead_status(payload.lead_id, "proposal_generated", admin, "Proposal draft generated", True)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.get("/proposals/{proposal_id}")
+async def get_proposal(proposal_id: str, admin: dict = Depends(get_current_admin)):
+    return await get_doc_or_404("proposals", proposal_id)
+
+
+@api.patch("/proposals/{proposal_id}")
+async def update_proposal(proposal_id: str, payload: ProposalPayload, admin: dict = Depends(get_current_admin)):
+    update = payload.model_dump(exclude_unset=True)
+    update["updated_at"] = now_iso()
+    res = await db.proposals.update_one({"id": proposal_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Proposal not found")
+    return await get_doc_or_404("proposals", proposal_id)
+
+
+@api.post("/proposals/{proposal_id}/generate-pdf")
+async def generate_proposal_pdf(proposal_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("proposals", proposal_id)
+    sections = [
+        ("Client Details", f"{doc.get('client_name')} | {doc.get('company_name')} | {doc.get('email')} | {doc.get('phone')}"),
+        ("Project", f"{doc.get('project_name')} | {doc.get('project_type')}"),
+        ("Description", doc.get("project_description")),
+        ("Required Services", doc.get("required_services")),
+        ("Modules Included", doc.get("modules_included")),
+        ("Timeline", doc.get("timeline")),
+        ("Milestones", doc.get("milestones")),
+        ("Commercials", f"Total Price: {doc.get('total_price')} | Advance: {doc.get('advance_amount')}"),
+        ("Payment Schedule", doc.get("payment_schedule")),
+        ("Notes", doc.get("notes")),
+    ]
+    path = save_document_pdf("proposal", proposal_id, "DortX Project Proposal", sections)
+    await db.proposals.update_one({"id": proposal_id}, {"$set": {"pdf_path": path, "status": "pdf_generated", "updated_at": now_iso()}})
+    if doc.get("lead_id"):
+        await set_lead_status(doc["lead_id"], "proposal_generated", admin, "Proposal PDF generated", True)
+    return await get_doc_or_404("proposals", proposal_id)
+
+
+@api.post("/proposals/{proposal_id}/send")
+async def send_proposal(proposal_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("proposals", proposal_id)
+    await db.proposals.update_one({"id": proposal_id}, {"$set": {"status": "sent", "sent_at": now_iso(), "updated_at": now_iso()}})
+    if doc.get("lead_id"):
+        await set_lead_status(doc["lead_id"], "proposal_sent", admin, "Proposal sent to client", True)
+    return await get_doc_or_404("proposals", proposal_id)
+
+
+@api.patch("/proposals/{proposal_id}/accept")
+async def accept_proposal(proposal_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("proposals", proposal_id)
+    await db.proposals.update_one({"id": proposal_id}, {"$set": {"status": "accepted", "accepted_at": now_iso(), "updated_at": now_iso()}})
+    if doc.get("lead_id"):
+        await set_lead_status(doc["lead_id"], "proposal_accepted", admin, "Proposal accepted", True)
+    return await get_doc_or_404("proposals", proposal_id)
+
+
+@api.get("/agreements")
+async def list_agreements(admin: dict = Depends(get_current_admin), lead_id: Optional[str] = None):
+    return await list_collection("agreements", lead_id)
+
+
+@api.post("/agreements", status_code=201)
+async def create_agreement(payload: AgreementPayload, admin: dict = Depends(get_current_admin)):
+    doc = {"id": payload.agreement_id or compact_id("AGR"), **payload.model_dump(), "status": "draft", "client_signed": False, "dortx_signed": False, "created_at": now_iso(), "updated_at": now_iso()}
+    doc["agreement_id"] = doc["id"]
+    await db.agreements.insert_one(doc)
+    if payload.lead_id:
+        await set_lead_status(payload.lead_id, "agreement_generated", admin, "Agreement generated", True)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.get("/agreements/{agreement_id}")
+async def get_agreement(agreement_id: str, admin: dict = Depends(get_current_admin)):
+    return await get_doc_or_404("agreements", agreement_id)
+
+
+@api.patch("/agreements/{agreement_id}")
+async def update_agreement(agreement_id: str, payload: AgreementPayload, admin: dict = Depends(get_current_admin)):
+    update = payload.model_dump(exclude_unset=True)
+    update["updated_at"] = now_iso()
+    res = await db.agreements.update_one({"id": agreement_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Agreement not found")
+    return await get_doc_or_404("agreements", agreement_id)
+
+
+@api.post("/agreements/{agreement_id}/generate-pdf")
+async def generate_agreement_pdf(agreement_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("agreements", agreement_id)
+    dortx_signature = (
+        "For and on behalf of DORTX TECHNOLOGIES\n\nAuthorized Signatory\n\n"
+        "Name: Thrisha J C\nDesignation: Founder & Chief Executive Officer (CEO)\nSignature:\nDate:"
+    )
+    client_signature = "Client Name:\nCompany:\nDesignation:\nSignature:\nDate:"
+    sections = [
+        ("DortX Company Section", "DORTX TECHNOLOGIES\nRegistered MSME (Udyam)\nUdyam Registration No.: UDYAM-KR-25-0108099\nWebsite: www.dortxtech.com\nEmail: support@dortxtech.com"),
+        ("Client Details", doc.get("client_details")),
+        ("Project Name", doc.get("project_name")),
+        ("Project Scope", doc.get("project_scope")),
+        ("Included Deliverables", doc.get("included_deliverables")),
+        ("Not Included", doc.get("not_included")),
+        ("Timeline", doc.get("timeline")),
+        ("Milestones", doc.get("milestones")),
+        ("Total Project Cost", doc.get("total_project_cost")),
+        ("Payment Schedule", doc.get("payment_schedule")),
+        ("Revision Policy", doc.get("revision_policy")),
+        ("Client Responsibilities", doc.get("client_responsibilities")),
+        ("DortX Responsibilities", doc.get("dortx_responsibilities")),
+        ("Support Period", doc.get("support_period")),
+        ("Change Request Policy", doc.get("change_request_policy")),
+        ("Cancellation Policy", doc.get("cancellation_policy")),
+        ("Confidentiality", doc.get("confidentiality")),
+        ("Intellectual Property", doc.get("intellectual_property")),
+        ("Governing Law", doc.get("governing_law")),
+        ("DortX Signature", dortx_signature),
+        ("Client Signature", client_signature),
+    ]
+    path = save_document_pdf("agreement", agreement_id, "DortX Project Agreement", sections)
+    await db.agreements.update_one({"id": agreement_id}, {"$set": {"pdf_path": path, "status": "pdf_generated", "updated_at": now_iso()}})
+    return await get_doc_or_404("agreements", agreement_id)
+
+
+@api.post("/agreements/{agreement_id}/send")
+async def send_agreement(agreement_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("agreements", agreement_id)
+    await db.agreements.update_one({"id": agreement_id}, {"$set": {"status": "sent", "sent_at": now_iso(), "updated_at": now_iso()}})
+    return await get_doc_or_404("agreements", agreement_id)
+
+
+@api.patch("/agreements/{agreement_id}/sign-client")
+async def sign_agreement_client(agreement_id: str, request: Request, admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("agreements", agreement_id)
+    signed_at = now_iso()
+    update = {
+        "client_signed": True,
+        "client_signed_at": signed_at,
+        "client_signed_date": signed_at[:10],
+        "client_signed_time": signed_at[11:19],
+        "client_signed_ip": request.client.host if request.client else "",
+        "updated_at": signed_at,
+    }
+    if doc.get("dortx_signed"):
+        update["status"] = "signed"
+    await db.agreements.update_one({"id": agreement_id}, {"$set": update})
+    next_doc = await get_doc_or_404("agreements", agreement_id)
+    if next_doc.get("client_signed") and next_doc.get("dortx_signed") and next_doc.get("lead_id"):
+        await set_lead_status(next_doc["lead_id"], "agreement_signed", admin, "Agreement signed by client and DortX", True)
+    return next_doc
+
+
+@api.patch("/agreements/{agreement_id}/sign-dortx")
+async def sign_agreement_dortx(agreement_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("agreements", agreement_id)
+    update = {"dortx_signed": True, "dortx_signed_at": now_iso(), "updated_at": now_iso()}
+    if doc.get("client_signed"):
+        update["status"] = "signed"
+    await db.agreements.update_one({"id": agreement_id}, {"$set": update})
+    next_doc = await get_doc_or_404("agreements", agreement_id)
+    if next_doc.get("client_signed") and next_doc.get("dortx_signed") and next_doc.get("lead_id"):
+        await set_lead_status(next_doc["lead_id"], "agreement_signed", admin, "Agreement signed by client and DortX", True)
+    return next_doc
+
+
+@api.get("/invoices")
+async def list_invoices(admin: dict = Depends(get_current_admin), lead_id: Optional[str] = None):
+    return await list_collection("invoices", lead_id)
+
+
+@api.post("/invoices", status_code=201)
+async def create_invoice(payload: InvoicePayload, admin: dict = Depends(get_current_admin)):
+    doc = {"id": payload.invoice_id or compact_id("INV"), **payload.model_dump(), "status": "draft", "created_at": now_iso(), "updated_at": now_iso()}
+    doc["invoice_id"] = doc["id"]
+    await db.invoices.insert_one(doc)
+    if payload.lead_id:
+        await set_lead_status(payload.lead_id, "invoice_generated", admin, "Invoice generated", True)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.get("/invoices/{invoice_id}")
+async def get_invoice(invoice_id: str, admin: dict = Depends(get_current_admin)):
+    return await get_doc_or_404("invoices", invoice_id)
+
+
+@api.patch("/invoices/{invoice_id}")
+async def update_invoice(invoice_id: str, payload: InvoicePayload, admin: dict = Depends(get_current_admin)):
+    update = payload.model_dump(exclude_unset=True)
+    update["updated_at"] = now_iso()
+    res = await db.invoices.update_one({"id": invoice_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Invoice not found")
+    return await get_doc_or_404("invoices", invoice_id)
+
+
+@api.post("/invoices/{invoice_id}/generate-pdf")
+async def generate_invoice_pdf(invoice_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("invoices", invoice_id)
+    sections = [
+        ("Client", f"{doc.get('client_name')} | {doc.get('company_name')}"),
+        ("Project", doc.get("project_name")),
+        ("Invoice Dates", f"Invoice Date: {doc.get('invoice_date')} | Due Date: {doc.get('due_date')}"),
+        ("Amounts", f"Total: {doc.get('total_amount')} | Advance: {doc.get('advance_amount')} | Balance: {doc.get('balance_amount')}"),
+        ("Payment", f"Status: {doc.get('payment_status')} | Mode: {doc.get('payment_mode')}"),
+        ("Notes", doc.get("notes")),
+    ]
+    path = save_document_pdf("invoice", invoice_id, "DortX Invoice", sections)
+    await db.invoices.update_one({"id": invoice_id}, {"$set": {"pdf_path": path, "status": "pdf_generated", "updated_at": now_iso()}})
+    return await get_doc_or_404("invoices", invoice_id)
+
+
+@api.patch("/invoices/{invoice_id}/mark-paid")
+async def mark_invoice_paid(invoice_id: str, payload: AdvancePaymentPayload = Body(default_factory=AdvancePaymentPayload), admin: dict = Depends(get_current_admin)):
+    doc = await get_doc_or_404("invoices", invoice_id)
+    await db.invoices.update_one(
+        {"id": invoice_id},
+        {"$set": {
+            "payment_status": "advance_received",
+            "status": "paid",
+            "paid_at": now_iso(),
+            "advance_paid_amount": payload.amount or doc.get("advance_amount") or "",
+            "transaction_id": payload.transaction_id or "",
+            "payment_mode": payload.payment_mode or doc.get("payment_mode") or "",
+            "payment_notes": payload.notes or "",
+            "updated_at": now_iso(),
+        }},
+    )
+    if doc.get("lead_id"):
+        await set_lead_status(doc["lead_id"], "advance_paid", admin, "Advance payment received", True)
+    return await get_doc_or_404("invoices", invoice_id)
+
+
+async def build_completion_response(project_id: str) -> dict:
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    return {
+        "project": project,
+        "checklist": project["completion_checklist"],
+        "completion": project["completion"],
+        "feedback": project["feedback"],
+        "ready": project.get("status") == "delivered" and not completion_unmet_items(project["completion_checklist"]),
+        "unmet_items": completion_unmet_items(project["completion_checklist"]),
+    }
+
+
+def completion_block_response(project: dict) -> JSONResponse:
+    unmet = completion_unmet_items((project or {}).get("completion_checklist") or {})
+    if project.get("status") != "delivered":
+        unmet = ["project_status_delivered", *unmet]
+    return JSONResponse(
+        status_code=409,
+        content={"error": "COMPLETION_CHECKLIST_INCOMPLETE", "unmet_items": unmet},
+    )
+
+
+async def complete_project_record(project_id: str, admin: dict) -> Any:
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    if project.get("status") == "completed":
+        return await build_completion_response(project_id)
+    if project.get("status") != "delivered" or completion_unmet_items(project["completion_checklist"]):
+        return completion_block_response(project)
+
+    completed = datetime.now(timezone.utc)
+    completed_at = completed.isoformat()
+    completion = {
+        **project["completion"],
+        "completed_at": completed_at,
+        "completed_by": admin_display_name(admin),
+        "duration_days": project_duration_days(project, completed),
+        "is_archived": False,
+    }
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"status": "completed", "completion": completion, "updated_at": completed_at}},
+    )
+    if project.get("lead_id"):
+        await set_lead_status(project["lead_id"], "completed", admin, "Project marked completed", True)
+    return await build_completion_response(project_id)
+
+
+def completion_report_sections(project: dict) -> List[tuple[str, Any]]:
+    checklist = project.get("completion_checklist") or {}
+    completion = project.get("completion") or {}
+    return [
+        ("Client", project.get("client_name") or ""),
+        ("Project", f"{project.get('project_name') or ''} | {project.get('project_type') or ''}"),
+        ("Timeline", f"Started: {project.get('start_date') or project.get('created_at') or ''} | Completed: {completion.get('completed_at') or ''}"),
+        ("Duration", f"{completion.get('duration_days') if completion.get('duration_days') is not None else ''} days"),
+        ("Milestones", project.get("milestones") or ""),
+        ("Checklist", "\n".join([f"{key.replace('_', ' ').title()}: {'Yes' if checklist.get(key) else 'No'}" for key in COMPLETION_CHECKLIST_KEYS])),
+        ("Final Notes", completion.get("final_notes") or project.get("notes") or ""),
+    ]
+
+
+def completion_certificate_sections(project: dict) -> List[tuple[str, Any]]:
+    completion = project.get("completion") or {}
+    return [
+        ("Certificate", "This certifies that DortX Technologies has completed the project deliverables listed below."),
+        ("Project", project.get("project_name") or ""),
+        ("Client", project.get("client_name") or ""),
+        ("Completed On", completion.get("completed_at") or ""),
+        ("Authorized By", completion.get("completed_by") or "DortX Technologies"),
+        ("Footer", "www.dortxtech.com"),
+    ]
+
+
+@api.get("/projects")
+async def list_projects(
+    admin: dict = Depends(get_current_admin),
+    lead_id: Optional[str] = None,
+    status: Optional[str] = None,
+    archived: Optional[bool] = None,
+    q: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=500),
+):
+    query: Dict[str, Any] = {}
+    conditions: List[Dict[str, Any]] = []
+    if lead_id:
+        query["lead_id"] = lead_id
+    if status:
+        query["status"] = clean_status(status, PROJECT_STATUSES, status)
+    if archived is not None:
+        if archived:
+            query["completion.is_archived"] = True
+        else:
+            conditions.append({"$or": [{"completion.is_archived": False}, {"completion.is_archived": {"$exists": False}}]})
+    if q:
+        pattern = {"$regex": re.escape(q), "$options": "i"}
+        conditions.append({"$or": [{"project_name": pattern}, {"client_name": pattern}, {"project_type": pattern}]})
+    if conditions:
+        query["$and"] = conditions
+    total = await db.projects.count_documents(query)
+    items = await db.projects.find(query, {"_id": 0}).sort("created_at", -1).skip((page - 1) * limit).limit(limit).to_list(length=limit)
+    items = [merge_completion_defaults(item) for item in items]
+    return {"items": items, "total": total, "page": page, "limit": limit}
+
+
+@api.post("/projects", status_code=201)
+async def create_project(payload: ProjectPayload, admin: dict = Depends(get_current_admin)):
+    status_value = clean_status(payload.status, PROJECT_STATUSES, "not_started")
+    doc = {
+        "id": compact_id("PRJ"),
+        **payload.model_dump(),
+        "status": status_value,
+        "completion_checklist": default_completion_checklist(),
+        "completion": default_completion(),
+        "feedback": default_feedback(),
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.projects.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.get("/projects/{project_id}")
+async def get_project(project_id: str, admin: dict = Depends(get_current_admin)):
+    return await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+
+
+@api.patch("/projects/{project_id}")
+async def update_project(project_id: str, payload: ProjectPayload, admin: dict = Depends(get_current_admin)):
+    update = payload.model_dump(exclude_unset=True)
+    if "status" in update:
+        update["status"] = clean_status(update.get("status"), PROJECT_STATUSES, "not_started")
+        if update["status"] == "completed":
+            return await complete_project_record(project_id, admin)
+    update["updated_at"] = now_iso()
+    res = await db.projects.update_one({"id": project_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Project not found")
+    doc = await get_doc_or_404("projects", project_id)
+    if doc.get("lead_id") and doc.get("status") in ("in_progress", "delivered", "completed"):
+        lead_status = {"in_progress": "in_progress", "delivered": "delivered", "completed": "completed"}[doc["status"]]
+        await set_lead_status(doc["lead_id"], lead_status, admin, f"Project moved to {lead_status}", True)
+    return await ensure_project_completion_fields(doc)
+
+
+@api.get("/projects/{project_id}/completion/checklist")
+async def get_project_completion_checklist(project_id: str, admin: dict = Depends(get_current_admin)):
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    return {"checklist": project["completion_checklist"], "unmet_items": completion_unmet_items(project["completion_checklist"])}
+
+
+@api.patch("/projects/{project_id}/completion/checklist")
+async def update_project_completion_checklist(project_id: str, payload: CompletionChecklistUpdate, admin: dict = Depends(get_current_admin)):
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        return {"checklist": project["completion_checklist"], "unmet_items": completion_unmet_items(project["completion_checklist"])}
+    checklist = {**project["completion_checklist"], **changes, "updated_at": now_iso(), "updated_by": admin_display_name(admin)}
+    await db.projects.update_one({"id": project_id}, {"$set": {"completion_checklist": checklist, "updated_at": now_iso()}})
+    await log_lead_activity(project.get("lead_id"), admin, "Completion checklist updated")
+    return {"checklist": checklist, "unmet_items": completion_unmet_items(checklist)}
+
+
+@api.post("/projects/{project_id}/completion/complete")
+async def complete_project(project_id: str, admin: dict = Depends(get_current_admin)):
+    return await complete_project_record(project_id, admin)
+
+
+@api.get("/projects/{project_id}/completion")
+async def get_project_completion(project_id: str, admin: dict = Depends(get_current_admin)):
+    return await build_completion_response(project_id)
+
+
+@api.get("/projects/{project_id}/completion/report")
+async def download_project_completion_report(project_id: str, admin: dict = Depends(get_current_admin)):
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    if project.get("status") != "completed":
+        raise HTTPException(409, "Project must be completed before generating a completion report.")
+    path = save_document_pdf("completion_report", project_id, "DortX Project Completion Report", completion_report_sections(project))
+    await db.projects.update_one({"id": project_id}, {"$set": {"completion.completion_report_path": path, "updated_at": now_iso()}})
+    return FileResponse(path, media_type="application/pdf", filename=f"completion-report-{project_id}.pdf")
+
+
+@api.get("/projects/{project_id}/completion/certificate")
+async def download_project_completion_certificate(project_id: str, admin: dict = Depends(get_current_admin)):
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    if project.get("status") != "completed":
+        raise HTTPException(409, "Project must be completed before generating a completion certificate.")
+    path = save_document_pdf("completion_certificate", project_id, "DortX Project Completion Certificate", completion_certificate_sections(project))
+    await db.projects.update_one({"id": project_id}, {"$set": {"completion.completion_certificate_path": path, "updated_at": now_iso()}})
+    return FileResponse(path, media_type="application/pdf", filename=f"completion-certificate-{project_id}.pdf")
+
+
+@api.post("/projects/{project_id}/completion/feedback")
+async def submit_project_feedback_admin(project_id: str, payload: FeedbackPayload, admin: dict = Depends(get_current_admin)):
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    submitted_at = now_iso()
+    feedback = {**project["feedback"], "rating": payload.rating, "comment": payload.comment or "", "submitted_at": submitted_at, "token_consumed": True}
+    await db.projects.update_one({"id": project_id}, {"$set": {"feedback": feedback, "updated_at": submitted_at}})
+    await log_lead_activity(project.get("lead_id"), admin, "Client feedback recorded")
+    return {"feedback": feedback}
+
+
+@api.post("/projects/{project_id}/completion/feedback/request")
+async def request_project_feedback(project_id: str, request: Request, admin: dict = Depends(get_current_admin)):
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    token = uuid.uuid4().hex
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
+    feedback = {**project["feedback"], "feedback_token": token, "token_expires_at": expires_at, "token_consumed": False}
+    await db.projects.update_one({"id": project_id}, {"$set": {"feedback": feedback, "updated_at": now_iso()}})
+    origin = request.headers.get("origin") or os.environ.get("FRONTEND_URL") or "https://www.dortxtech.com"
+    url = f"{origin.rstrip('/')}/feedback/{token}"
+    await log_lead_activity(project.get("lead_id"), admin, "Feedback link generated")
+    return {"feedback_url": url, "token_expires_at": expires_at}
+
+
+@api.patch("/projects/{project_id}/completion/notes")
+async def update_project_final_notes(project_id: str, payload: FinalNotesPayload, admin: dict = Depends(get_current_admin)):
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"completion.final_notes": payload.final_notes or "", "updated_at": now_iso()}},
+    )
+    await log_lead_activity(project.get("lead_id"), admin, "Project completion notes updated")
+    return await build_completion_response(project_id)
+
+
+@api.post("/projects/{project_id}/completion/archive")
+async def archive_project_completion(project_id: str, payload: ArchivePayload = Body(default_factory=ArchivePayload), admin: dict = Depends(get_current_admin)):
+    project = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    archived_at = now_iso() if payload.archive else None
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"completion.is_archived": payload.archive, "completion.archived_at": archived_at, "updated_at": now_iso()}},
+    )
+    await log_lead_activity(project.get("lead_id"), admin, "Project archived" if payload.archive else "Project restored from archive")
+    return await build_completion_response(project_id)
+
+
+@api.post("/projects/{project_id}/completion/follow-on-project", status_code=201)
+async def create_follow_on_project(project_id: str, payload: ProjectPayload = Body(default_factory=ProjectPayload), admin: dict = Depends(get_current_admin)):
+    source = await ensure_project_completion_fields(await get_doc_or_404("projects", project_id))
+    now = now_iso()
+    doc = {
+        "id": compact_id("PRJ"),
+        "lead_id": payload.lead_id or source.get("lead_id"),
+        "invoice_id": payload.invoice_id or "",
+        "project_name": payload.project_name or f"{source.get('project_name') or 'DortX Project'} - Follow On",
+        "client_name": payload.client_name or source.get("client_name") or "",
+        "project_type": payload.project_type or source.get("project_type") or "",
+        "status": clean_status(payload.status, PROJECT_STATUSES, "not_started"),
+        "start_date": payload.start_date or "",
+        "expected_delivery_date": payload.expected_delivery_date or "",
+        "timeline": payload.timeline or "",
+        "milestones": payload.milestones or "",
+        "assigned_team": payload.assigned_team or "",
+        "files": payload.files or "",
+        "notes": payload.notes or f"Follow-on project created from {project_id}.",
+        "completion_checklist": default_completion_checklist(),
+        "completion": default_completion(),
+        "feedback": default_feedback(),
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.projects.insert_one(doc)
+    await log_lead_activity(source.get("lead_id"), admin, f"Follow-on project created: {doc['project_name']}")
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.get("/public/feedback/{token}")
+async def get_public_feedback(token: str):
+    project = await db.projects.find_one({"feedback.feedback_token": token}, {"_id": 0})
+    if not project:
+        raise HTTPException(404, "Feedback link not found")
+    feedback = merge_completion_defaults(project)["feedback"]
+    expires = parse_iso_datetime(feedback.get("token_expires_at"))
+    if feedback.get("token_consumed") or (expires and expires < datetime.now(timezone.utc)):
+        raise HTTPException(410, "Feedback link has expired")
+    return {
+        "project_name": project.get("project_name") or "",
+        "client_name": project.get("client_name") or "",
+        "expires_at": feedback.get("token_expires_at"),
+    }
+
+
+@api.post("/public/feedback/{token}")
+async def submit_public_feedback(token: str, payload: FeedbackPayload):
+    project = await db.projects.find_one({"feedback.feedback_token": token}, {"_id": 0})
+    if not project:
+        raise HTTPException(404, "Feedback link not found")
+    feedback = merge_completion_defaults(project)["feedback"]
+    expires = parse_iso_datetime(feedback.get("token_expires_at"))
+    if feedback.get("token_consumed") or (expires and expires < datetime.now(timezone.utc)):
+        raise HTTPException(410, "Feedback link has expired")
+    submitted_at = now_iso()
+    updated_feedback = {**feedback, "rating": payload.rating, "comment": payload.comment or "", "submitted_at": submitted_at, "token_consumed": True}
+    await db.projects.update_one({"id": project["id"]}, {"$set": {"feedback": updated_feedback, "updated_at": submitted_at}})
+    await log_lead_activity(project.get("lead_id"), None, "Client submitted project feedback")
+    return {"success": True}
+
+
+@api.get("/documents/{kind}/{doc_id}/download")
+async def download_document(kind: str, doc_id: str, admin: dict = Depends(get_current_admin)):
+    collection = {"proposal": "proposals", "agreement": "agreements", "invoice": "invoices"}.get(kind)
+    if not collection:
+        raise HTTPException(404, "Document type not found")
+    doc = await get_doc_or_404(collection, doc_id)
+    path = doc.get("pdf_path")
+    if not path or not Path(path).exists():
+        raise HTTPException(404, "PDF not generated")
+    return FileResponse(path, media_type="application/pdf", filename=f"{kind}-{doc_id}.pdf")
+
+
 @api.get("/admin/leads/export.csv")
 async def export_leads(admin: dict = Depends(get_current_admin)):
     import io
@@ -514,7 +1625,7 @@ async def list_applications(admin: dict = Depends(get_current_admin)):
 @api.patch("/admin/applications/{application_id}/status")
 async def update_application_status(application_id: str, payload: ApplicationStatusUpdate, admin: dict = Depends(get_current_admin)):
     if payload.status not in ("new", "reviewing", "shortlisted", "rejected", "hired"):
-        raise HTTPException(400, "Invalid status")
+        raise HTTPException(400, "Application status is not supported.")
     res = await db.applications.update_one(
         {"id": application_id},
         {"$set": {"status": payload.status, "updated_at": now_iso()}},
@@ -1291,7 +2402,8 @@ app.include_router(api)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=[origin.strip() for origin in os.environ.get('CORS_ORIGINS', '*').split(',') if origin.strip()],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://(www\.)?dortxtech\.com",
     allow_methods=["*"],
     allow_headers=["*"],
 )

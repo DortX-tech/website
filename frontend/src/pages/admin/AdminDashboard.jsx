@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Send, LayoutDashboard, Inbox, FileText, UserCog, Activity, Save, FolderKanban, CheckCircle2 } from "lucide-react";
+import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Send, LayoutDashboard, Inbox, FileText, UserCog, Activity, Save, FolderKanban, CheckCircle2, ClipboardCheck, Archive, Star, X } from "lucide-react";
 import Logo from "@/components/Logo";
 import TeamManager from "@/pages/admin/TeamManager";
 import { adminApiClient } from "@/config/api";
@@ -64,6 +64,28 @@ const EMPTY_LIVE_METRICS = {
   active_projects: 0,
   projects_delivered: 0,
 };
+const COMPLETION_CHECKLIST = [
+  ["proposal_approved", "Proposal approved"],
+  ["agreement_signed", "Agreement signed"],
+  ["advance_payment_received", "Advance payment received"],
+  ["final_payment_received", "Final payment received"],
+  ["source_code_delivered", "Source code delivered"],
+  ["credentials_shared", "Credentials shared"],
+  ["documentation_delivered", "Documentation delivered"],
+  ["client_approval_received", "Client approval received"],
+];
+const LEAD_JOURNEY = [
+  { status: "new", label: "New Enquiry", fields: [{ key: "notes", label: "Initial notes", type: "textarea" }] },
+  { status: "contacted", label: "Contacted", fields: [{ key: "contact_summary", label: "Contact summary", type: "textarea" }, { key: "preferred_contact", label: "Preferred contact", type: "text" }] },
+  { status: "requirement_discussion", label: "Requirement Discussion", fields: [{ key: "requirements", label: "Requirements discussed", type: "textarea" }, { key: "timeline", label: "Expected timeline", type: "text" }] },
+  { status: "proposal_generated", label: "Proposal Generated", fields: [{ key: "project_name", label: "Project name", type: "text" }, { key: "proposal_scope", label: "Proposal scope", type: "textarea" }, { key: "estimated_price", label: "Estimated price", type: "text" }] },
+  { status: "proposal_sent", label: "Proposal Sent", fields: [{ key: "sent_to", label: "Sent to", type: "text" }, { key: "sent_notes", label: "Sending notes", type: "textarea" }] },
+  { status: "proposal_accepted", label: "Proposal Accepted", fields: [{ key: "acceptance_notes", label: "Acceptance notes", type: "textarea" }] },
+  { status: "agreement_generated", label: "Agreement Generated", fields: [{ key: "agreement_scope", label: "Agreement scope", type: "textarea" }, { key: "support_period", label: "Support period", type: "text" }] },
+  { status: "agreement_signed", label: "Agreement Signed", fields: [{ key: "signed_by", label: "Signed by", type: "text" }, { key: "signature_notes", label: "Signature notes", type: "textarea" }] },
+  { status: "advance_paid", label: "Advance Payment Received", fields: [{ key: "amount", label: "Amount received", type: "text" }, { key: "payment_mode", label: "Payment mode", type: "text" }, { key: "transaction_id", label: "Transaction ID", type: "text" }] },
+  { status: "project_started", label: "Convert to Project", fields: [{ key: "project_name", label: "Project name", type: "text" }, { key: "project_notes", label: "Project kickoff notes", type: "textarea" }] },
+];
 
 function toArray(value) {
   return Array.isArray(value) ? value : [];
@@ -129,6 +151,20 @@ function labelize(value) {
   return String(value || "")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function journeyIndex(status) {
+  const index = LEAD_JOURNEY.findIndex((stage) => stage.status === status);
+  return index >= 0 ? index : 0;
+}
+
+function buildStageNotes(stage, values) {
+  const lines = [`${stage.label} completed.`];
+  stage.fields.forEach((field) => {
+    const value = String(values?.[field.key] || "").trim();
+    if (value) lines.push(`${field.label}: ${value}`);
+  });
+  return lines.join("\n");
 }
 
 function getBackendError(error, fallback = "Unable to load admin data.") {
@@ -225,9 +261,15 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [workflowDraft, setWorkflowDraft] = useState({});
+  const [workflowSaving, setWorkflowSaving] = useState(false);
+  const [workflowMessage, setWorkflowMessage] = useState("");
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [applications, setApplications] = useState([]);
   const [subscribers, setSubscribers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projectsMessage, setProjectsMessage] = useState("");
   const [liveMetrics, setLiveMetrics] = useState(EMPTY_LIVE_METRICS);
   const [liveDraft, setLiveDraft] = useState(EMPTY_LIVE_METRICS);
   const [liveSaving, setLiveSaving] = useState(false);
@@ -238,16 +280,17 @@ export default function AdminDashboard() {
     setBusy(true);
     setError("");
     try {
-      const [me, analytics, leadResponse, applicationResponse, subscriberResponse, liveResponse] = await Promise.allSettled([
+      const [me, analytics, leadResponse, applicationResponse, subscriberResponse, liveResponse, projectsResponse] = await Promise.allSettled([
         adminApiClient.get("/auth/me"),
         adminApiClient.get("/admin/analytics"),
         adminApiClient.get(`/admin/leads?status=${status}&q=${encodeURIComponent(q)}&page=${page}&limit=20`),
         adminApiClient.get("/admin/applications"),
         adminApiClient.get("/admin/newsletter"),
         adminApiClient.get("/admin/live-metrics"),
+        adminApiClient.get("/projects?archived=false&page=1&limit=100"),
       ]);
 
-      if ([me, analytics, leadResponse, applicationResponse, subscriberResponse, liveResponse].some(isUnauthorized)) {
+      if ([me, analytics, leadResponse, applicationResponse, subscriberResponse, liveResponse, projectsResponse].some(isUnauthorized)) {
         localStorage.removeItem("dortx-admin-token");
         localStorage.removeItem("dortx-admin-name");
         localStorage.removeItem("dortx-admin-email");
@@ -339,6 +382,24 @@ export default function AdminDashboard() {
         setLiveDraft(EMPTY_LIVE_METRICS);
       }
 
+      if (projectsResponse.status === "fulfilled") {
+        try {
+          const projectData = readListResponse(projectsResponse.value, "Projects");
+          setProjects(projectData.items);
+          setProjectsMessage("");
+        } catch (error) {
+          setProjects([]);
+          setProjectsMessage("Projects could not be loaded. Please try again.");
+        }
+      } else {
+        setProjects([]);
+        if (projectsResponse.reason?.response?.status === 404) {
+          setProjectsMessage("Projects are not available on this backend yet.");
+        } else {
+          setProjectsMessage("Projects could not be loaded. Please try again.");
+        }
+      }
+
       setError(errors.join(" "));
     } catch (e) {
       setError(getBackendError(e, "Unexpected admin dashboard error."));
@@ -366,6 +427,18 @@ export default function AdminDashboard() {
     const timer = window.setInterval(fetchLiveMetrics, 10000);
     return () => window.clearInterval(timer);
   }, [fetchLiveMetrics]);
+
+  useEffect(() => {
+    if (!selected) {
+      setWorkflowDraft({});
+      setWorkflowMessage("");
+      return;
+    }
+    const stage = LEAD_JOURNEY[journeyIndex(selected.status)];
+    const existing = selected?.crm_workflow?.[stage.status]?.data || {};
+    setWorkflowDraft(existing);
+    setWorkflowMessage("");
+  }, [selected?.id, selected?.status]);
 
   const logout = () => {
     localStorage.removeItem("dortx-admin-token");
@@ -472,13 +545,53 @@ export default function AdminDashboard() {
     }
   };
 
+  const updateWorkflowDraft = (key, value) => {
+    setWorkflowDraft((current) => ({ ...current, [key]: value }));
+    setWorkflowMessage("");
+  };
+
+  const completeCurrentLeadStage = async () => {
+    if (!selected?.id || workflowSaving) return;
+    const currentIndex = journeyIndex(selected.status);
+    const currentStage = LEAD_JOURNEY[currentIndex];
+    const nextStage = LEAD_JOURNEY[Math.min(currentIndex + 1, LEAD_JOURNEY.length - 1)];
+    const nextStatus = currentStage.status === "project_started" ? "project_started" : nextStage.status;
+    setWorkflowSaving(true);
+    setWorkflowMessage("");
+    try {
+      const payload = {
+        status: nextStatus,
+        notes: buildStageNotes(currentStage, workflowDraft),
+      };
+      const response = await adminApiClient.patch(`/admin/leads/${selected.id}/status`, payload);
+      const updatedLead = response.data?.lead || selected;
+      setSelected(updatedLead);
+      setLeads((items) => items.map((lead) => (lead?.id === updatedLead.id ? updatedLead : lead)));
+      await fetchAll();
+      if (nextStatus === "project_started") {
+        setWorkflowMessage("Lead converted to a project. Opening Projects module...");
+        setTab("projects");
+        setSelected(null);
+      } else {
+        setWorkflowMessage(`${currentStage.label} completed. ${nextStage.label} is now active.`);
+      }
+    } catch (error) {
+      console.error("Lead workflow update failed", error);
+      setWorkflowMessage("Could not complete this stage. Please try again.");
+    } finally {
+      setWorkflowSaving(false);
+    }
+  };
+
   const safeLeads = toArray(leads) ?? [];
   const safeApplications = toArray(applications) ?? [];
   const safeSubscribers = toArray(subscribers) ?? [];
+  const safeProjects = toArray(projects);
   const safeServices = toArray(stats?.by_service) ?? [];
   const leadsCount = safeLeads?.length ?? 0;
   const applicationsCount = safeApplications?.length ?? 0;
   const subscribersCount = safeSubscribers?.length ?? 0;
+  const projectsCount = safeProjects?.length ?? 0;
   const servicesCount = safeServices?.length ?? 0;
   const selectedStatusClass = STATUS_COLOR[selected?.status] ?? STATUS_COLOR.new;
   const selectedApplicationStatusClass = STATUS_COLOR[selectedApplication?.status] ?? STATUS_COLOR.new;
@@ -525,6 +638,7 @@ export default function AdminDashboard() {
           {[
             { k: "leads", label: "Leads", Icon: Inbox },
             { k: "team", label: "Team", Icon: UserCog },
+            { k: "projects", label: "Projects", Icon: ClipboardCheck },
             { k: "applications", label: "Applications", Icon: FileText },
             { k: "newsletter", label: "Newsletter", Icon: Send },
             { k: "analytics", label: "Analytics", Icon: LayoutDashboard },
@@ -617,6 +731,64 @@ export default function AdminDashboard() {
         )}
 
         {tab === "team" && <TeamManager />}
+
+        {tab === "projects" && (
+          <>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="font-display text-[18px] font-semibold text-white">Projects module</div>
+                <div className="mt-1 text-[13px] text-[#9AA3B8]">Projects appear here after a lead reaches Convert to Project.</div>
+              </div>
+              <button onClick={fetchAll} className="btn-ghost !py-2.5"><RefreshCw size={14}/> Refresh</button>
+            </div>
+            <div className="mt-4 glass rounded-2xl overflow-hidden" data-testid="projects-panel">
+              {projectsMessage && (
+                <div className="border-b border-white/8 px-5 py-3 text-[13px] text-amber-200 bg-amber-500/5">
+                  {projectsMessage}
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13.5px]">
+                  <thead className="bg-white/[0.03] text-[#9AA3B8] text-left">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Project</th>
+                      <th className="px-5 py-3 font-medium hidden md:table-cell">Client</th>
+                      <th className="px-5 py-3 font-medium">Status</th>
+                      <th className="px-5 py-3 font-medium hidden lg:table-cell">Completed</th>
+                      <th className="px-5 py-3 font-medium text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/8">
+                    {busy && (
+                      <tr><td colSpan={5} className="px-5 py-10 text-center text-[#6B7385]">Loading projects...</td></tr>
+                    )}
+                    {projectsCount === 0 && !busy && !projectsMessage && (
+                      <tr><td colSpan={5} className="px-5 py-10 text-center text-[#6B7385]">No projects yet - projects appear once a lead reaches Project Started.</td></tr>
+                    )}
+                    {projectsCount === 0 && !busy && projectsMessage && (
+                      <tr><td colSpan={5} className="px-5 py-10 text-center text-[#6B7385]">Projects will appear here once the backend project API is available and a lead reaches Project Started.</td></tr>
+                    )}
+                    {!busy && safeProjects.map((project, index) => (
+                      <tr key={project?.id ?? index} className="hover:bg-white/[0.03] transition">
+                        <td className="px-5 py-3 text-white font-medium">{project?.project_name || "-"}</td>
+                        <td className="px-5 py-3 text-[#9AA3B8] hidden md:table-cell">{project?.client_name || "-"}</td>
+                        <td className="px-5 py-3">
+                          <span className={`text-[11px] px-2.5 py-1 rounded-full border ${STATUS_COLOR[project?.status] ?? STATUS_COLOR.not_started}`}>{project?.status || "not_started"}</span>
+                        </td>
+                        <td className="px-5 py-3 text-[#6B7385] hidden lg:table-cell">{formatDate(project?.completion?.completed_at, "datetime")}</td>
+                        <td className="px-5 py-3 text-right">
+                          <button onClick={() => setSelectedProject(project)} className="px-3 py-1.5 rounded-full text-[12px] border border-[#1E6BFF]/35 text-[#9DB8FF] hover:bg-[#1E6BFF]/10">
+                            <ClipboardCheck size={12} className="inline mr-1"/>Open
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
 
         {tab === "applications" && (
           <>
@@ -823,7 +995,7 @@ export default function AdminDashboard() {
 
       {selected && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={() => setSelected(null)} className="fixed inset-0 z-50 bg-black/60 backdrop-blur flex items-end sm:items-center justify-center p-4">
-          <motion.div initial={{ y: 30, scale: 0.98 }} animate={{ y: 0, scale: 1 }} onClick={(e) => e.stopPropagation()} className="glass-strong rounded-2xl max-w-2xl w-full p-7 max-h-[85vh] overflow-y-auto" data-testid="lead-detail-modal">
+          <motion.div initial={{ y: 30, scale: 0.98 }} animate={{ y: 0, scale: 1 }} onClick={(e) => e.stopPropagation()} className="glass-strong rounded-2xl max-w-5xl w-full p-6 max-h-[88vh] overflow-y-auto" data-testid="lead-detail-modal">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="font-display text-[22px] font-semibold text-white">{selected?.name || "Lead"}</div>
@@ -833,27 +1005,19 @@ export default function AdminDashboard() {
                   <div className="text-[13.5px] text-[#6B7385]">No email provided</div>
                 )}
               </div>
-              <span className={`text-[11px] px-2.5 py-1 rounded-full border ${selectedStatusClass}`}>{selected?.status || "new"}</span>
+              <button onClick={() => setSelected(null)} className="w-9 h-9 rounded-full border border-white/10 text-[#9AA3B8] hover:text-white hover:bg-white/5 flex items-center justify-center" aria-label="Close">
+                <X size={16}/>
+              </button>
             </div>
-            <div className="grid sm:grid-cols-2 gap-4 mt-6 text-[13.5px]">
-              <Info l="Company" v={selected?.company}/>
-              <Info l="Phone" v={selected?.phone}/>
-              <Info l="Service" v={selected?.service}/>
-              <Info l="Subject" v={selected?.subject}/>
-              <Info l="Budget" v={selected?.budget}/>
-              <Info l="Timeline" v={selected?.timeline}/>
-              <Info l="Created" v={formatDate(selected?.created_at, "datetime")}/>
-            </div>
-            <div className="mt-5">
-              <div className="text-[11px] uppercase tracking-[0.14em] text-[#6B7385] mb-2">Description</div>
-              <p className="text-[14px] text-[#C9D2E0] whitespace-pre-wrap leading-relaxed">{selected?.description || "-"}</p>
-            </div>
-            {selected?.file_name && (
-              <div className="mt-4 text-[13px] text-[#9AA3B8]">Attached: {selected.file_name}</div>
-            )}
-            <div className="mt-7 flex flex-wrap gap-2">
-              <button onClick={() => remove(selected?.id)} data-testid="delete-lead" className="ml-auto px-3 py-1.5 rounded-full text-[12px] border border-red-500/30 text-red-300 hover:bg-red-500/10"><Trash2 size={12} className="inline mr-1"/>Delete</button>
-            </div>
+            <LeadWorkflow
+              lead={selected}
+              draft={workflowDraft}
+              saving={workflowSaving}
+              message={workflowMessage}
+              onDraftChange={updateWorkflowDraft}
+              onComplete={completeCurrentLeadStage}
+              onDelete={() => remove(selected?.id)}
+            />
           </motion.div>
         </motion.div>
       )}
@@ -899,6 +1063,17 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
+      {selectedProject && (
+        <ProjectCompletionModal
+          project={selectedProject}
+          onClose={() => setSelectedProject(null)}
+          onChanged={(project) => {
+            setSelectedProject(project);
+            fetchAll();
+          }}
+        />
+      )}
+
     </div>
   );
 }
@@ -909,5 +1084,352 @@ function Info({ l, v }) {
       <div className="text-[11px] uppercase tracking-[0.14em] text-[#6B7385]">{l}</div>
       <div className="text-white mt-1">{v || "-"}</div>
     </div>
+  );
+}
+
+function LeadWorkflow({ lead, draft, saving, message, onDraftChange, onComplete, onDelete }) {
+  const activeIndex = journeyIndex(lead?.status);
+  const activeStage = LEAD_JOURNEY[activeIndex];
+  const isConverted = lead?.status === "project_started";
+
+  return (
+    <div className="mt-6 grid lg:grid-cols-[0.85fr_1.15fr] gap-5">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+        <div className="font-display text-[16px] font-semibold text-white">Lead Journey</div>
+        <div className="mt-4 space-y-2">
+          {LEAD_JOURNEY.map((stage, index) => {
+            const completed = index < activeIndex || (isConverted && stage.status === "project_started");
+            const active = index === activeIndex && !completed;
+            return (
+              <div
+                key={stage.status}
+                className={`relative flex gap-3 rounded-xl border px-3 py-3 transition ${
+                  completed
+                    ? "border-emerald-500/20 bg-emerald-500/8"
+                    : active
+                      ? "border-[#1E6BFF]/45 bg-[#1E6BFF]/10 shadow-[0_0_24px_rgba(30,107,255,0.18)]"
+                      : "border-white/8 bg-black/20 opacity-65"
+                }`}
+              >
+                <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] ${
+                  completed ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-200" : active ? "border-[#6EA0FF]/50 bg-[#1E6BFF]/20 text-[#CFE0FF]" : "border-white/10 text-[#6B7385]"
+                }`}>
+                  {completed ? <CheckCircle2 size={14}/> : active ? <span className="h-2 w-2 rounded-full bg-[#6EA0FF] animate-pulse"/> : index + 1}
+                </div>
+                <div>
+                  <div className="text-[13.5px] font-medium text-white">{stage.label}</div>
+                  <div className="mt-0.5 text-[11.5px] text-[#9AA3B8]">{completed ? "Completed" : active ? "Active stage" : "Locked"}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+          <div className="grid sm:grid-cols-2 gap-4 text-[13.5px]">
+            <Info l="Company" v={lead?.company}/>
+            <Info l="Phone" v={lead?.phone}/>
+            <Info l="Service" v={lead?.service}/>
+            <Info l="Subject" v={lead?.subject}/>
+            <Info l="Budget" v={lead?.budget}/>
+            <Info l="Created" v={formatDate(lead?.created_at, "datetime")}/>
+          </div>
+          <div className="mt-4">
+            <div className="text-[11px] uppercase tracking-[0.14em] text-[#6B7385] mb-2">Description</div>
+            <p className="text-[14px] text-[#C9D2E0] whitespace-pre-wrap leading-relaxed">{lead?.description || "-"}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#1E6BFF]/25 bg-[#061225]/75 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.16em] text-[#6B7385]">Current stage</div>
+              <div className="font-display text-[20px] font-semibold text-white mt-1">{activeStage.label}</div>
+            </div>
+            <div className="text-[12px] text-[#9AA3B8]">{activeIndex + 1} of {LEAD_JOURNEY.length}</div>
+          </div>
+
+          <div className="mt-5 grid gap-3">
+            {activeStage.fields.map((field) => (
+              <label key={field.key} className="block">
+                <span className="text-[12px] uppercase tracking-[0.14em] text-[#6B7385]">{field.label}</span>
+                {field.type === "textarea" ? (
+                  <textarea
+                    value={draft?.[field.key] || ""}
+                    onChange={(event) => onDraftChange(field.key, event.target.value)}
+                    className="contact-field mt-2 min-h-[96px]"
+                    placeholder={field.label}
+                    disabled={isConverted}
+                  />
+                ) : (
+                  <input
+                    value={draft?.[field.key] || ""}
+                    onChange={(event) => onDraftChange(field.key, event.target.value)}
+                    className="contact-field mt-2"
+                    placeholder={field.label}
+                    disabled={isConverted}
+                  />
+                )}
+              </label>
+            ))}
+          </div>
+
+          {message && <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] text-[#C9D2E0]">{message}</div>}
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              onClick={onComplete}
+              disabled={saving || isConverted}
+              className="btn-primary !py-2.5 !px-5 !text-[13px] disabled:opacity-50"
+            >
+              <CheckCircle2 size={14}/> {saving ? "Saving..." : isConverted ? "Project Created" : activeStage.status === "project_started" ? "Convert to Project" : "Complete Stage"}
+            </button>
+            <button onClick={onDelete} className="ml-auto px-3 py-1.5 rounded-full text-[12px] border border-red-500/30 text-red-300 hover:bg-red-500/10">
+              <Trash2 size={12} className="inline mr-1"/>Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectCompletionModal({ project, onClose, onChanged }) {
+  const [data, setData] = useState(null);
+  const [notes, setNotes] = useState(project?.completion?.final_notes || "");
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [feedbackLink, setFeedbackLink] = useState("");
+
+  const load = useCallback(async () => {
+    if (!project?.id) return;
+    setLoading(true);
+    setMessage("");
+    try {
+      const response = await adminApiClient.get(`/projects/${project.id}/completion`);
+      setData(response.data);
+      setNotes(response.data?.completion?.final_notes || "");
+      onChanged(response.data?.project || project);
+    } catch (error) {
+      console.error("Project completion load failed", error);
+      setMessage(getBackendError(error, "Could not load project completion details."));
+    } finally {
+      setLoading(false);
+    }
+  }, [project?.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const currentProject = data?.project || project || {};
+  const checklist = data?.checklist || currentProject?.completion_checklist || {};
+  const completion = data?.completion || currentProject?.completion || {};
+  const feedback = data?.feedback || currentProject?.feedback || {};
+  const unmet = data?.unmet_items || [];
+  const isCompleted = currentProject?.status === "completed";
+
+  const patchChecklist = async (key, value) => {
+    setMessage("");
+    try {
+      const response = await adminApiClient.patch(`/projects/${currentProject.id}/completion/checklist`, { [key]: value });
+      setData((current) => ({
+        ...(current || {}),
+        checklist: response.data?.checklist || { ...checklist, [key]: value },
+        unmet_items: response.data?.unmet_items || [],
+        project: {
+          ...currentProject,
+          completion_checklist: response.data?.checklist || { ...checklist, [key]: value },
+        },
+      }));
+      setMessage("Checklist updated.");
+    } catch (error) {
+      console.error("Project checklist update failed", error);
+      setMessage("Could not update checklist. Please try again.");
+    }
+  };
+
+  const complete = async () => {
+    setLoading(true);
+    setMessage("");
+    try {
+      const response = await adminApiClient.post(`/projects/${currentProject.id}/completion/complete`);
+      setData(response.data);
+      onChanged(response.data?.project || currentProject);
+      setMessage("Project marked completed.");
+    } catch (error) {
+      console.error("Project completion failed", error);
+      const missing = error?.response?.data?.unmet_items || error?.response?.data?.detail?.unmet_items;
+      setMessage(Array.isArray(missing) && missing.length ? `Complete these first: ${missing.map(labelize).join(", ")}.` : "Could not complete project. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveNotes = async () => {
+    setMessage("");
+    try {
+      const response = await adminApiClient.patch(`/projects/${currentProject.id}/completion/notes`, { final_notes: notes });
+      setData(response.data);
+      onChanged(response.data?.project || currentProject);
+      setMessage("Final notes saved.");
+    } catch (error) {
+      console.error("Project notes save failed", error);
+      setMessage("Could not save notes. Please try again.");
+    }
+  };
+
+  const downloadPdf = async (kind) => {
+    setMessage("");
+    try {
+      const response = await adminApiClient.get(`/projects/${currentProject.id}/completion/${kind}`, { responseType: "blob" });
+      downloadBlob(response.data, `${kind}-${currentProject.id}.pdf`);
+    } catch (error) {
+      console.error(`Project ${kind} download failed`, error);
+      setMessage(`Could not download ${kind}. Please try again.`);
+    }
+  };
+
+  const requestFeedback = async () => {
+    setMessage("");
+    try {
+      const response = await adminApiClient.post(`/projects/${currentProject.id}/completion/feedback/request`);
+      setFeedbackLink(response.data?.feedback_url || "");
+      setMessage("Feedback link generated.");
+    } catch (error) {
+      console.error("Feedback request failed", error);
+      setMessage("Could not generate feedback link. Please try again.");
+    }
+  };
+
+  const submitFeedback = async () => {
+    setMessage("");
+    try {
+      const response = await adminApiClient.post(`/projects/${currentProject.id}/completion/feedback`, { rating: Number(rating), comment });
+      setData((current) => ({ ...(current || {}), feedback: response.data?.feedback || feedback }));
+      setComment("");
+      setMessage("Feedback recorded.");
+    } catch (error) {
+      console.error("Feedback save failed", error);
+      setMessage("Could not save feedback. Please try again.");
+    }
+  };
+
+  const archiveProject = async () => {
+    setMessage("");
+    try {
+      const response = await adminApiClient.post(`/projects/${currentProject.id}/completion/archive`, { archive: true });
+      setData(response.data);
+      onChanged(response.data?.project || currentProject);
+      setMessage("Project archived.");
+    } catch (error) {
+      console.error("Project archive failed", error);
+      setMessage("Could not archive project. Please try again.");
+    }
+  };
+
+  const createFollowOnProject = async () => {
+    setMessage("");
+    try {
+      await adminApiClient.post(`/projects/${currentProject.id}/completion/follow-on-project`, {});
+      setMessage("Follow-on project created.");
+    } catch (error) {
+      console.error("Follow-on project creation failed", error);
+      setMessage("Could not create follow-on project. Please try again.");
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose} className="fixed inset-0 z-50 bg-black/60 backdrop-blur flex items-end sm:items-center justify-center p-4">
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Project completion"
+        initial={{ y: 30, scale: 0.98 }}
+        animate={{ y: 0, scale: 1 }}
+        onClick={(event) => event.stopPropagation()}
+        className="glass-strong rounded-2xl max-w-4xl w-full p-6 max-h-[88vh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="font-display text-[22px] font-semibold text-white">{currentProject?.project_name || "Project completion"}</div>
+            <div className="mt-1 text-[13px] text-[#9AA3B8]">{currentProject?.client_name || "Client"} · {labelize(currentProject?.status || "not_started")}</div>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full border border-white/10 text-[#9AA3B8] hover:text-white hover:bg-white/5 flex items-center justify-center" aria-label="Close">
+            <X size={16}/>
+          </button>
+        </div>
+
+        {message && <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] text-[#C9D2E0]">{message}</div>}
+
+        <div className="mt-5 grid lg:grid-cols-[1.25fr_0.75fr] gap-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+            <div className="flex items-center gap-2 font-display text-[15px] text-white font-semibold"><ClipboardCheck size={16} className="text-[#4D8BFF]"/>Completion checklist</div>
+            <div className="mt-4 grid sm:grid-cols-2 gap-2.5">
+              {COMPLETION_CHECKLIST.map(([key, label]) => (
+                <label key={key} className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/15 px-3 py-2.5 text-[13px] text-[#C9D2E0]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(checklist?.[key])}
+                    disabled={loading || isCompleted}
+                    onChange={(event) => patchChecklist(key, event.target.checked)}
+                    className="accent-[#4D8BFF]"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Final notes"
+              className="contact-field mt-4 min-h-[100px]"
+            />
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button onClick={saveNotes} className="btn-ghost !py-2 !px-4 !text-[12.5px]"><Save size={13}/>Save notes</button>
+              <button onClick={complete} disabled={loading || isCompleted} className="btn-primary !py-2 !px-4 !text-[12.5px] disabled:opacity-50"><CheckCircle2 size={13}/>{loading ? "Working..." : isCompleted ? "Completed" : "Mark completed"}</button>
+            </div>
+            {!isCompleted && unmet.length > 0 && (
+              <div className="mt-3 text-[12.5px] text-[#9AA3B8]">Remaining: {unmet.map(labelize).join(", ")}</div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+              <div className="font-display text-[15px] text-white font-semibold">Documents</div>
+              <div className="mt-3 grid gap-2">
+                <button onClick={() => downloadPdf("report")} disabled={!isCompleted} className="btn-ghost !justify-start !py-2 !text-[12.5px] disabled:opacity-50"><Download size={13}/>Completion report</button>
+                <button onClick={() => downloadPdf("certificate")} disabled={!isCompleted} className="btn-ghost !justify-start !py-2 !text-[12.5px] disabled:opacity-50"><Download size={13}/>Completion certificate</button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+              <div className="flex items-center gap-2 font-display text-[15px] text-white font-semibold"><Star size={15} className="text-[#4D8BFF]"/>Feedback</div>
+              <div className="mt-2 text-[12.5px] text-[#9AA3B8]">Saved rating: {feedback?.rating || "-"}</div>
+              <div className="mt-3 flex gap-2">
+                <input type="number" min="1" max="5" value={rating} onChange={(event) => setRating(event.target.value)} className="contact-field !py-2 !w-20"/>
+                <button onClick={submitFeedback} className="btn-ghost !py-2 !px-4 !text-[12.5px]">Save</button>
+              </div>
+              <textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Feedback comment" className="contact-field mt-2 min-h-[74px]"/>
+              <button onClick={requestFeedback} className="btn-ghost !py-2 !px-4 !text-[12.5px] mt-2"><Send size={13}/>Request link</button>
+              {feedbackLink && <div className="mt-2 break-all text-[12px] text-[#9DB8FF]">{feedbackLink}</div>}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+              <div className="grid grid-cols-2 gap-3 text-[12.5px]">
+                <Info l="Completed" v={formatDate(completion?.completed_at, "datetime")}/>
+                <Info l="Duration" v={completion?.duration_days !== null && completion?.duration_days !== undefined ? `${completion.duration_days} days` : "-"}/>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button onClick={archiveProject} disabled={!isCompleted} className="btn-ghost !py-2 !px-4 !text-[12.5px] disabled:opacity-50"><Archive size={13}/>Archive</button>
+                <button onClick={createFollowOnProject} disabled={!isCompleted} className="btn-ghost !py-2 !px-4 !text-[12.5px] disabled:opacity-50"><FolderKanban size={13}/>Follow-on</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
