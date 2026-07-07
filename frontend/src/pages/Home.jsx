@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useInView, useReducedMotion, AnimatePresence } from "framer-motion";
 import * as Lucide from "lucide-react";
-import { ArrowUpRight, ArrowRight, Sparkles, Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck, Plus, Quote } from "lucide-react";
+import { ArrowUpRight, ArrowRight, Sparkles, Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck, Plus, Quote, Users, FolderKanban, CheckCircle2 } from "lucide-react";
 import MagneticButton from "@/components/MagneticButton";
 import useMouseParallax from "@/hooks/useMouseParallax";
+import { apiClient, WS_API_URL } from "@/config/api";
 import { WINGS, PROCESS_STEPS, TECH_GROUPS, INDUSTRIES, FAQS, TEAM } from "@/data/site";
 
 const WingIcons = { Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck };
@@ -31,6 +32,70 @@ const heroWords = [
   { text: "intelligent", className: "shimmer-text" },
   { text: "technology.", className: "gradient-text" },
 ];
+
+const EMPTY_LIVE_METRICS = {
+  visitors_online: 0,
+  active_projects: 0,
+  projects_delivered: 0,
+};
+
+function toMetricNumber(value) {
+  const next = Number(value);
+  return Number.isFinite(next) && next >= 0 ? next : 0;
+}
+
+function normalizeLiveMetrics(value) {
+  return {
+    visitors_online: toMetricNumber(value?.visitors_online),
+    active_projects: toMetricNumber(value?.active_projects),
+    projects_delivered: toMetricNumber(value?.projects_delivered),
+  };
+}
+
+function getVisitorSessionId() {
+  if (typeof window === "undefined") return "";
+  const key = "dortx-live-session";
+  const existing = window.localStorage.getItem(key);
+  if (existing) return existing;
+  const next = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.localStorage.setItem(key, next);
+  return next;
+}
+
+function AnimatedMetricNumber({ value }) {
+  const reduceMotion = useReducedMotion();
+  const [displayValue, setDisplayValue] = useState(0);
+  const previousValue = useRef(0);
+
+  useEffect(() => {
+    const target = toMetricNumber(value);
+    if (reduceMotion) {
+      previousValue.current = target;
+      setDisplayValue(target);
+      return undefined;
+    }
+
+    const start = previousValue.current;
+    const startedAt = performance.now();
+    let frameId;
+
+    const tick = (now) => {
+      const progress = Math.min((now - startedAt) / 620, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(Math.round(start + (target - start) * eased));
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick);
+      } else {
+        previousValue.current = target;
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [value, reduceMotion]);
+
+  return <span>{displayValue.toLocaleString()}</span>;
+}
 
 /* ========================================================================
    01. HERO — cinematic, mouse-parallax, magnetic CTAs, animated orbs
@@ -225,7 +290,126 @@ function Hero() {
 }
 
 /* ========================================================================
-   02. INTRO — "Why DortX exists" — quiet, narrative, full-width statement
+   02. DORTX LIVE — compact real-time activity strip
+   ======================================================================== */
+function DortXLive() {
+  const [metrics, setMetrics] = useState(EMPTY_LIVE_METRICS);
+  const metricItems = [
+    { label: "Visitors Online", value: metrics.visitors_online, Icon: Users },
+    { label: "Active Projects", value: metrics.active_projects, Icon: FolderKanban },
+    { label: "Projects Delivered", value: metrics.projects_delivered, Icon: CheckCircle2 },
+  ];
+
+  useEffect(() => {
+    let cancelled = false;
+    let socket;
+    let pingTimer;
+    let fallbackTimer;
+
+    const applyMetrics = (data) => {
+      if (!cancelled) setMetrics(normalizeLiveMetrics(data));
+    };
+
+    const fetchMetrics = async () => {
+      try {
+        const response = await apiClient.get("/live/metrics");
+        applyMetrics(response.data);
+      } catch {
+        applyMetrics(EMPTY_LIVE_METRICS);
+      }
+    };
+
+    const connectSocket = () => {
+      try {
+        const sessionId = encodeURIComponent(getVisitorSessionId());
+        socket = new WebSocket(`${WS_API_URL}/live/visitors/ws?session_id=${sessionId}`);
+        socket.onmessage = (event) => {
+          try {
+            applyMetrics(JSON.parse(event.data));
+          } catch {
+            applyMetrics(EMPTY_LIVE_METRICS);
+          }
+        };
+        socket.onopen = () => {
+          pingTimer = window.setInterval(() => {
+            if (socket?.readyState === WebSocket.OPEN) socket.send("ping");
+          }, 25000);
+        };
+        socket.onerror = () => fetchMetrics();
+      } catch {
+        fetchMetrics();
+      }
+    };
+
+    fetchMetrics();
+    connectSocket();
+    fallbackTimer = window.setInterval(fetchMetrics, 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(pingTimer);
+      window.clearInterval(fallbackTimer);
+      if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
+    };
+  }, []);
+
+  return (
+    <section className="relative py-5 sm:py-7">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 0.55, ease: MOTION_EASE }}
+          className="dortx-live-shell relative overflow-hidden rounded-2xl px-4 py-4 sm:px-6 sm:py-4 lg:px-7"
+        >
+          <div className="absolute inset-0 bg-grid opacity-20 pointer-events-none"/>
+          <div className="absolute -left-16 top-1/2 h-36 w-36 -translate-y-1/2 rounded-full bg-[#1E6BFF]/20 blur-[54px] pointer-events-none"/>
+          <div className="absolute -right-14 top-1/2 h-32 w-32 -translate-y-1/2 rounded-full bg-[#4D8BFF]/12 blur-[48px] pointer-events-none"/>
+
+          <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center justify-between gap-4 lg:w-52 lg:justify-start">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.2em] text-[#4D8BFF]">DORTX LIVE</div>
+                <div className="mt-1 text-[12px] text-[#6B7385]">Real-time activity</div>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.12)]">
+                <span className="dot-pulse" aria-hidden="true"/>
+                LIVE
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1 sm:gap-2 lg:flex-1">
+              {metricItems.map(({ label, value, Icon }, index) => (
+                <motion.div
+                  key={label}
+                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.22, ease: MOTION_EASE }}
+                  className="dortx-live-metric group relative min-h-[82px] rounded-xl px-2 py-3 text-center sm:px-4"
+                >
+                  <div className="mb-2 flex items-center justify-center">
+                    <span className="dortx-live-icon inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#1E6BFF]/10 text-[#4D8BFF]" style={{ animationDelay: `${index * 0.35}s` }}>
+                      <Icon size={14}/>
+                    </span>
+                  </div>
+                  <div className="font-display text-[clamp(1.7rem,4.4vw,2.75rem)] leading-none font-bold text-white tabular-nums">
+                    <AnimatedMetricNumber value={value}/>
+                  </div>
+                  <div className="mt-2 text-[11px] sm:text-[12px] leading-tight text-[#9AA3B8]">{label}</div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ========================================================================
+   03. INTRO — "Why DortX exists" — quiet, narrative, full-width statement
    ======================================================================== */
 function WhyExist() {
   const ref = useRef(null);
@@ -747,6 +931,7 @@ export default function Home() {
   return (
     <div data-testid="home-page">
       <Hero />
+      <DortXLive />
       <WhyExist />
       <Problems />
       <Approach />

@@ -7,18 +7,16 @@ function resolveBackendUrl(value) {
   const url = String(value || "").trim().replace(/\/$/, "");
   if (!url) return RENDER_BACKEND_URL;
   try {
-    const parsed = new URL(url);
-    if (parsed.hostname !== "dortx-backend.onrender.com") {
-      return RENDER_BACKEND_URL;
-    }
+    new URL(url);
   } catch {
     return RENDER_BACKEND_URL;
   }
-  return url;
+  return url.replace(/\/api$/, "");
 }
 
 export const BACKEND_URL = resolveBackendUrl(configuredBackendUrl);
 export const API_URL = `${BACKEND_URL}/api`;
+export const WS_API_URL = API_URL.replace(/^http/, "ws");
 
 export const apiClient = axios.create({ baseURL: API_URL });
 

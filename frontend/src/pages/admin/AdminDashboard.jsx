@@ -1,19 +1,49 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Send, LayoutDashboard, Inbox, FileText, UserCog } from "lucide-react";
+import { Search, Download, LogOut, Trash2, RefreshCw, Users, Mail, Briefcase, Send, LayoutDashboard, Inbox, FileText, UserCog, Activity, Save, FolderKanban, CheckCircle2 } from "lucide-react";
 import Logo from "@/components/Logo";
 import TeamManager from "@/pages/admin/TeamManager";
 import { adminApiClient } from "@/config/api";
 
-const STATUSES = ["all", "new", "contacted", "qualified", "won", "lost"];
-const APPLICATION_STATUSES = ["new", "reviewing", "shortlisted", "rejected", "hired"];
+const LEAD_STATUSES = [
+  "new",
+  "contacted",
+  "requirement_discussion",
+  "proposal_generated",
+  "proposal_sent",
+  "proposal_accepted",
+  "agreement_generated",
+  "agreement_signed",
+  "invoice_generated",
+  "advance_paid",
+  "project_started",
+  "in_progress",
+  "delivered",
+  "completed",
+  "lost",
+];
+const STATUSES = ["all", ...LEAD_STATUSES];
 const STATUS_COLOR = {
   new: "bg-blue-500/15 text-blue-300 border-blue-500/30",
   contacted: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  qualified: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  won: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  requirement_discussion: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+  proposal_generated: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+  proposal_sent: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  proposal_accepted: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  agreement_generated: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  agreement_signed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  invoice_generated: "bg-purple-500/15 text-purple-300 border-purple-500/30",
+  advance_paid: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  project_started: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  in_progress: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  delivered: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+  completed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   lost: "bg-red-500/15 text-red-300 border-red-500/30",
+  not_started: "bg-slate-500/15 text-slate-300 border-slate-500/30",
+  testing: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  on_hold: "bg-orange-500/15 text-orange-300 border-orange-500/30",
+  cancelled: "bg-red-500/15 text-red-300 border-red-500/30",
   reviewing: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   shortlisted: "bg-violet-500/15 text-violet-300 border-violet-500/30",
   rejected: "bg-red-500/15 text-red-300 border-red-500/30",
@@ -29,6 +59,11 @@ const EMPTY_STATS = {
   previous_month_leads: 0,
   monthly_growth: 0,
 };
+const EMPTY_LIVE_METRICS = {
+  visitors_online: 0,
+  active_projects: 0,
+  projects_delivered: 0,
+};
 
 function toArray(value) {
   return Array.isArray(value) ? value : [];
@@ -37,6 +72,11 @@ function toArray(value) {
 function toNumber(value, fallback = 0) {
   const next = Number(value);
   return Number.isFinite(next) ? next : fallback;
+}
+
+function toMetricNumber(value) {
+  const next = Number(value);
+  return Number.isFinite(next) && next >= 0 ? next : 0;
 }
 
 function readListResponse(response, name, { paginated = false, keys = [] } = {}) {
@@ -74,6 +114,21 @@ function readAnalyticsResponse(response) {
     previous_month_leads: toNumber(data.previous_month_leads),
     monthly_growth: toNumber(data.monthly_growth),
   };
+}
+
+function readLiveMetricsResponse(response) {
+  const data = response?.data;
+  return {
+    visitors_online: toMetricNumber(data?.visitors_online),
+    active_projects: toMetricNumber(data?.active_projects),
+    projects_delivered: toMetricNumber(data?.projects_delivered),
+  };
+}
+
+function labelize(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
 function getBackendError(error, fallback = "Unable to load admin data.") {
@@ -128,6 +183,32 @@ function StatCard({ icon: Icon, label, value, accent = "#4D8BFF" }) {
   );
 }
 
+function AnimatedMetricNumber({ value }) {
+  const [display, setDisplay] = useState(() => toMetricNumber(value));
+  const displayRef = useRef(display);
+
+  useEffect(() => {
+    const start = displayRef.current;
+    const end = toMetricNumber(value);
+    if (start === end) return;
+    const startTime = performance.now();
+    const duration = 550;
+    let frame;
+    const tick = (time) => {
+      const progress = Math.min(1, (time - startTime) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const next = Math.round(start + (end - start) * eased);
+      displayRef.current = next;
+      setDisplay(next);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+
+  return <>{display}</>;
+}
+
 export default function AdminDashboard() {
   const nav = useNavigate();
   const [tab, setTab] = useState("leads");
@@ -147,21 +228,26 @@ export default function AdminDashboard() {
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [applications, setApplications] = useState([]);
   const [subscribers, setSubscribers] = useState([]);
+  const [liveMetrics, setLiveMetrics] = useState(EMPTY_LIVE_METRICS);
+  const [liveDraft, setLiveDraft] = useState(EMPTY_LIVE_METRICS);
+  const [liveSaving, setLiveSaving] = useState(false);
+  const [liveMessage, setLiveMessage] = useState("");
   const [error, setError] = useState("");
 
   const fetchAll = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
-      const [me, analytics, leadResponse, applicationResponse, subscriberResponse] = await Promise.allSettled([
+      const [me, analytics, leadResponse, applicationResponse, subscriberResponse, liveResponse] = await Promise.allSettled([
         adminApiClient.get("/auth/me"),
         adminApiClient.get("/admin/analytics"),
         adminApiClient.get(`/admin/leads?status=${status}&q=${encodeURIComponent(q)}&page=${page}&limit=20`),
         adminApiClient.get("/admin/applications"),
         adminApiClient.get("/admin/newsletter"),
+        adminApiClient.get("/admin/live-metrics"),
       ]);
 
-      if ([me, analytics, leadResponse, applicationResponse, subscriberResponse].some(isUnauthorized)) {
+      if ([me, analytics, leadResponse, applicationResponse, subscriberResponse, liveResponse].some(isUnauthorized)) {
         localStorage.removeItem("dortx-admin-token");
         localStorage.removeItem("dortx-admin-name");
         localStorage.removeItem("dortx-admin-email");
@@ -239,6 +325,20 @@ export default function AdminDashboard() {
         errors.push(`Newsletter: ${getBackendError(subscriberResponse.reason, "Could not load newsletter subscribers.")}`);
       }
 
+      if (liveResponse.status === "fulfilled") {
+        try {
+          const liveData = readLiveMetricsResponse(liveResponse.value);
+          setLiveMetrics(liveData);
+          setLiveDraft(liveData);
+        } catch (error) {
+          setLiveMetrics(EMPTY_LIVE_METRICS);
+          setLiveDraft(EMPTY_LIVE_METRICS);
+        }
+      } else {
+        setLiveMetrics(EMPTY_LIVE_METRICS);
+        setLiveDraft(EMPTY_LIVE_METRICS);
+      }
+
       setError(errors.join(" "));
     } catch (e) {
       setError(getBackendError(e, "Unexpected admin dashboard error."));
@@ -249,6 +349,24 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  const fetchLiveMetrics = useCallback(async () => {
+    try {
+      const response = await adminApiClient.get("/admin/live-metrics");
+      const next = readLiveMetricsResponse(response);
+      setLiveMetrics(next);
+      setLiveDraft(next);
+    } catch {
+      setLiveMetrics(EMPTY_LIVE_METRICS);
+      setLiveDraft(EMPTY_LIVE_METRICS);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveMetrics();
+    const timer = window.setInterval(fetchLiveMetrics, 10000);
+    return () => window.clearInterval(timer);
+  }, [fetchLiveMetrics]);
+
   const logout = () => {
     localStorage.removeItem("dortx-admin-token");
     localStorage.removeItem("dortx-admin-name");
@@ -257,62 +375,101 @@ export default function AdminDashboard() {
     nav("/admin/login");
   };
 
-  const updateStatus = async (id, s) => {
-    if (!id) return;
-    await adminApiClient.patch(`/admin/leads/${id}/status`, { status: s });
-    fetchAll();
-    if (selected?.id === id) setSelected({ ...selected, status: s });
-  };
-
   const remove = async (id) => {
     if (!id) return;
     if (!window.confirm("Delete this lead permanently?")) return;
-    await adminApiClient.delete(`/admin/leads/${id}`);
-    setSelected(null);
-    fetchAll();
+    try {
+      await adminApiClient.delete(`/admin/leads/${id}`);
+      setSelected(null);
+      fetchAll();
+    } catch (e) {
+      setError(getBackendError(e, "Could not delete lead."));
+    }
   };
 
   const exportCsv = async () => {
-    const res = await adminApiClient.get("/admin/leads/export.csv", { responseType: "blob" });
-    downloadBlob(res.data, "dortx_leads.csv");
-  };
-
-  const updateApplicationStatus = async (id, s) => {
-    if (!id) return;
-    await adminApiClient.patch(`/admin/applications/${id}/status`, { status: s });
-    fetchAll();
-    if (selectedApplication?.id === id) setSelectedApplication({ ...selectedApplication, status: s });
+    try {
+      const res = await adminApiClient.get("/admin/leads/export.csv", { responseType: "blob" });
+      downloadBlob(res.data, "dortx_leads.csv");
+    } catch (e) {
+      setError(getBackendError(e, "Could not export leads."));
+    }
   };
 
   const removeApplication = async (id) => {
     if (!id) return;
     if (!window.confirm("Delete this application permanently?")) return;
-    await adminApiClient.delete(`/admin/applications/${id}`);
-    setSelectedApplication(null);
-    fetchAll();
+    try {
+      await adminApiClient.delete(`/admin/applications/${id}`);
+      setSelectedApplication(null);
+      fetchAll();
+    } catch (e) {
+      setError(getBackendError(e, "Could not delete application."));
+    }
   };
 
   const downloadResume = async (id) => {
     if (!id) return;
-    const res = await adminApiClient.get(`/admin/applications/${id}/resume`, { responseType: "blob" });
-    downloadBlob(res.data, "resume");
+    try {
+      const res = await adminApiClient.get(`/admin/applications/${id}/resume`, { responseType: "blob" });
+      downloadBlob(res.data, "resume");
+    } catch (e) {
+      setError(getBackendError(e, "Could not download resume."));
+    }
   };
 
   const exportApplications = async () => {
-    const res = await adminApiClient.get("/admin/applications/export.csv", { responseType: "blob" });
-    downloadBlob(res.data, "dortx_applications.csv");
+    try {
+      const res = await adminApiClient.get("/admin/applications/export.csv", { responseType: "blob" });
+      downloadBlob(res.data, "dortx_applications.csv");
+    } catch (e) {
+      setError(getBackendError(e, "Could not export applications."));
+    }
   };
 
   const removeSubscriber = async (id) => {
     if (!id) return;
     if (!window.confirm("Delete this subscriber?")) return;
-    await adminApiClient.delete(`/admin/newsletter/${id}`);
-    fetchAll();
+    try {
+      await adminApiClient.delete(`/admin/newsletter/${id}`);
+      fetchAll();
+    } catch (e) {
+      setError(getBackendError(e, "Could not delete subscriber."));
+    }
   };
 
   const exportNewsletter = async () => {
-    const res = await adminApiClient.get("/admin/newsletter/export.csv", { responseType: "blob" });
-    downloadBlob(res.data, "dortx_newsletter.csv");
+    try {
+      const res = await adminApiClient.get("/admin/newsletter/export.csv", { responseType: "blob" });
+      downloadBlob(res.data, "dortx_newsletter.csv");
+    } catch (e) {
+      setError(getBackendError(e, "Could not export newsletter."));
+    }
+  };
+
+  const updateLiveDraft = (key, value) => {
+    setLiveDraft((current) => ({ ...current, [key]: toMetricNumber(value) }));
+    setLiveMessage("");
+  };
+
+  const saveLiveMetrics = async () => {
+    setLiveSaving(true);
+    setLiveMessage("");
+    try {
+      const payload = {
+        active_projects: toMetricNumber(liveDraft.active_projects),
+        projects_delivered: toMetricNumber(liveDraft.projects_delivered),
+      };
+      const res = await adminApiClient.patch("/admin/live-metrics", payload);
+      const next = readLiveMetricsResponse(res);
+      setLiveMetrics(next);
+      setLiveDraft(next);
+      setLiveMessage("Live metrics saved.");
+    } catch (e) {
+      setLiveMessage(getBackendError(e, "Could not save live metrics."));
+    } finally {
+      setLiveSaving(false);
+    }
   };
 
   const safeLeads = toArray(leads) ?? [];
@@ -371,6 +528,7 @@ export default function AdminDashboard() {
             { k: "applications", label: "Applications", Icon: FileText },
             { k: "newsletter", label: "Newsletter", Icon: Send },
             { k: "analytics", label: "Analytics", Icon: LayoutDashboard },
+            { k: "live", label: "Live", Icon: Activity },
           ].map(({ k, label, Icon }) => (
             <button
               key={k}
@@ -558,6 +716,68 @@ export default function AdminDashboard() {
           </>
         )}
 
+        {tab === "live" && (
+          <div className="mt-6 grid lg:grid-cols-3 gap-4" data-testid="live-metrics-panel">
+            <div className="glass rounded-2xl p-6">
+              <div className="flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-[#6B7385]">
+                <Users size={14} className="text-[#4D8BFF]"/> Visitors Online
+              </div>
+              <div className="mt-4 font-display text-[32px] font-semibold text-white tabular-nums"><AnimatedMetricNumber value={liveMetrics.visitors_online}/></div>
+              <div className="mt-2 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-emerald-300">
+                <span className="dot-pulse" aria-hidden="true"/> LIVE
+              </div>
+            </div>
+
+            <div className="glass rounded-2xl p-6 lg:col-span-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <div className="font-display text-[18px] font-semibold text-white">Homepage live metrics</div>
+                  <div className="mt-1 text-[13px] text-[#9AA3B8]">Active Projects and Projects Delivered are controlled here.</div>
+                </div>
+                <button onClick={fetchAll} className="btn-ghost !py-2.5 !px-4 !text-[12.5px]"><RefreshCw size={14}/> Refresh</button>
+              </div>
+
+              <div className="mt-6 grid sm:grid-cols-2 gap-4">
+                <label className="block">
+                  <span className="flex items-center gap-2 text-[12px] uppercase tracking-[0.14em] text-[#6B7385]">
+                    <FolderKanban size={13} className="text-[#4D8BFF]"/> Active Projects
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={liveDraft.active_projects}
+                    onChange={(event) => updateLiveDraft("active_projects", event.target.value)}
+                    className="contact-field mt-2"
+                  />
+                  <div className="mt-3 font-display text-[24px] font-semibold text-white tabular-nums"><AnimatedMetricNumber value={liveMetrics.active_projects}/></div>
+                </label>
+                <label className="block">
+                  <span className="flex items-center gap-2 text-[12px] uppercase tracking-[0.14em] text-[#6B7385]">
+                    <CheckCircle2 size={13} className="text-[#4D8BFF]"/> Projects Delivered
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={liveDraft.projects_delivered}
+                    onChange={(event) => updateLiveDraft("projects_delivered", event.target.value)}
+                    className="contact-field mt-2"
+                  />
+                  <div className="mt-3 font-display text-[24px] font-semibold text-white tabular-nums"><AnimatedMetricNumber value={liveMetrics.projects_delivered}/></div>
+                </label>
+              </div>
+
+              <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-3">
+                <button onClick={saveLiveMetrics} disabled={liveSaving} className="btn-primary !py-2.5 !px-5 !text-[13px] disabled:opacity-60">
+                  <Save size={14}/> {liveSaving ? "Saving..." : "Save live metrics"}
+                </button>
+                {liveMessage && <div className="text-[13px] text-[#9AA3B8]">{liveMessage}</div>}
+              </div>
+            </div>
+          </div>
+        )}
+
         {tab === "analytics" && (
           <div className="mt-6 grid lg:grid-cols-2 gap-4" data-testid="analytics-panel">
             <div className="glass rounded-2xl p-6">
@@ -632,11 +852,6 @@ export default function AdminDashboard() {
               <div className="mt-4 text-[13px] text-[#9AA3B8]">Attached: {selected.file_name}</div>
             )}
             <div className="mt-7 flex flex-wrap gap-2">
-              {STATUSES.filter((s) => s !== "all").map((s) => (
-                <button key={s} onClick={() => updateStatus(selected?.id, s)} data-testid={`set-status-${s}`} className={`px-3 py-1.5 rounded-full text-[12px] border ${selected?.status === s ? STATUS_COLOR[s] : "border-white/10 text-[#9AA3B8] hover:bg-white/5"}`}>
-                  {s}
-                </button>
-              ))}
               <button onClick={() => remove(selected?.id)} data-testid="delete-lead" className="ml-auto px-3 py-1.5 rounded-full text-[12px] border border-red-500/30 text-red-300 hover:bg-red-500/10"><Trash2 size={12} className="inline mr-1"/>Delete</button>
             </div>
           </motion.div>
@@ -671,11 +886,6 @@ export default function AdminDashboard() {
               <p className="text-[14px] text-[#C9D2E0] whitespace-pre-wrap leading-relaxed">{selectedApplication?.cover_letter || "-"}</p>
             </div>
             <div className="mt-7 flex flex-wrap gap-2">
-              {APPLICATION_STATUSES.map((s) => (
-                <button key={s} onClick={() => updateApplicationStatus(selectedApplication?.id, s)} className={`px-3 py-1.5 rounded-full text-[12px] border ${selectedApplication?.status === s ? STATUS_COLOR[s] : "border-white/10 text-[#9AA3B8] hover:bg-white/5"}`}>
-                  {s}
-                </button>
-              ))}
               {(selectedApplication?.resume_file_path || selectedApplication?.file_path || selectedApplication?.resume_url) && (
                 selectedApplication?.resume_url ? (
                   <a href={selectedApplication.resume_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-full text-[12px] border border-white/10 text-[#9AA3B8] hover:bg-white/5"><Download size={12} className="inline mr-1"/>Resume</a>
@@ -688,6 +898,7 @@ export default function AdminDashboard() {
           </motion.div>
         </motion.div>
       )}
+
     </div>
   );
 }
