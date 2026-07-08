@@ -145,7 +145,7 @@ export default function TeamManager() {
             </div>
             <div className="mt-4 flex gap-2">
               <button data-testid={`edit-${m?.id ?? index}`} onClick={() => open(m)} className="flex-1 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 text-[12px]">Edit</button>
-              <button data-testid={`delete-${m?.id ?? index}`} onClick={() => remove(m?.id)} className="px-3 py-1.5 rounded-full border border-red-500/30 text-red-300 hover:bg-red-500/10 text-[12px]"><Trash2 size={11}/></button>
+              <button data-testid={`delete-${m?.id ?? index}`} onClick={() => remove(m?.id)} aria-label={`Delete ${m?.name || "team member"}`} className="px-3 py-1.5 rounded-full border border-red-500/30 text-red-300 hover:bg-red-500/10 text-[12px]"><Trash2 size={11}/></button>
             </div>
           </div>
         ))}
@@ -156,7 +156,7 @@ export default function TeamManager() {
           <div onClick={(e) => e.stopPropagation()} className="glass-strong rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" data-testid="team-edit-modal">
             <div className="flex items-center justify-between mb-5">
               <div className="font-display text-[20px] font-semibold">{editing.id ? "Edit member" : "Add member"}</div>
-              <button onClick={close} className="w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center"><X size={16}/></button>
+              <button onClick={close} aria-label="Close team editor" className="w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center"><X size={16}/></button>
             </div>
 
             {/* Photo */}
@@ -173,20 +173,20 @@ export default function TeamManager() {
                   <Upload size={13} className="text-[#4D8BFF]"/> {editing.photo ? "Replace photo" : "Upload photo"}
                   <input data-testid="team-photo-input" type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])}/>
                 </label>
-                <input className={`${input} mt-2`} placeholder="…or paste a photo URL" value={editing.photo || ""} onChange={(e) => setField("photo", e.target.value || null)}/>
+                <input className={`${input} mt-2`} aria-label="Photo URL" placeholder="Paste a photo URL" value={editing.photo || ""} onChange={(e) => setField("photo", e.target.value || null)}/>
               </div>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              <input data-testid="edit-name" className={input} placeholder="Name" value={editing.name} onChange={(e) => setField("name", e.target.value)}/>
-              <input data-testid="edit-role" className={input} placeholder="Role" value={editing.role} onChange={(e) => setField("role", e.target.value)}/>
-              <input className={input} placeholder="Expertise" value={editing.expertise || ""} onChange={(e) => setField("expertise", e.target.value)}/>
-              <input type="number" className={input} placeholder="Order (lower = first)" value={editing.order ?? 100} onChange={(e) => setField("order", Number(e.target.value))}/>
-              <input className={input} placeholder="LinkedIn URL" value={editing.linkedin || ""} onChange={(e) => setField("linkedin", e.target.value)}/>
-              <input className={input} placeholder="Email" value={editing.email_address || ""} onChange={(e) => setField("email_address", e.target.value)}/>
+              <input data-testid="edit-name" className={input} aria-label="Name" placeholder="Name" value={editing.name} onChange={(e) => setField("name", e.target.value)}/>
+              <input data-testid="edit-role" className={input} aria-label="Role" placeholder="Role" value={editing.role} onChange={(e) => setField("role", e.target.value)}/>
+              <input className={input} aria-label="Expertise" placeholder="Expertise" value={editing.expertise || ""} onChange={(e) => setField("expertise", e.target.value)}/>
+              <input type="number" className={input} aria-label="Display order" placeholder="Order (lower numbers appear first)" value={editing.order ?? 100} onChange={(e) => setField("order", Number(e.target.value))}/>
+              <input className={input} aria-label="LinkedIn URL" placeholder="LinkedIn URL" value={editing.linkedin || ""} onChange={(e) => setField("linkedin", e.target.value)}/>
+              <input className={input} aria-label="Email address" placeholder="Email address" value={editing.email_address || ""} onChange={(e) => setField("email_address", e.target.value)}/>
             </div>
 
-            <textarea data-testid="edit-bio" className={`${input} mt-3 resize-none`} rows={4} placeholder="Short bio" value={editing.bio || ""} onChange={(e) => setField("bio", e.target.value)}/>
+            <textarea data-testid="edit-bio" className={`${input} mt-3 resize-none`} rows={4} aria-label="Short bio" placeholder="Short bio" value={editing.bio || ""} onChange={(e) => setField("bio", e.target.value)}/>
 
             <label className="flex items-center gap-2 mt-3 text-[13px] cursor-pointer">
               <input type="checkbox" checked={editing.leadership} onChange={(e) => setField("leadership", e.target.checked)}/>
@@ -201,8 +201,8 @@ export default function TeamManager() {
               <div className="space-y-2">
                 {toArray(editing?.responsibilities).map((r, i) => (
                   <div key={i} className="flex gap-2">
-                    <input className={input} value={r} onChange={(e) => setResp(i, e.target.value)}/>
-                    <button onClick={() => removeResp(i)} className="px-3 rounded-full border border-white/10 hover:bg-white/5"><Trash2 size={12}/></button>
+                    <input className={input} aria-label={`Responsibility ${i + 1}`} value={r} onChange={(e) => setResp(i, e.target.value)}/>
+                    <button onClick={() => removeResp(i)} aria-label={`Remove responsibility ${i + 1}`} className="px-3 rounded-full border border-white/10 hover:bg-white/5"><Trash2 size={12}/></button>
                   </div>
                 ))}
                 {toArray(editing?.responsibilities).length === 0 && <div className="text-[12px] text-[#6B7385]">No responsibilities yet.</div>}

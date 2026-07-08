@@ -3,6 +3,16 @@ import { useLocation } from "react-router-dom";
 import { apiClient } from "@/config/api";
 
 const VISITOR_KEY = "dortx-live-visitor-id";
+const PUBLIC_VISIT_PATHS = new Set([
+  "/",
+  "/about",
+  "/services",
+  "/technologies",
+  "/process",
+  "/team",
+  "/portfolio",
+  "/contact",
+]);
 
 function getVisitorId() {
   if (typeof window === "undefined") return "";
@@ -23,6 +33,7 @@ export default function useLiveVisitorHeartbeat(enabled = true) {
 
     let cancelled = false;
     const currentPage = `${location.pathname}${location.search || ""}${location.hash || ""}`;
+    const publicPath = location.pathname.replace(/\/+$/, "") || "/";
 
     const sendHeartbeat = async () => {
       try {
@@ -31,6 +42,12 @@ export default function useLiveVisitorHeartbeat(enabled = true) {
         // Visitor tracking must never affect the public website experience.
       }
     };
+
+    if (PUBLIC_VISIT_PATHS.has(publicPath)) {
+      apiClient.post("/analytics/visit", { visitorId, currentPage }).catch(() => {
+        // Visit analytics must never affect the public website experience.
+      });
+    }
 
     sendHeartbeat();
     const timer = window.setInterval(() => {

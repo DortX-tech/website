@@ -61,8 +61,10 @@ export default function AdminLogin() {
         <p className="mt-2 text-[14px] text-[#9AA3B8]">Sign in to manage leads and applications.</p>
 
         <form onSubmit={submit} className="mt-7 space-y-3" data-testid="admin-login-form">
-          <input data-testid="admin-email" required type="email" placeholder="Email" className="w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 text-[14.5px] focus:outline-none focus:border-[#1E6BFF]/60" value={email} onChange={e => setEmail(e.target.value)}/>
-          <input data-testid="admin-password" required type="password" placeholder="Password" className="w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 text-[14.5px] focus:outline-none focus:border-[#1E6BFF]/60" value={password} onChange={e => setPassword(e.target.value)}/>
+          <label htmlFor="admin-email" className="sr-only">Admin email</label>
+          <input id="admin-email" data-testid="admin-email" required type="email" autoComplete="email" placeholder="admin@example.com" className="w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 text-[14.5px] focus:outline-none focus:border-[#1E6BFF]/60" value={email} onChange={e => setEmail(e.target.value)}/>
+          <label htmlFor="admin-password" className="sr-only">Password</label>
+          <input id="admin-password" data-testid="admin-password" required type="password" autoComplete="current-password" placeholder="Password" className="w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 text-[14.5px] focus:outline-none focus:border-[#1E6BFF]/60" value={password} onChange={e => setPassword(e.target.value)}/>
           {err && <div className="flex items-center gap-2 text-red-400 text-[13px]"><AlertCircle size={14}/>{err}</div>}
           <button data-testid="admin-login-submit" type="submit" disabled={busy} className="btn-primary w-full justify-center disabled:opacity-50">
             {busy ? "Signing in…" : (<><LogIn size={15}/> Sign in</>)}

@@ -58,7 +58,7 @@ const EMPTY_STATS = {
   monthly_growth: 0,
 };
 const EMPTY_LIVE_METRICS = {
-  visitors_online: 0,
+  total_visitors: null,
   active_projects: 0,
   projects_delivered: 0,
 };
@@ -178,7 +178,7 @@ function readAnalyticsResponse(response) {
 function readLiveMetricsResponse(response) {
   const data = response?.data;
   return {
-    visitors_online: toMetricNumber(data?.visitors_online),
+    total_visitors: data?.totalVisitors ?? data?.total_visitors ?? null,
     active_projects: toMetricNumber(data?.active_projects),
     projects_delivered: toMetricNumber(data?.projects_delivered),
   };
@@ -322,10 +322,12 @@ function StatCard({ icon: Icon, label, value, accent = "#4D8BFF" }) {
 }
 
 function AnimatedMetricNumber({ value }) {
+  const hasValue = value !== null && value !== undefined;
   const [display, setDisplay] = useState(() => toMetricNumber(value));
   const displayRef = useRef(display);
 
   useEffect(() => {
+    if (!hasValue) return undefined;
     const start = displayRef.current;
     const end = toMetricNumber(value);
     if (start === end) return;
@@ -342,8 +344,9 @@ function AnimatedMetricNumber({ value }) {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [value]);
+  }, [value, hasValue]);
 
+  if (!hasValue) return <>...</>;
   return <>{display}</>;
 }
 
@@ -1069,11 +1072,11 @@ export default function AdminDashboard() {
           <div className="mt-6 grid lg:grid-cols-3 gap-4" data-testid="live-metrics-panel">
             <div className="glass rounded-2xl p-6">
               <div className="flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-[#6B7385]">
-                <Users size={14} className="text-[#4D8BFF]"/> Visitors Online
+                <Users size={14} className="text-[#4D8BFF]"/> Total Visitors
               </div>
-              <div className="mt-4 font-display text-[32px] font-semibold text-white tabular-nums"><AnimatedMetricNumber value={liveMetrics.visitors_online}/></div>
-              <div className="mt-2 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-emerald-300">
-                <span className="dot-pulse" aria-hidden="true"/> LIVE
+              <div className="mt-4 font-display text-[32px] font-semibold text-white tabular-nums"><AnimatedMetricNumber value={liveMetrics.total_visitors}/></div>
+              <div className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[#9AA3B8]">
+                Persistent MongoDB counter
               </div>
             </div>
 

@@ -114,12 +114,12 @@ export default function Footer() {
                   data-testid="newsletter-email"
                   type="email"
                   required
-                  placeholder="your@email.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-transparent flex-1 text-[13px] outline-none py-1.5 min-w-0"
                 />
-                <button data-testid="newsletter-submit" type="submit" disabled={busy} className="w-8 h-8 rounded-full gradient-blue flex items-center justify-center disabled:opacity-50">
+                <button data-testid="newsletter-submit" type="submit" disabled={busy} aria-label="Subscribe to newsletter" className="w-8 h-8 rounded-full gradient-blue flex items-center justify-center disabled:opacity-50">
                   <Send size={13} className="text-white"/>
                 </button>
               </form>

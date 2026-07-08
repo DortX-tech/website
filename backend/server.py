@@ -64,6 +64,22 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("dortx")
 
 LIVE_METRICS_ID = "dortx-live"
+ANALYTICS_ID = "dortx-site"
+PUBLIC_VISIT_PATHS = {
+    "/",
+    "/about",
+    "/services",
+    "/technologies",
+    "/process",
+    "/team",
+    "/portfolio",
+    "/contact",
+}
+BOT_USER_AGENT_RE = re.compile(
+    r"bot|crawler|spider|crawling|slurp|duckduckbot|bingpreview|facebookexternalhit|"
+    r"whatsapp|telegrambot|discordbot|linkedinbot|preview|curl|wget|python-requests|httpclient",
+    re.IGNORECASE,
+)
 active_visitor_sessions: Dict[str, int] = {}
 visitor_sockets: set[WebSocket] = set()
 DOCUMENT_DIR = UPLOAD_DIR / "documents"
@@ -147,6 +163,11 @@ class LiveMetricsUpdate(BaseModel):
 
 class LiveHeartbeatPayload(BaseModel):
     visitorId: str = Field(..., min_length=8, max_length=160)
+    currentPage: str = Field("/", max_length=500)
+
+
+class PublicVisitPayload(BaseModel):
+    visitorId: Optional[str] = Field(None, min_length=8, max_length=160)
     currentPage: str = Field("/", max_length=500)
 
 
@@ -496,11 +517,36 @@ async def ensure_live_metrics() -> dict:
     return doc
 
 
+async def ensure_analytics_doc() -> dict:
+    now = datetime.now(timezone.utc)
+    doc = await db.analytics.find_one({"id": ANALYTICS_ID}, {"_id": 0})
+    if doc:
+      return doc
+    doc = {
+        "id": ANALYTICS_ID,
+        "totalVisitors": 0,
+        "lastUpdated": now,
+        "createdAt": now,
+    }
+    await db.analytics.update_one({"id": ANALYTICS_ID}, {"$setOnInsert": doc}, upsert=True)
+    return await db.analytics.find_one({"id": ANALYTICS_ID}, {"_id": 0}) or doc
+
+
+async def read_analytics_counters() -> dict:
+    doc = await ensure_analytics_doc()
+    return {
+        "totalVisitors": int(doc.get("totalVisitors") or 0),
+        "lastUpdated": doc.get("lastUpdated"),
+    }
+
+
 async def read_live_metrics() -> dict:
     doc = await ensure_live_metrics()
-    online = await active_visitor_count()
+    analytics = await read_analytics_counters()
     return {
-        "visitors_online": online,
+        "total_visitors": analytics["totalVisitors"],
+        "totalVisitors": analytics["totalVisitors"],
+        "lastUpdated": analytics.get("lastUpdated"),
         "active_projects": int(doc.get("active_projects") or 0),
         "projects_delivered": int(doc.get("projects_delivered") or 0),
     }
@@ -521,7 +567,7 @@ async def active_visitor_count() -> int:
 async def read_live_stats() -> dict:
     metrics = await read_live_metrics()
     return {
-        "visitorsOnline": metrics["visitors_online"],
+        "totalVisitors": metrics["total_visitors"],
         "activeProjects": metrics["active_projects"],
         "projectsDelivered": metrics["projects_delivered"],
     }
@@ -561,6 +607,46 @@ def request_ip(request: Request) -> str:
     if forwarded_for:
         return forwarded_for.split(",")[0].strip()
     return request.client.host if request.client else ""
+
+
+def normalize_public_path(value: str) -> str:
+    path = f"/{str(value or '/').strip().lstrip('/')}"
+    path = path.split("?", 1)[0].split("#", 1)[0].rstrip("/")
+    return path or "/"
+
+
+def is_detectable_bot(user_agent: str) -> bool:
+    return bool(BOT_USER_AGENT_RE.search(user_agent or ""))
+
+
+async def increment_total_visitors(payload: PublicVisitPayload, request: Request) -> dict:
+    current_page = normalize_public_path(payload.currentPage)
+    user_agent = request.headers.get("user-agent", "")
+    if current_page not in PUBLIC_VISIT_PATHS:
+        return {**(await read_analytics_counters()), "counted": False, "reason": "excluded_path"}
+    if is_detectable_bot(user_agent):
+        return {**(await read_analytics_counters()), "counted": False, "reason": "bot"}
+
+    now = datetime.now(timezone.utc)
+    await db.analytics.update_one(
+        {"id": ANALYTICS_ID},
+        {
+            "$inc": {"totalVisitors": 1},
+            "$set": {
+                "lastUpdated": now,
+                "lastVisit": {
+                    "path": current_page,
+                    "visitorId": payload.visitorId,
+                    "ip_address": request_ip(request),
+                    "user_agent": user_agent[:500],
+                    "at": now,
+                },
+            },
+            "$setOnInsert": {"id": ANALYTICS_ID, "createdAt": now},
+        },
+        upsert=True,
+    )
+    return {**(await read_analytics_counters()), "counted": True}
 
 
 def pdf_escape(value: Any) -> str:
@@ -1079,6 +1165,9 @@ async def startup():
     )
     await db.live_visitors.create_index("visitorId", unique=True)
     await db.live_visitors.create_index("last_active_dt")
+    await db.analytics.create_index("id", unique=True)
+    await db.analytics.create_index("lastUpdated")
+    await ensure_analytics_doc()
     try:
         smtp_status = await asyncio.to_thread(verify_smtp_connection)
         await persist_email_health(smtp_status)
@@ -1255,6 +1344,11 @@ async def subscribe_newsletter(payload: NewsletterSubscribe):
 
 
 # --- DortX Live ---
+@api.post("/analytics/visit")
+async def public_analytics_visit(payload: PublicVisitPayload, request: Request):
+    return await increment_total_visitors(payload, request)
+
+
 @api.post("/live/heartbeat")
 async def live_heartbeat(payload: LiveHeartbeatPayload, request: Request):
     now = datetime.now(timezone.utc)
@@ -1451,8 +1545,10 @@ async def analytics(admin: dict = Depends(get_current_admin)):
     svc_pipeline = [{"$group": {"_id": "$service", "count": {"$sum": 1}}}, {"$sort": {"count": -1}}]
     by_service = [{"service": d["_id"] or "Unspecified", "count": d["count"]} async for d in db.leads.aggregate(svc_pipeline)]
     subscribers = await db.newsletter_subscribers.count_documents({})
+    visitor_analytics = await read_analytics_counters()
     return {
         "total_leads": total,
+        "total_visitors": visitor_analytics["totalVisitors"],
         "by_status": by_status,
         "by_service": by_service,
         "applications": applications,

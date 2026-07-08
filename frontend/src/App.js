@@ -24,9 +24,6 @@ import PublicAgreement from "@/pages/PublicAgreement";
 import NotFound from "@/pages/NotFound";
 import useLiveVisitorHeartbeat from "@/hooks/useLiveVisitorHeartbeat";
 
-const BUILD_ID = process.env.REACT_APP_BUILD_ID || "development";
-const BUILD_TIME = process.env.REACT_APP_BUILD_TIME || "";
-
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
 
@@ -47,11 +44,7 @@ function ScrollToTop() {
 
 function PublicLayout({ children }) {
   return (
-    <div
-      className="min-h-screen noise relative theme-surface"
-      data-build-id={BUILD_ID}
-      data-build-time={BUILD_TIME}
-    >
+    <div className="min-h-screen noise relative theme-surface">
       <Navbar />
       <main className="relative z-[2]">{children}</main>
       <Footer />
@@ -66,6 +59,41 @@ function LiveHeartbeatManager() {
   return null;
 }
 
+function NativeTooltipGuard() {
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root) return undefined;
+
+    const stripTitleAttributes = (node) => {
+      if (!(node instanceof Element)) return;
+      if (node.hasAttribute("title")) node.removeAttribute("title");
+      node.querySelectorAll("[title]").forEach((element) => element.removeAttribute("title"));
+    };
+
+    stripTitleAttributes(root);
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "attributes") {
+          stripTitleAttributes(mutation.target);
+          return;
+        }
+        mutation.addedNodes.forEach(stripTitleAttributes);
+      });
+    });
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["title"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  return null;
+}
+
 function RequireAdmin({ children }) {
   const token = localStorage.getItem("dortx-admin-token");
   if (!token) return <Navigate to="/admin/login" replace />;
@@ -75,6 +103,7 @@ function RequireAdmin({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <NativeTooltipGuard />
       <ScrollToTop />
       <LiveHeartbeatManager />
       <Routes>

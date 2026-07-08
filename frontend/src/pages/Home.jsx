@@ -34,9 +34,9 @@ const heroWords = [
 ];
 
 const EMPTY_LIVE_METRICS = {
-  visitors_online: 0,
-  active_projects: 0,
-  projects_delivered: 0,
+  total_visitors: null,
+  active_projects: null,
+  projects_delivered: null,
 };
 
 function toMetricNumber(value) {
@@ -46,7 +46,7 @@ function toMetricNumber(value) {
 
 function normalizeLiveMetrics(value) {
   return {
-    visitors_online: toMetricNumber(value?.visitorsOnline ?? value?.visitors_online),
+    total_visitors: value?.totalVisitors ?? value?.total_visitors ?? null,
     active_projects: toMetricNumber(value?.activeProjects ?? value?.active_projects),
     projects_delivered: toMetricNumber(value?.projectsDelivered ?? value?.projects_delivered),
   };
@@ -58,6 +58,7 @@ function AnimatedMetricNumber({ value }) {
   const previousValue = useRef(0);
 
   useEffect(() => {
+    if (value === null || value === undefined) return undefined;
     const target = toMetricNumber(value);
     if (reduceMotion) {
       previousValue.current = target;
@@ -84,6 +85,7 @@ function AnimatedMetricNumber({ value }) {
     return () => cancelAnimationFrame(frameId);
   }, [value, reduceMotion]);
 
+  if (value === null || value === undefined) return <span aria-busy="true">...</span>;
   return <span>{displayValue.toLocaleString()}</span>;
 }
 
@@ -285,7 +287,7 @@ function Hero() {
 function DortXLive() {
   const [metrics, setMetrics] = useState(EMPTY_LIVE_METRICS);
   const metricItems = [
-    { label: "Visitors Online", value: metrics.visitors_online, Icon: Users },
+    { label: "Total Visitors", value: metrics.total_visitors, Icon: Users },
     { label: "Active Projects", value: metrics.active_projects, Icon: FolderKanban },
     { label: "Projects Delivered", value: metrics.projects_delivered, Icon: CheckCircle2 },
   ];
@@ -302,7 +304,7 @@ function DortXLive() {
         const response = await apiClient.get("/live/stats");
         applyMetrics(response.data);
       } catch {
-        applyMetrics(EMPTY_LIVE_METRICS);
+        // Keep the last known values visible if the metrics request fails.
       }
     };
 
