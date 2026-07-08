@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# Redirect www to non-www
+RewriteCond %{HTTP_HOST} ^www\.dortxtech\.com$ [NC]
+RewriteRule ^(.*)$ https://dortxtech.com/$1 [L,R=301]
+
+# React Router
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]s
