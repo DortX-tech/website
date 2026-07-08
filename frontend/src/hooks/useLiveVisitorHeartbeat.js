@@ -1,62 +1,42 @@
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { apiClient } from "@/config/api";
+import { API_URL } from "../config/api";
 
-const VISITOR_KEY = "dortx-live-visitor-id";
-const PUBLIC_VISIT_PATHS = new Set([
-  "/",
-  "/about",
-  "/services",
-  "/technologies",
-  "/process",
-  "/team",
-  "/portfolio",
-  "/contact",
-]);
+const VISITOR_KEY = "dortx_visitor_id";
 
 function getVisitorId() {
-  if (typeof window === "undefined") return "";
-  const existing = window.sessionStorage.getItem(VISITOR_KEY);
-  if (existing) return existing;
-  const next = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  window.sessionStorage.setItem(VISITOR_KEY, next);
-  return next;
+  let id = localStorage.getItem(VISITOR_KEY);
+
+  if (!id) {
+    id =
+      crypto.randomUUID?.() ||
+      `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    localStorage.setItem(VISITOR_KEY, id);
+  }
+
+  return id;
 }
 
-export default function useLiveVisitorHeartbeat(enabled = true) {
-  const location = useLocation();
-
+export default function useLiveVisitorHeartbeat() {
   useEffect(() => {
-    if (!enabled) return undefined;
-    const visitorId = getVisitorId();
-    if (!visitorId) return undefined;
+  const visitorId = getVisitorId();
 
-    let cancelled = false;
-    const currentPage = `${location.pathname}${location.search || ""}${location.hash || ""}`;
-    const publicPath = location.pathname.replace(/\/+$/, "") || "/";
+  const SESSION_KEY = "dortx_visit_sent";
 
-    const sendHeartbeat = async () => {
-      try {
-        await apiClient.post("/live/heartbeat", { visitorId, currentPage });
-      } catch {
-        // Visitor tracking must never affect the public website experience.
-      }
-    };
+  if (sessionStorage.getItem(SESSION_KEY)) {
+    return;
+  }
 
-    if (PUBLIC_VISIT_PATHS.has(publicPath)) {
-      apiClient.post("/analytics/visit", { visitorId, currentPage }).catch(() => {
-        // Visit analytics must never affect the public website experience.
-      });
-    }
+  sessionStorage.setItem(SESSION_KEY, "true");
 
-    sendHeartbeat();
-    const timer = window.setInterval(() => {
-      if (!cancelled) sendHeartbeat();
-    }, 20000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [enabled, location.pathname, location.search, location.hash]);
-}
+  fetch(`${API_URL}/analytics/visit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      visitorId,
+      currentPage: window.location.pathname,
+    }),
+  }).catch(console.error);
+}, []) };

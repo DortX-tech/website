@@ -622,12 +622,50 @@ def is_detectable_bot(user_agent: str) -> bool:
 async def increment_total_visitors(payload: PublicVisitPayload, request: Request) -> dict:
     current_page = normalize_public_path(payload.currentPage)
     user_agent = request.headers.get("user-agent", "")
+
     if current_page not in PUBLIC_VISIT_PATHS:
         return {**(await read_analytics_counters()), "counted": False, "reason": "excluded_path"}
+
     if is_detectable_bot(user_agent):
         return {**(await read_analytics_counters()), "counted": False, "reason": "bot"}
 
+    if not payload.visitorId:
+        return {**(await read_analytics_counters()), "counted": False, "reason": "missing_visitor_id"}
+
     now = datetime.now(timezone.utc)
+
+    existing_visitor = await db.visitor_sessions.find_one({
+        "visitorId": payload.visitorId
+    })
+
+    if existing_visitor:
+        await db.visitor_sessions.update_one(
+            {"visitorId": payload.visitorId},
+            {
+                "$set": {
+                    "lastSeen": now,
+                    "lastPage": current_page,
+                    "user_agent": user_agent[:500],
+                },
+                "$inc": {
+                    "pageViews": 1
+                }
+            }
+        )
+
+        return {**(await read_analytics_counters()), "counted": False, "reason": "already_counted"}
+
+    await db.visitor_sessions.insert_one({
+        "visitorId": payload.visitorId,
+        "firstVisit": now,
+        "lastSeen": now,
+        "firstPage": current_page,
+        "lastPage": current_page,
+        "pageViews": 1,
+        "user_agent": user_agent[:500],
+        "ip_address": request_ip(request),
+    })
+
     await db.analytics.update_one(
         {"id": ANALYTICS_ID},
         {
@@ -646,6 +684,7 @@ async def increment_total_visitors(payload: PublicVisitPayload, request: Request
         },
         upsert=True,
     )
+
     return {**(await read_analytics_counters()), "counted": True}
 
 
