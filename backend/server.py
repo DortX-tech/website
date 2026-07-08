@@ -5,9 +5,14 @@ import os
 import re
 import uuid
 import logging
+import secrets
+import smtplib
+import ssl
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
+from email.message import EmailMessage
+from email.utils import formataddr, make_msgid
 
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query, WebSocket, WebSocketDisconnect, Request, Body
 from fastapi.security import OAuth2PasswordBearer
@@ -37,6 +42,14 @@ CHAT_TEMPERATURE = float(os.environ.get("OPENAI_TEMPERATURE", "0.35"))
 CHAT_MAX_TOKENS = int(os.environ.get("OPENAI_CHAT_MAX_TOKENS", "900"))
 UPLOAD_DIR = Path(os.environ['UPLOAD_DIR'])
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.hostinger.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT") or ("465" if os.environ.get("SMTP_SECURE", "true").lower() == "true" else "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "thrisha@dortxtech.com")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_SECURE = os.environ.get("SMTP_SECURE", "true").lower() in {"1", "true", "yes", "on"}
+EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USERNAME or "thrisha@dortxtech.com")
+EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "DortX Technologies")
+PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "https://www.dortxtech.com").rstrip("/")
 
 # --- DB ---
 client = AsyncIOMotorClient(MONGO_URL)
@@ -55,11 +68,25 @@ active_visitor_sessions: Dict[str, int] = {}
 visitor_sockets: set[WebSocket] = set()
 DOCUMENT_DIR = UPLOAD_DIR / "documents"
 DOCUMENT_DIR.mkdir(parents=True, exist_ok=True)
+EMAIL_SETTINGS_ID = "email"
+EMAIL_HEALTH: Dict[str, Any] = {
+    "provider": "Hostinger SMTP",
+    "configured": False,
+    "connected": False,
+    "status": "unchecked",
+    "message": "SMTP connection has not been checked yet.",
+    "checked_at": None,
+    "last_test_at": None,
+    "last_test_recipient": None,
+    "active_transport": None,
+}
 
 LEAD_STATUSES = (
-    "new", "contacted", "requirement_discussion", "proposal_generated", "proposal_sent",
-    "proposal_accepted", "agreement_generated", "agreement_signed", "invoice_generated",
-    "advance_paid", "project_started", "in_progress", "delivered", "completed", "lost",
+    "new", "requirement_discussion", "proposal_generated", "agreement_generated",
+    "agreement_sent", "client_signed", "dortx_signed", "advance_paid", "project_started", "completed",
+    # Legacy statuses are accepted for older records and API compatibility, but the admin UI no longer exposes them.
+    "contacted", "proposal_sent", "proposal_accepted", "agreement_signed",
+    "invoice_generated", "in_progress", "delivered", "lost",
 )
 PROJECT_STATUSES = ("not_started", "in_progress", "testing", "delivered", "completed", "on_hold", "cancelled")
 COMPLETION_CHECKLIST_KEYS = (
@@ -118,6 +145,11 @@ class LiveMetricsUpdate(BaseModel):
     projects_delivered: int = Field(..., ge=0)
 
 
+class LiveHeartbeatPayload(BaseModel):
+    visitorId: str = Field(..., min_length=8, max_length=160)
+    currentPage: str = Field("/", max_length=500)
+
+
 class ProposalPayload(BaseModel):
     lead_id: Optional[str] = None
     client_name: str = Field("", max_length=200)
@@ -138,9 +170,36 @@ class ProposalPayload(BaseModel):
 
 
 class AgreementPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     lead_id: Optional[str] = None
     proposal_id: Optional[str] = None
     agreement_id: Optional[str] = None
+    agreement_number: Optional[str] = None
+    client_name: Optional[str] = Field("", max_length=200)
+    company: Optional[str] = Field("", max_length=200)
+    email: Optional[str] = Field("", max_length=200)
+    phone: Optional[str] = Field("", max_length=50)
+    address: Optional[str] = Field("", max_length=1000)
+    service_wing: Optional[str] = Field("", max_length=160)
+    project_type: Optional[str] = Field("", max_length=160)
+    project_title: Optional[str] = Field("", max_length=240)
+    project_description: Optional[str] = Field("", max_length=8000)
+    scope_of_work: Optional[str] = Field("", max_length=8000)
+    deliverables: Optional[str] = Field("", max_length=6000)
+    technology_stack: Optional[str] = Field("", max_length=2000)
+    project_timeline: Optional[str] = Field("", max_length=1200)
+    support_duration: Optional[str] = Field("", max_length=1000)
+    warranty_period: Optional[str] = Field("", max_length=1000)
+    special_notes: Optional[str] = Field("", max_length=4000)
+    expected_delivery_date: Optional[str] = Field("", max_length=80)
+    project_cost: Optional[str] = Field("", max_length=120)
+    advance_payment: Optional[str] = Field("", max_length=120)
+    remaining_amount: Optional[str] = Field("", max_length=120)
+    additional_charges: Optional[str] = Field("", max_length=2000)
+    late_payment_terms: Optional[str] = Field("", max_length=2000)
+    currency: Optional[str] = Field("INR", max_length=20)
+    clauses_enabled: Optional[Dict[str, bool]] = None
     client_details: Optional[str] = Field("", max_length=3000)
     project_name: str = Field("", max_length=240)
     project_scope: Optional[str] = Field("", max_length=8000)
@@ -160,6 +219,21 @@ class AgreementPayload(BaseModel):
     intellectual_property: Optional[str] = Field("", max_length=3000)
     governing_law: Optional[str] = Field("", max_length=1200)
     signature_section: Optional[str] = Field("", max_length=3000)
+
+
+class AgreementClientSignPayload(BaseModel):
+    acceptance_flags: Dict[str, bool]
+    signature_type: str = Field("typed", max_length=40)
+    signature: str = Field(..., min_length=2, max_length=300000)
+    client_name: str = Field(..., min_length=2, max_length=200)
+    client_designation: Optional[str] = Field("", max_length=200)
+
+
+class AgreementAdminSignPayload(BaseModel):
+    name: str = Field("Thrisha J C", max_length=200)
+    designation: str = Field("Founder & CEO", max_length=200)
+    signature_type: str = Field("typed", max_length=40)
+    signature: Optional[str] = Field("", max_length=300000)
 
 
 class InvoicePayload(BaseModel):
@@ -282,6 +356,10 @@ class CareerApplication(BaseModel):
 class NewsletterSubscribe(BaseModel):
     email: EmailStr
     source: Optional[str] = "footer"
+
+
+class EmailTestPayload(BaseModel):
+    recipient: Optional[EmailStr] = None
 
 
 class TeamMember(BaseModel):
@@ -420,10 +498,32 @@ async def ensure_live_metrics() -> dict:
 
 async def read_live_metrics() -> dict:
     doc = await ensure_live_metrics()
+    online = await active_visitor_count()
     return {
-        "visitors_online": len(active_visitor_sessions),
+        "visitors_online": online,
         "active_projects": int(doc.get("active_projects") or 0),
         "projects_delivered": int(doc.get("projects_delivered") or 0),
+    }
+
+
+async def cleanup_inactive_visitors() -> int:
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=60)
+    result = await db.live_visitors.delete_many({"last_active_dt": {"$lt": cutoff}})
+    return result.deleted_count
+
+
+async def active_visitor_count() -> int:
+    await cleanup_inactive_visitors()
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=60)
+    return await db.live_visitors.count_documents({"last_active_dt": {"$gte": cutoff}})
+
+
+async def read_live_stats() -> dict:
+    metrics = await read_live_metrics()
+    return {
+        "visitorsOnline": metrics["visitors_online"],
+        "activeProjects": metrics["active_projects"],
+        "projectsDelivered": metrics["projects_delivered"],
     }
 
 
@@ -446,8 +546,21 @@ def compact_id(prefix: str) -> str:
     return f"{prefix}-{stamp}-{uuid.uuid4().hex[:6].upper()}"
 
 
+async def next_agreement_number() -> str:
+    year = datetime.now(timezone.utc).year
+    count = await db.agreements.count_documents({"agreement_number": {"$regex": f"^DX-{year}-"}})
+    return f"DX-{year}-{count + 1:05d}"
+
+
 def clean_status(value: Optional[str], allowed: tuple[str, ...], fallback: str) -> str:
     return value if value in allowed else fallback
+
+
+def request_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else ""
 
 
 def pdf_escape(value: Any) -> str:
@@ -651,6 +764,229 @@ async def log_lead_activity(lead_id: Optional[str], admin: Optional[dict], notes
     return entry
 
 
+def smtp_configured() -> bool:
+    return bool(SMTP_HOST and SMTP_PORT and SMTP_USERNAME and SMTP_PASSWORD and EMAIL_FROM)
+
+
+def smtp_transport_candidates() -> List[dict]:
+    primary = {"host": SMTP_HOST, "port": SMTP_PORT, "secure": SMTP_SECURE, "label": "SMTPS 465" if SMTP_SECURE else "STARTTLS 587"}
+    candidates = [primary]
+    if primary["secure"] or primary["port"] != 587:
+        candidates.append({"host": SMTP_HOST or "smtp.hostinger.com", "port": 587, "secure": False, "label": "STARTTLS 587 fallback"})
+    return candidates
+
+
+def public_email_settings() -> dict:
+    return {
+        "provider": "Hostinger SMTP",
+        "host": SMTP_HOST,
+        "port": SMTP_PORT,
+        "secure": SMTP_SECURE,
+        "username": SMTP_USERNAME,
+        "from_email": EMAIL_FROM,
+        "from_name": EMAIL_FROM_NAME,
+        "configured": smtp_configured(),
+    }
+
+
+def smtp_error_message(error: Exception) -> str:
+    if isinstance(error, smtplib.SMTPResponseException):
+        message = error.smtp_error.decode("utf-8", errors="replace") if isinstance(error.smtp_error, bytes) else str(error.smtp_error)
+        return f"SMTP {error.smtp_code}: {message}"
+    return str(error) or error.__class__.__name__
+
+
+def open_smtp_connection(candidate: dict):
+    context = ssl.create_default_context()
+    if candidate["secure"]:
+        smtp = smtplib.SMTP_SSL(candidate["host"], candidate["port"], context=context, timeout=20)
+    else:
+        smtp = smtplib.SMTP(candidate["host"], candidate["port"], timeout=20)
+        smtp.ehlo()
+        smtp.starttls(context=context)
+        smtp.ehlo()
+    smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+    return smtp
+
+
+def verify_smtp_connection() -> dict:
+    checked_at = now_iso()
+    if not smtp_configured():
+        return {
+            **public_email_settings(),
+            "connected": False,
+            "status": "invalid",
+            "message": "SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, EMAIL_FROM and EMAIL_FROM_NAME.",
+            "checked_at": checked_at,
+            "active_transport": None,
+            "attempts": [],
+        }
+    attempts = []
+    for candidate in smtp_transport_candidates():
+        try:
+            with open_smtp_connection(candidate) as smtp:
+                smtp.noop()
+            return {
+                **public_email_settings(),
+                "connected": True,
+                "status": "connected",
+                "message": f"Connected to Hostinger SMTP using {candidate['label']}.",
+                "checked_at": checked_at,
+                "active_transport": candidate,
+                "attempts": attempts + [{**candidate, "status": "connected"}],
+            }
+        except Exception as error:
+            attempts.append({**candidate, "status": "failed", "error": smtp_error_message(error)})
+            logger.warning("SMTP verification failed for %s:%s (%s): %s", candidate["host"], candidate["port"], candidate["label"], smtp_error_message(error))
+    return {
+        **public_email_settings(),
+        "connected": False,
+        "status": "failed",
+        "message": "SMTP connection failed for Hostinger SMTPS 465 and STARTTLS 587 fallback.",
+        "checked_at": checked_at,
+        "active_transport": None,
+        "attempts": attempts,
+    }
+
+
+async def persist_email_health(status_doc: dict, extra: Optional[dict] = None) -> dict:
+    global EMAIL_HEALTH
+    merged = {**EMAIL_HEALTH, **status_doc, **(extra or {})}
+    EMAIL_HEALTH = merged
+    await db.app_settings.update_one(
+        {"id": EMAIL_SETTINGS_ID},
+        {"$set": {"id": EMAIL_SETTINGS_ID, **merged, "updated_at": now_iso()}},
+        upsert=True,
+    )
+    return merged
+
+
+async def load_email_health() -> dict:
+    stored = await db.app_settings.find_one({"id": EMAIL_SETTINGS_ID}, {"_id": 0})
+    return {**EMAIL_HEALTH, **(stored or {}), **public_email_settings()}
+
+
+def new_agreement_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+async def get_public_agreement_doc(identifier: str) -> dict:
+    doc = await db.agreements.find_one(
+        {"$or": [{"id": identifier}, {"agreement_token": identifier}]},
+        {"_id": 0},
+    )
+    if not doc:
+        raise HTTPException(404, "Agreement not found")
+    return doc
+
+
+def build_agreement_email_html(doc: dict, secure_url: str) -> str:
+    project = doc.get("project_title") or doc.get("project_name") or "your DortX project"
+    client = doc.get("client_name") or "there"
+    agreement_id = doc.get("agreement_number") or doc.get("id")
+    service_wing = doc.get("service_wing") or doc.get("project_type") or "Software Service"
+    logo_url = f"{PUBLIC_SITE_URL}/dortx-logo.png"
+    return f"""
+<!doctype html>
+<html>
+  <body style="margin:0;background:#f4f7fb;font-family:Inter,Arial,sans-serif;color:#111827;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:28px 14px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #dbe3ef;border-radius:16px;overflow:hidden;">
+            <tr>
+              <td style="padding:28px 32px;border-bottom:1px solid #e5ebf3;">
+                <img src="{logo_url}" alt="DortX Technologies" style="height:42px;width:auto;display:block;margin-bottom:22px;" />
+                <h1 style="margin:0;font-size:22px;line-height:1.25;color:#0f172a;">Service Agreement for Your Review</h1>
+                <p style="margin:10px 0 0;font-size:14px;line-height:1.7;color:#526071;">Hello {client},</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 32px;">
+                <p style="margin:0 0 16px;font-size:14px;line-height:1.8;color:#334155;">DortX Technologies has prepared the Digital Service Agreement for <strong>{project}</strong>. Please review the agreement carefully and complete the electronic signature when you are ready.</p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+                  <tr><td style="padding:14px 16px;font-size:13px;color:#475569;"><strong>Agreement ID:</strong> {agreement_id}</td></tr>
+                  <tr><td style="padding:0 16px 14px;font-size:13px;color:#475569;"><strong>Service Wing:</strong> {service_wing}</td></tr>
+                </table>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.8;color:#334155;">This secure link is unique to your agreement.</p>
+                <p style="margin:0 0 26px;text-align:center;">
+                  <a href="{secure_url}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;border-radius:999px;padding:13px 22px;font-size:14px;font-weight:700;">Review &amp; Sign Agreement</a>
+                </p>
+                <p style="margin:0;font-size:13px;line-height:1.8;color:#475569;">For questions, contact <a href="mailto:thrisha@dortxtech.com" style="color:#1e6bff;">thrisha@dortxtech.com</a> or <a href="mailto:support@dortxtech.com" style="color:#1e6bff;">support@dortxtech.com</a>.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:22px 32px;background:#0a0f1c;color:#c9d2e0;font-size:12px;line-height:1.7;">
+                <strong style="color:#ffffff;">Thrisha J C</strong><br/>
+                Founder &amp; Chief Executive Officer, DortX Technologies<br/>
+                MSME Registration: UDYAM-KR-25-0108099<br/>
+                <a href="https://www.dortxtech.com" style="color:#8fb2ff;">www.dortxtech.com</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+"""
+
+
+def send_email_smtp(to_email: str, subject: str, html: str, text: str) -> dict:
+    if not smtp_configured():
+        raise RuntimeError("SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, EMAIL_FROM and related email environment variables.")
+    message_id = make_msgid(domain=(EMAIL_FROM.split("@")[-1] if "@" in EMAIL_FROM else "dortxtech.com"))
+    msg = EmailMessage()
+    msg["From"] = formataddr((EMAIL_FROM_NAME, EMAIL_FROM))
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg["Message-ID"] = message_id
+    msg.set_content(text)
+    msg.add_alternative(html, subtype="html")
+
+    temporary_errors = (smtplib.SMTPServerDisconnected, smtplib.SMTPConnectError, smtplib.SMTPHeloError)
+    last_error: Optional[Exception] = None
+    send_attempts = []
+    for attempt in range(1, 4):
+        for candidate in smtp_transport_candidates():
+            try:
+                with open_smtp_connection(candidate) as smtp:
+                    smtp.send_message(msg)
+                return {"message_id": message_id, "attempts": attempt, "transport": candidate, "send_attempts": send_attempts}
+            except temporary_errors as error:
+                last_error = error
+                send_attempts.append({**candidate, "attempt": attempt, "status": "failed", "error": smtp_error_message(error)})
+                logger.warning("Temporary SMTP send failure on attempt %s via %s: %s", attempt, candidate["label"], smtp_error_message(error))
+                continue
+            except smtplib.SMTPResponseException as error:
+                last_error = error
+                send_attempts.append({**candidate, "attempt": attempt, "status": "failed", "error": smtp_error_message(error)})
+                continue
+            except Exception as error:
+                last_error = error
+                send_attempts.append({**candidate, "attempt": attempt, "status": "failed", "error": smtp_error_message(error)})
+                logger.warning("SMTP send failure on attempt %s via %s: %s", attempt, candidate["label"], smtp_error_message(error))
+                continue
+        if attempt < 3:
+            import time
+            time.sleep(attempt * 1.5)
+    raise RuntimeError(smtp_error_message(last_error) if last_error else "Email send failed.")
+
+
+async def append_agreement_email_log(agreement_id: str, entry: dict) -> None:
+    update = {
+        "email_status": entry.get("status"),
+        "email_last_error": entry.get("error", ""),
+        "email_recipient": entry.get("recipient", ""),
+        "updated_at": now_iso(),
+    }
+    if entry.get("message_id"):
+        update["email_message_id"] = entry["message_id"]
+    if entry.get("sent_at"):
+        update["email_sent_at"] = entry["sent_at"]
+    await db.agreements.update_one({"id": agreement_id}, {"$push": {"email_activity": entry}, "$set": update})
+
+
 async def set_lead_status(lead_id: str, new_status: str, admin: Optional[dict], notes: str = "", override: bool = True) -> dict:
     if new_status not in LEAD_STATUSES:
         raise HTTPException(400, "Status is not supported.")
@@ -741,6 +1077,25 @@ async def startup():
         {"name": "Chandana"},
         {"$set": {"role": "Chief Product Officer (CPO) | Creative Head", "updated_at": now_iso()}},
     )
+    await db.live_visitors.create_index("visitorId", unique=True)
+    await db.live_visitors.create_index("last_active_dt")
+    try:
+        smtp_status = await asyncio.to_thread(verify_smtp_connection)
+        await persist_email_health(smtp_status)
+        if smtp_status.get("connected"):
+            logger.info("SMTP startup verification succeeded: %s", smtp_status.get("message"))
+        else:
+            logger.warning("SMTP startup verification warning: %s", smtp_status.get("message"))
+    except Exception as error:
+        await persist_email_health({
+            **public_email_settings(),
+            "connected": False,
+            "status": "failed",
+            "message": f"SMTP startup verification failed: {smtp_error_message(error)}",
+            "checked_at": now_iso(),
+            "active_transport": None,
+        })
+        logger.warning("SMTP startup verification failed without stopping the app: %s", smtp_error_message(error))
 
 
 @app.on_event("shutdown")
@@ -757,6 +1112,73 @@ async def root():
 @api.get("/health")
 async def health():
     return {"status": "healthy", "time": now_iso()}
+
+
+@api.get("/admin/email-settings")
+async def get_email_settings(admin: dict = Depends(get_current_admin)):
+    return await load_email_health()
+
+
+@api.post("/admin/email-settings/test-connection")
+async def test_email_connection(admin: dict = Depends(get_current_admin)):
+    status_doc = await asyncio.to_thread(verify_smtp_connection)
+    return await persist_email_health(status_doc)
+
+
+@api.post("/admin/email-settings/send-test")
+async def send_test_email(payload: EmailTestPayload = Body(default_factory=EmailTestPayload), admin: dict = Depends(get_current_admin)):
+    recipient = str(payload.recipient or admin.get("email") or EMAIL_FROM)
+    status_doc = await asyncio.to_thread(verify_smtp_connection)
+    if not status_doc.get("connected"):
+        saved = await persist_email_health(status_doc, {
+            "last_test_at": now_iso(),
+            "last_test_recipient": recipient,
+            "last_test_status": "failed",
+            "last_test_error": status_doc.get("message"),
+        })
+        raise HTTPException(502, saved.get("message") or "SMTP connection failed.")
+    subject = "DortX Technologies SMTP Test Email"
+    html = f"""
+<!doctype html>
+<html>
+  <body style="margin:0;background:#f4f7fb;font-family:Inter,Arial,sans-serif;color:#111827;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px;background:#f4f7fb;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #dbe3ef;border-radius:16px;overflow:hidden;">
+          <tr><td style="padding:28px 32px;">
+            <h1 style="margin:0 0 10px;font-size:22px;color:#0f172a;">Hostinger SMTP Test Successful</h1>
+            <p style="margin:0;font-size:14px;line-height:1.8;color:#475569;">This confirms DortX Technologies can send production emails from {EMAIL_FROM} using the configured SMTP transport.</p>
+            <p style="margin:18px 0 0;font-size:12px;color:#64748b;">Sent at {now_iso()}</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>
+"""
+    text = f"DortX Technologies SMTP test successful.\nFrom: {EMAIL_FROM}\nSent at: {now_iso()}"
+    try:
+        result = await asyncio.to_thread(send_email_smtp, recipient, subject, html, text)
+        saved = await persist_email_health(status_doc, {
+            "last_test_at": now_iso(),
+            "last_test_recipient": recipient,
+            "last_test_status": "sent",
+            "last_test_error": "",
+            "last_test_message_id": result.get("message_id"),
+            "last_test_transport": result.get("transport"),
+        })
+        return saved
+    except Exception as error:
+        saved = await persist_email_health(status_doc, {
+            "connected": False,
+            "status": "failed",
+            "message": f"SMTP test email failed: {smtp_error_message(error)}",
+            "last_test_at": now_iso(),
+            "last_test_recipient": recipient,
+            "last_test_status": "failed",
+            "last_test_error": smtp_error_message(error),
+        })
+        raise HTTPException(502, saved["message"])
 
 
 # --- Leads / Contact ---
@@ -833,6 +1255,40 @@ async def subscribe_newsletter(payload: NewsletterSubscribe):
 
 
 # --- DortX Live ---
+@api.post("/live/heartbeat")
+async def live_heartbeat(payload: LiveHeartbeatPayload, request: Request):
+    now = datetime.now(timezone.utc)
+    now_text = now.isoformat()
+    client_host = request_ip(request)
+    user_agent = request.headers.get("user-agent", "")
+    current_page = payload.currentPage or "/"
+    await cleanup_inactive_visitors()
+    await db.live_visitors.update_one(
+        {"visitorId": payload.visitorId},
+        {
+            "$set": {
+                "visitorId": payload.visitorId,
+                "ip_address": client_host,
+                "user_agent": user_agent,
+                "current_page": current_page,
+                "last_active": now_text,
+                "last_active_dt": now,
+            },
+            "$setOnInsert": {
+                "first_seen": now_text,
+                "first_seen_dt": now,
+            },
+        },
+        upsert=True,
+    )
+    return await read_live_stats()
+
+
+@api.get("/live/stats")
+async def public_live_stats():
+    return await read_live_stats()
+
+
 @api.get("/live/metrics")
 async def public_live_metrics():
     return await read_live_metrics()
@@ -1099,7 +1555,7 @@ async def send_proposal(proposal_id: str, admin: dict = Depends(get_current_admi
     doc = await get_doc_or_404("proposals", proposal_id)
     await db.proposals.update_one({"id": proposal_id}, {"$set": {"status": "sent", "sent_at": now_iso(), "updated_at": now_iso()}})
     if doc.get("lead_id"):
-        await set_lead_status(doc["lead_id"], "proposal_sent", admin, "Proposal sent to client", True)
+        await set_lead_status(doc["lead_id"], "proposal_generated", admin, "Proposal sent to client", True)
     return await get_doc_or_404("proposals", proposal_id)
 
 
@@ -1108,7 +1564,7 @@ async def accept_proposal(proposal_id: str, admin: dict = Depends(get_current_ad
     doc = await get_doc_or_404("proposals", proposal_id)
     await db.proposals.update_one({"id": proposal_id}, {"$set": {"status": "accepted", "accepted_at": now_iso(), "updated_at": now_iso()}})
     if doc.get("lead_id"):
-        await set_lead_status(doc["lead_id"], "proposal_accepted", admin, "Proposal accepted", True)
+        await set_lead_status(doc["lead_id"], "agreement_generated", admin, "Proposal accepted. Agreement ready.", True)
     return await get_doc_or_404("proposals", proposal_id)
 
 
@@ -1117,13 +1573,98 @@ async def list_agreements(admin: dict = Depends(get_current_admin), lead_id: Opt
     return await list_collection("agreements", lead_id)
 
 
+AGREEMENT_ACCEPTANCE_KEYS = (
+    "read_understood_entire_agreement",
+    "agree_all_terms_and_clauses",
+    "accurate_information_electronic_consent",
+)
+
+STANDARD_AGREEMENT_CLAUSES = (
+    ("Terms & Conditions", "The client agrees to the DortX Technologies service terms, engagement practices, approval process, communication requirements, and all obligations recorded in this Agreement."),
+    ("Privacy Policy", "DortX Technologies will handle client information, project materials, account details, and contact data for lawful project delivery, communication, billing, support, and compliance purposes."),
+    ("Project Scope", "The agreed scope is limited to the work, modules, responsibilities, assumptions, exclusions, and acceptance criteria recorded in this agreement or later approved in writing by both parties."),
+    ("Deliverables", "DortX Technologies will provide the deliverables expressly listed in this agreement. Items not listed are outside scope unless added through an approved change request."),
+    ("Timeline", "Delivery timelines depend on timely client inputs, approvals, content, access, third-party availability, and payment milestones. Material delays may shift the schedule."),
+    ("Payment Terms", "Fees, advance payments, milestone payments, remaining balances, late-payment consequences, and third-party charges are governed by the commercial details in this agreement."),
+    ("Refund Policy", "Refunds are not available for completed work, booked resources, approved milestones, third-party costs, or work already delivered. Any exceptional refund must be approved in writing by DortX Technologies."),
+    ("Change Request Policy", "Changes outside the agreed scope require written approval and may affect cost, milestones, timelines, architecture, and delivery responsibilities."),
+    ("Warranty", "Warranty applies only to reproducible defects in agreed deliverables during the stated warranty period and excludes new features, third-party failures, client-side changes, misuse, hosting issues, and out-of-scope work."),
+    ("Support Terms", "Support is limited to the support duration and scope stated in this agreement. Ongoing maintenance, enhancements, monitoring, and priority support may require a separate plan."),
+    ("Intellectual Property Ownership", "Final approved deliverables and agreed source code ownership transfer to the client after full payment, except pre-existing DortX tools, frameworks, reusable components, open-source packages, and third-party assets."),
+    ("Confidentiality (NDA)", "Both parties will protect confidential business, technical, product, financial, credential, and customer information shared for the project and will not disclose it without authorization unless required by law."),
+    ("Cancellation Policy", "Cancellation must be requested in writing. Completed work, committed resources, approved milestones, third-party expenses, and non-recoverable costs remain payable."),
+    ("Governing Law", "This agreement is governed by the laws of India, with disputes subject to competent courts in Bengaluru, Karnataka, India unless otherwise required by applicable law."),
+    ("Limitation of Liability", "To the maximum extent permitted by law, DortX Technologies is not liable for indirect, incidental, consequential, special, punitive, business interruption, data loss, or lost-profit damages. Total liability is limited to amounts paid for the affected service."),
+)
+
+
+def signature_summary(label: str, signature: Optional[dict]) -> str:
+    if not signature:
+        return "Not signed"
+    rendered_signature = signature.get("signature") or ""
+    if str(rendered_signature).startswith("data:image"):
+        rendered_signature = "[Digital signature image captured]"
+    return "\n".join([
+        f"{label} Signature: {rendered_signature}",
+        f"Name: {signature.get('client_name') or signature.get('name') or ''}",
+        f"Designation: {signature.get('designation') or ''}",
+        f"Date Signed: {str(signature.get('timestamp') or '')[:10]}",
+        f"Timestamp: {signature.get('timestamp') or ''}",
+    ])
+
+
+def agreement_sections(doc: dict) -> List[tuple[str, Any]]:
+    service_wing = doc.get("service_wing") or doc.get("selected_wing") or doc.get("service") or doc.get("project_type") or "Software Development"
+    return [
+        ("Digital Service Agreement", f"DORTX TECHNOLOGIES\nAgreement Number: {doc.get('agreement_number') or doc.get('agreement_id') or doc.get('id')}\nStatus: {doc.get('status') or ''}\nCreated Date: {str(doc.get('created_at') or '')[:10]}\nService Wing: {service_wing}\nCompany Logo: DortX Technologies official logo"),
+        ("Company Information", "DortX Technologies is a professional technology company delivering AI, software, automation, web, IoT, cloud infrastructure and digital transformation services.\nRepresentative: Thrisha J C\nDesignation: Founder & Chief Executive Officer\nOfficial Email: thrisha@dortxtech.com\nSupport Email: support@dortxtech.com\nWebsite: https://www.dortxtech.com\nMSME Registration: UDYAM-KR-25-0108099"),
+        ("Client Information", f"Client Name: {doc.get('client_name') or ''}\nCompany: {doc.get('company') or ''}\nEmail: {doc.get('email') or ''}\nPhone: {doc.get('phone') or ''}\nAddress: {doc.get('address') or ''}"),
+        ("Project Details", f"Project Title: {doc.get('project_title') or doc.get('project_name') or ''}\nService Wing: {service_wing}\nProject Description: {doc.get('project_description') or ''}\nSupport Period: {doc.get('support_duration') or doc.get('support_period') or doc.get('warranty_period') or ''}\nSpecial Notes: {doc.get('special_notes') or ''}"),
+        ("Scope of Work", f"DortX Technologies shall provide the professional services, development work, implementation support and related technical activities described in the approved scope. The agreed scope of work is: {doc.get('scope_of_work') or doc.get('project_scope') or ''}. Any item not expressly included shall be treated as outside scope unless approved in writing by both parties."),
+        ("Deliverables", f"DortX Technologies shall provide the deliverables expressly recorded in this Agreement, including the agreed digital outputs, source code where applicable, configuration support, deployment assistance, documentation, handover guidance and warranty coverage. The currently agreed deliverables are: {doc.get('deliverables') or doc.get('included_deliverables') or ''}"),
+        ("Timeline", f"The anticipated timeline for the project is {doc.get('project_timeline') or doc.get('timeline') or ''}. Delivery timelines depend on timely client inputs, approvals, access credentials, content, third-party service availability and payment milestone completion."),
+        ("Payment Terms", f"The total project value is {doc.get('project_cost') or doc.get('total_project_cost') or ''} {doc.get('currency') or ''}. The Client agrees to pay the required advance, milestone amounts and remaining balance according to this Agreement. Taxes, gateway charges, subscriptions, hosting, domain, external API and other third-party expenses are payable by the Client unless expressly included."),
+        ("Confidentiality", "Both parties shall protect confidential business, technical, financial, operational, credential, product, customer and strategic information shared during the project. Confidential information shall not be disclosed to unauthorized third parties except where required by law or with written permission."),
+        ("Intellectual Property", "Ownership of final approved project deliverables and agreed source code transfers to the Client only after complete payment has been received by DortX Technologies. Pre-existing DortX frameworks, reusable components, internal tools, open-source packages and third-party assets remain subject to their original ownership and license terms."),
+        ("Warranty", f"DortX Technologies shall provide warranty coverage for the selected support or warranty period: {doc.get('warranty_period') or doc.get('support_duration') or doc.get('support_period') or ''}. Warranty applies only to reproducible defects in agreed deliverables and excludes new features, third-party failures, client-side changes, hosting outages, misuse, unauthorized modifications and out-of-scope enhancements."),
+        ("Privacy Policy", "DortX Technologies may process client information, project materials, credentials, business data and contact details for lawful purposes connected to project delivery, support, billing, compliance, communication and record keeping. DortX Technologies shall apply reasonable safeguards to protect such information."),
+        ("Terms & Conditions", "The Client agrees to provide accurate requirements, timely feedback, approvals, content, credentials, third-party access and business inputs reasonably required for delivery. Change requests outside the accepted scope require written approval and may affect cost, timeline, architecture and delivery responsibilities. Cancellation must be requested in writing. Completed work, committed resources, approved milestones, third-party expenses and non-recoverable costs remain payable."),
+        ("Governing Law", "This Agreement shall be governed by the laws of India. Any disputes arising from this Agreement shall be subject to competent courts in Bengaluru, Karnataka, India."),
+        ("Digital Signatures", "\n\n".join([signature_summary("Client", doc.get("client_signature")), signature_summary("DortX", doc.get("admin_signature"))])),
+    ]
+
+
+def labelize_key(value: str) -> str:
+    return str(value or "").replace("_", " ").title()
+
+
 @api.post("/agreements", status_code=201)
 async def create_agreement(payload: AgreementPayload, admin: dict = Depends(get_current_admin)):
-    doc = {"id": payload.agreement_id or compact_id("AGR"), **payload.model_dump(), "status": "draft", "client_signed": False, "dortx_signed": False, "created_at": now_iso(), "updated_at": now_iso()}
-    doc["agreement_id"] = doc["id"]
+    body = payload.model_dump(mode="json")
+    agreement_number = body.get("agreement_number") or body.get("agreement_id") or await next_agreement_number()
+    body["agreement_number"] = agreement_number
+    body["project_name"] = body.get("project_name") or body.get("project_title") or "DortX Project"
+    body["project_title"] = body.get("project_title") or body.get("project_name")
+    body["client_details"] = body.get("client_details") or "\n".join(filter(None, [body.get("client_name"), body.get("company"), body.get("email"), body.get("phone"), body.get("address")]))
+    body["clauses_enabled"] = body.get("clauses_enabled") or {}
+    doc = {
+        "id": agreement_number,
+        **body,
+        "status": "draft",
+        "client_signed": False,
+        "dortx_signed": False,
+        "acceptance_flags": {},
+        "client_signature": None,
+        "admin_signature": None,
+        "email_activity": [],
+        "email_status": "draft",
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    doc["agreement_id"] = agreement_number
     await db.agreements.insert_one(doc)
     if payload.lead_id:
-        await set_lead_status(payload.lead_id, "agreement_generated", admin, "Agreement generated", True)
+        await set_lead_status(payload.lead_id, "agreement_generated", admin, f"Agreement {agreement_number} generated", True)
     return {k: v for k, v in doc.items() if k != "_id"}
 
 
@@ -1134,6 +1675,9 @@ async def get_agreement(agreement_id: str, admin: dict = Depends(get_current_adm
 
 @api.patch("/agreements/{agreement_id}")
 async def update_agreement(agreement_id: str, payload: AgreementPayload, admin: dict = Depends(get_current_admin)):
+    existing = await get_doc_or_404("agreements", agreement_id)
+    if existing.get("locked"):
+        raise HTTPException(423, "Agreement is locked after both signatures and cannot be edited.")
     update = payload.model_dump(exclude_unset=True)
     update["updated_at"] = now_iso()
     res = await db.agreements.update_one({"id": agreement_id}, {"$set": update})
@@ -1145,49 +1689,120 @@ async def update_agreement(agreement_id: str, payload: AgreementPayload, admin: 
 @api.post("/agreements/{agreement_id}/generate-pdf")
 async def generate_agreement_pdf(agreement_id: str, admin: dict = Depends(get_current_admin)):
     doc = await get_doc_or_404("agreements", agreement_id)
-    dortx_signature = (
-        "For and on behalf of DORTX TECHNOLOGIES\n\nAuthorized Signatory\n\n"
-        "Name: Thrisha J C\nDesignation: Founder & Chief Executive Officer (CEO)\nSignature:\nDate:"
-    )
-    client_signature = "Client Name:\nCompany:\nDesignation:\nSignature:\nDate:"
-    sections = [
-        ("DortX Company Section", "DORTX TECHNOLOGIES\nRegistered MSME (Udyam)\nUdyam Registration No.: UDYAM-KR-25-0108099\nWebsite: www.dortxtech.com\nEmail: support@dortxtech.com"),
-        ("Client Details", doc.get("client_details")),
-        ("Project Name", doc.get("project_name")),
-        ("Project Scope", doc.get("project_scope")),
-        ("Included Deliverables", doc.get("included_deliverables")),
-        ("Not Included", doc.get("not_included")),
-        ("Timeline", doc.get("timeline")),
-        ("Milestones", doc.get("milestones")),
-        ("Total Project Cost", doc.get("total_project_cost")),
-        ("Payment Schedule", doc.get("payment_schedule")),
-        ("Revision Policy", doc.get("revision_policy")),
-        ("Client Responsibilities", doc.get("client_responsibilities")),
-        ("DortX Responsibilities", doc.get("dortx_responsibilities")),
-        ("Support Period", doc.get("support_period")),
-        ("Change Request Policy", doc.get("change_request_policy")),
-        ("Cancellation Policy", doc.get("cancellation_policy")),
-        ("Confidentiality", doc.get("confidentiality")),
-        ("Intellectual Property", doc.get("intellectual_property")),
-        ("Governing Law", doc.get("governing_law")),
-        ("DortX Signature", dortx_signature),
-        ("Client Signature", client_signature),
-    ]
-    path = save_document_pdf("agreement", agreement_id, "DortX Project Agreement", sections)
-    await db.agreements.update_one({"id": agreement_id}, {"$set": {"pdf_path": path, "status": "pdf_generated", "updated_at": now_iso()}})
+    sections = agreement_sections(doc)
+    path = save_document_pdf("agreement", agreement_id, "Digital Service Agreement", sections)
+    next_status = doc.get("status") if doc.get("status") in {"executed", "waiting_dortx_signature"} else "pdf_generated"
+    update = {"pdf_path": path, "status": next_status, "updated_at": now_iso()}
+    if doc.get("client_signed") and doc.get("dortx_signed"):
+        update.update({"status": "executed", "locked": True, "locked_at": now_iso()})
+    await db.agreements.update_one({"id": agreement_id}, {"$set": update})
     return await get_doc_or_404("agreements", agreement_id)
 
 
 @api.post("/agreements/{agreement_id}/send")
 async def send_agreement(agreement_id: str, admin: dict = Depends(get_current_admin)):
     doc = await get_doc_or_404("agreements", agreement_id)
-    await db.agreements.update_one({"id": agreement_id}, {"$set": {"status": "sent", "sent_at": now_iso(), "updated_at": now_iso()}})
+    recipient = (doc.get("email") or "").strip()
+    if not recipient:
+        raise HTTPException(400, "Client email is required before sending the agreement.")
+    token = doc.get("agreement_token") or new_agreement_token()
+    secure_url = f"{PUBLIC_SITE_URL}/agreement/{token}"
+    subject = "DortX Technologies – Service Agreement for Your Review"
+    pending_at = now_iso()
+    await db.agreements.update_one({"id": agreement_id}, {"$set": {
+        "agreement_token": token,
+        "client_url": secure_url,
+        "email_from": EMAIL_FROM,
+        "email_subject": subject,
+        "updated_at": pending_at,
+    }})
+    await append_agreement_email_log(agreement_id, {
+        "status": "pending",
+        "agreement_id": agreement_id,
+        "recipient": recipient,
+        "created_at": pending_at,
+        "secure_url": secure_url,
+    })
+    html = build_agreement_email_html({**doc, "agreement_token": token, "client_url": secure_url}, secure_url)
+    text = (
+        f"Hello {doc.get('client_name') or 'there'},\n\n"
+        f"DortX Technologies has prepared your Digital Service Agreement for {doc.get('project_title') or doc.get('project_name') or 'your project'}.\n"
+        f"Agreement ID: {doc.get('agreement_number') or doc.get('id')}\n"
+        f"Review and sign securely: {secure_url}\n\n"
+        "Regards,\nThrisha J C\nFounder & Chief Executive Officer, DortX Technologies\n"
+        "MSME Registration: UDYAM-KR-25-0108099"
+    )
+    try:
+        smtp_status = await asyncio.to_thread(verify_smtp_connection)
+        await persist_email_health(smtp_status)
+        if not smtp_status.get("connected"):
+            raise RuntimeError(smtp_status.get("message") or "SMTP connection verification failed.")
+        email_result = await asyncio.to_thread(send_email_smtp, recipient, subject, html, text)
+    except Exception as error:
+        failed_at = now_iso()
+        error_text = str(error)
+        await append_agreement_email_log(agreement_id, {
+            "status": "failed",
+            "agreement_id": agreement_id,
+            "recipient": recipient,
+            "error": error_text,
+            "failed_at": failed_at,
+            "secure_url": secure_url,
+        })
+        await db.agreements.update_one({"id": agreement_id}, {"$set": {"status": "draft", "updated_at": failed_at}})
+        await log_lead_activity(doc.get("lead_id"), admin, f"Agreement email failed for {recipient}: {error_text}")
+        raise HTTPException(502, f"Agreement email could not be sent: {error_text}")
+    sent_at = now_iso()
+    await db.agreements.update_one({"id": agreement_id}, {"$set": {
+        "status": "sent_to_client",
+        "client_url": secure_url,
+        "sent_at": sent_at,
+        "email_from": EMAIL_FROM,
+        "email_subject": subject,
+        "email_attempts": email_result.get("attempts"),
+        "updated_at": sent_at,
+    }})
+    await append_agreement_email_log(agreement_id, {
+        "status": "sent",
+        "agreement_id": agreement_id,
+        "recipient": recipient,
+        "message_id": email_result.get("message_id", ""),
+        "sent_at": sent_at,
+        "secure_url": secure_url,
+        "attempts": email_result.get("attempts"),
+    })
+    if doc.get("lead_id"):
+        await set_lead_status(doc["lead_id"], "agreement_sent", admin, f"Agreement email sent to {recipient} at {sent_at}", True)
+    await log_lead_activity(doc.get("lead_id"), admin, f"Secure agreement link sent to {recipient}.")
     return await get_doc_or_404("agreements", agreement_id)
 
 
-@api.patch("/agreements/{agreement_id}/sign-client")
-async def sign_agreement_client(agreement_id: str, request: Request, admin: dict = Depends(get_current_admin)):
-    doc = await get_doc_or_404("agreements", agreement_id)
+@api.get("/public/agreements/{agreement_id}")
+async def get_public_agreement(agreement_id: str):
+    doc = await get_public_agreement_doc(agreement_id)
+    return doc
+
+
+@api.get("/public/agreements/{agreement_id}/download")
+async def download_public_agreement(agreement_id: str):
+    doc = await get_public_agreement_doc(agreement_id)
+    if not (doc.get("locked") and doc.get("client_signed") and doc.get("dortx_signed")):
+        raise HTTPException(403, "Signed PDF is available after both signatures are completed.")
+    path = doc.get("pdf_path")
+    if not path or not Path(path).exists():
+        raise HTTPException(404, "PDF not generated")
+    return FileResponse(path, media_type="application/pdf", filename=f"agreement-{doc.get('id')}.pdf")
+
+
+@api.patch("/public/agreements/{agreement_id}/sign-client")
+async def sign_agreement_client_public(agreement_id: str, payload: AgreementClientSignPayload, request: Request):
+    doc = await get_public_agreement_doc(agreement_id)
+    agreement_doc_id = doc["id"]
+    if doc.get("locked") or doc.get("client_signed"):
+        raise HTTPException(423, "Agreement is already signed and locked for client changes.")
+    missing = [key for key in AGREEMENT_ACCEPTANCE_KEYS if not payload.acceptance_flags.get(key)]
+    if missing:
+        raise HTTPException(400, f"All client confirmations must be selected before signing. Missing: {', '.join(missing)}")
     signed_at = now_iso()
     update = {
         "client_signed": True,
@@ -1195,27 +1810,70 @@ async def sign_agreement_client(agreement_id: str, request: Request, admin: dict
         "client_signed_date": signed_at[:10],
         "client_signed_time": signed_at[11:19],
         "client_signed_ip": request.client.host if request.client else "",
+        "acceptance_flags": payload.acceptance_flags,
+        "client_signature": {
+            "type": payload.signature_type,
+            "signature": payload.signature,
+            "client_name": payload.client_name,
+            "designation": payload.client_designation or "",
+            "timestamp": signed_at,
+            "ip_address": request.client.host if request.client else "",
+            "browser": request.headers.get("sec-ch-ua", ""),
+            "user_agent": request.headers.get("user-agent", ""),
+            "device": request.headers.get("user-agent", ""),
+        },
+        "status": "waiting_dortx_signature",
         "updated_at": signed_at,
     }
     if doc.get("dortx_signed"):
-        update["status"] = "signed"
-    await db.agreements.update_one({"id": agreement_id}, {"$set": update})
-    next_doc = await get_doc_or_404("agreements", agreement_id)
-    if next_doc.get("client_signed") and next_doc.get("dortx_signed") and next_doc.get("lead_id"):
-        await set_lead_status(next_doc["lead_id"], "agreement_signed", admin, "Agreement signed by client and DortX", True)
+        update["status"] = "executed"
+        update["locked"] = True
+        update["locked_at"] = signed_at
+    await db.agreements.update_one({"id": agreement_doc_id}, {"$set": update})
+    next_doc = await get_doc_or_404("agreements", agreement_doc_id)
+    if next_doc.get("lead_id"):
+        await set_lead_status(next_doc["lead_id"], "client_signed", None, f"Client signed agreement at {signed_at}", True)
+    if next_doc.get("client_signed") and next_doc.get("dortx_signed"):
+        if next_doc.get("lead_id"):
+            await set_lead_status(next_doc["lead_id"], "dortx_signed", None, "Agreement signed by client and DortX", True)
+        await generate_agreement_pdf(agreement_doc_id, None)
     return next_doc
 
 
+@api.patch("/agreements/{agreement_id}/sign-client")
+async def sign_agreement_client(agreement_id: str, payload: AgreementClientSignPayload, request: Request, admin: dict = Depends(get_current_admin)):
+    return await sign_agreement_client_public(agreement_id, payload, request)
+
+
 @api.patch("/agreements/{agreement_id}/sign-dortx")
-async def sign_agreement_dortx(agreement_id: str, admin: dict = Depends(get_current_admin)):
+async def sign_agreement_dortx(agreement_id: str, payload: AgreementAdminSignPayload = Body(default_factory=AgreementAdminSignPayload), admin: dict = Depends(get_current_admin)):
     doc = await get_doc_or_404("agreements", agreement_id)
-    update = {"dortx_signed": True, "dortx_signed_at": now_iso(), "updated_at": now_iso()}
+    if doc.get("locked") or doc.get("dortx_signed"):
+        raise HTTPException(423, "Agreement is already signed and locked for DortX changes.")
+    signed_at = now_iso()
+    update = {
+        "dortx_signed": True,
+        "dortx_signed_at": signed_at,
+        "admin_signature": {
+            "name": payload.name or "Thrisha J C",
+            "designation": payload.designation or "Founder & Chief Executive Officer (CEO)",
+            "type": payload.signature_type or "typed",
+            "signature": payload.signature or payload.name or "Thrisha J C",
+            "timestamp": signed_at,
+            "msme_registration": "UDYAM-KR-25-0108099",
+        },
+        "updated_at": signed_at,
+    }
     if doc.get("client_signed"):
-        update["status"] = "signed"
+        update["status"] = "executed"
+        update["locked"] = True
+        update["locked_at"] = signed_at
     await db.agreements.update_one({"id": agreement_id}, {"$set": update})
     next_doc = await get_doc_or_404("agreements", agreement_id)
-    if next_doc.get("client_signed") and next_doc.get("dortx_signed") and next_doc.get("lead_id"):
-        await set_lead_status(next_doc["lead_id"], "agreement_signed", admin, "Agreement signed by client and DortX", True)
+    if next_doc.get("client_signed") and next_doc.get("dortx_signed"):
+        if next_doc.get("lead_id"):
+            await set_lead_status(next_doc["lead_id"], "dortx_signed", admin, f"DortX signed agreement at {signed_at}", True)
+        await generate_agreement_pdf(agreement_id, admin)
     return next_doc
 
 
@@ -1230,7 +1888,7 @@ async def create_invoice(payload: InvoicePayload, admin: dict = Depends(get_curr
     doc["invoice_id"] = doc["id"]
     await db.invoices.insert_one(doc)
     if payload.lead_id:
-        await set_lead_status(payload.lead_id, "invoice_generated", admin, "Invoice generated", True)
+        await set_lead_status(payload.lead_id, "advance_paid", admin, "Invoice generated. Awaiting/recording advance payment.", True)
     return {k: v for k, v in doc.items() if k != "_id"}
 
 

@@ -77,7 +77,6 @@ export default function Navbar() {
             onClick={toggleTheme}
             className="theme-toggle hidden lg:inline-flex w-10 h-10 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
             aria-label={themeLabel}
-            title={themeLabel}
           >
             <ThemeIcon size={17} />
           </button>

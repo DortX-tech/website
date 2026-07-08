@@ -33,7 +33,7 @@ adminApiClient.interceptors.request.use((config) => {
 adminApiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if ([401, 403].includes(error?.response?.status)) {
+    if (error?.response?.status === 401) {
       localStorage.removeItem("dortx-admin-token");
       localStorage.removeItem("dortx-admin-name");
       localStorage.removeItem("dortx-admin-email");

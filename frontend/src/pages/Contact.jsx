@@ -401,7 +401,7 @@ export default function Contact() {
                       {card.links?.map((link) => {
                         const BrandIcon = link.icon;
                         return (
-                          <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" aria-label={link.label} title={link.label} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#1E6BFF]/25 bg-[#1E6BFF]/15 text-[#4D8BFF] transition hover:border-[#1E6BFF]/45 hover:bg-[#1E6BFF]/20 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
+                          <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" aria-label={link.label} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#1E6BFF]/25 bg-[#1E6BFF]/15 text-[#4D8BFF] transition hover:border-[#1E6BFF]/45 hover:bg-[#1E6BFF]/20 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
                             <BrandIcon size={26} aria-hidden="true" />
                           </a>
                         );

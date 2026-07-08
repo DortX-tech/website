@@ -918,7 +918,6 @@ export default function Chatbot() {
                 type="button"
                 onClick={resetChat}
                 disabled={busy}
-                title="Start new chat"
                 aria-label="Start new chat"
                 className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 text-[11.5px] text-[#C9D2E0] transition hover:border-[#1E6BFF]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-45 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
               >

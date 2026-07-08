@@ -5,7 +5,7 @@ import * as Lucide from "lucide-react";
 import { ArrowUpRight, ArrowRight, Sparkles, Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck, Plus, Quote, Users, FolderKanban, CheckCircle2 } from "lucide-react";
 import MagneticButton from "@/components/MagneticButton";
 import useMouseParallax from "@/hooks/useMouseParallax";
-import { apiClient, WS_API_URL } from "@/config/api";
+import { apiClient } from "@/config/api";
 import { WINGS, PROCESS_STEPS, TECH_GROUPS, INDUSTRIES, FAQS, TEAM } from "@/data/site";
 
 const WingIcons = { Code2, Brain, BarChart3, TrendingUp, Factory, ShieldCheck };
@@ -46,20 +46,10 @@ function toMetricNumber(value) {
 
 function normalizeLiveMetrics(value) {
   return {
-    visitors_online: toMetricNumber(value?.visitors_online),
-    active_projects: toMetricNumber(value?.active_projects),
-    projects_delivered: toMetricNumber(value?.projects_delivered),
+    visitors_online: toMetricNumber(value?.visitorsOnline ?? value?.visitors_online),
+    active_projects: toMetricNumber(value?.activeProjects ?? value?.active_projects),
+    projects_delivered: toMetricNumber(value?.projectsDelivered ?? value?.projects_delivered),
   };
-}
-
-function getVisitorSessionId() {
-  if (typeof window === "undefined") return "";
-  const key = "dortx-live-session";
-  const existing = window.localStorage.getItem(key);
-  if (existing) return existing;
-  const next = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  window.localStorage.setItem(key, next);
-  return next;
 }
 
 function AnimatedMetricNumber({ value }) {
@@ -275,7 +265,7 @@ function Hero() {
           {[
             { k: "Team", v: "Small & focused" },
             { k: "Service wings", v: "Six disciplines" },
-            { k: "Engagement", v: "Outcome-led" },
+            { k: "Engagement", v: "Outcome-Driven" },
             { k: "IP ownership", v: "100% yours" },
           ].map((x, i) => (
             <div key={i}>
@@ -302,9 +292,6 @@ function DortXLive() {
 
   useEffect(() => {
     let cancelled = false;
-    let socket;
-    let pingTimer;
-    let fallbackTimer;
 
     const applyMetrics = (data) => {
       if (!cancelled) setMetrics(normalizeLiveMetrics(data));
@@ -312,46 +299,19 @@ function DortXLive() {
 
     const fetchMetrics = async () => {
       try {
-        const response = await apiClient.get("/live/metrics");
+        const response = await apiClient.get("/live/stats");
         applyMetrics(response.data);
       } catch {
         applyMetrics(EMPTY_LIVE_METRICS);
       }
     };
 
-    const connectSocket = () => {
-      try {
-        const sessionId = encodeURIComponent(getVisitorSessionId());
-        socket = new WebSocket(`${WS_API_URL}/live/visitors/ws?session_id=${sessionId}`);
-        socket.onmessage = (event) => {
-          try {
-            applyMetrics(JSON.parse(event.data));
-          } catch {
-            applyMetrics(EMPTY_LIVE_METRICS);
-          }
-        };
-        socket.onopen = () => {
-          pingTimer = window.setInterval(() => {
-            if (socket?.readyState === WebSocket.OPEN) socket.send("ping");
-          }, 25000);
-        };
-        socket.onerror = () => fetchMetrics();
-      } catch {
-        fetchMetrics();
-      }
-    };
-
     fetchMetrics();
-    connectSocket();
-    fallbackTimer = window.setInterval(fetchMetrics, 10000);
+    const statsTimer = window.setInterval(fetchMetrics, 10000);
 
     return () => {
       cancelled = true;
-      window.clearInterval(pingTimer);
-      window.clearInterval(fallbackTimer);
-      if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
-        socket.close();
-      }
+      window.clearInterval(statsTimer);
     };
   }, []);
 
