@@ -4,7 +4,7 @@ import { Check, Copy, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import axios from "axios";
 import Logo from "./Logo";
 
-const API = `$process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com"
+const API = process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com";
 
 const SERVICE_OPTIONS = [
   "AI Agents",
@@ -57,7 +57,7 @@ const initialAssistantMessage = {
 const sid = () => {
   let session = localStorage.getItem("dortx-chat-sid");
   if (!session) {
-    session = `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    session = `web-${ Date.now() } -${ Math.random().toString(36).slice(2, 8) } `;
     localStorage.setItem("dortx-chat-sid", session);
   }
   return session;
@@ -96,7 +96,7 @@ function MarkdownMessage({ content }) {
   const flushList = () => {
     if (!list.length) return;
     nodes.push(
-      <ul key={`ul-${nodes.length}`} className="my-2 ml-4 list-disc space-y-1">
+      <ul key={`ul - ${ nodes.length } `} className="my-2 ml-4 list-disc space-y-1">
         {list.map((item, index) => <li key={index}>{formatInline(item)}</li>)}
       </ul>
     );
@@ -110,7 +110,7 @@ function MarkdownMessage({ content }) {
     }
     const rows = table.filter((row) => !/^\s*\|?\s*-+/.test(row));
     nodes.push(
-      <div key={`tbl-${nodes.length}`} className="my-2 overflow-x-auto">
+      <div key={`tbl - ${ nodes.length } `} className="my-2 overflow-x-auto">
         <table className="min-w-full text-left text-[12px] border-separate border-spacing-y-1">
           <tbody>
             {rows.map((row, index) => (
@@ -130,7 +130,7 @@ function MarkdownMessage({ content }) {
   const flushCode = () => {
     if (!code.length) return;
     nodes.push(
-      <pre key={`code-${nodes.length}`} className="my-2 rounded-xl bg-black/35 border border-white/10 p-3 overflow-x-auto text-[12px] text-[#E7EBF3]">
+      <pre key={`code - ${ nodes.length } `} className="my-2 rounded-xl bg-black/35 border border-white/10 p-3 overflow-x-auto text-[12px] text-[#E7EBF3]">
         <code>{code.join("\n")}</code>
       </pre>
     );
@@ -139,43 +139,43 @@ function MarkdownMessage({ content }) {
 
   lines.forEach((line) => {
     if (line.trim().startsWith("```")) {
-      if (inCode) {
-        flushCode();
-        inCode = false;
-      } else {
-        flushList();
-        flushTable();
-        inCode = true;
-      }
-      return;
-    }
-    if (inCode) {
-      code.push(line);
-      return;
-    }
-    if (line.includes("|") && line.trim().startsWith("|")) {
-      flushList();
-      table.push(line);
-      return;
-    }
-    flushTable();
-    const bullet = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
-    if (bullet) {
-      list.push(bullet[1]);
-      return;
-    }
-    flushList();
-    if (!line.trim()) {
-      nodes.push(<div key={`br-${nodes.length}`} className="h-2" />);
-      return;
-    }
-    nodes.push(<p key={`p-${nodes.length}`} className="mb-1 last:mb-0">{formatInline(line)}</p>);
-  });
-
+if (inCode) {
   flushCode();
+  inCode = false;
+} else {
   flushList();
   flushTable();
-  return <div className="chat-markdown">{nodes}</div>;
+  inCode = true;
+}
+return;
+}
+if (inCode) {
+  code.push(line);
+  return;
+}
+if (line.includes("|") && line.trim().startsWith("|")) {
+  flushList();
+  table.push(line);
+  return;
+}
+flushTable();
+const bullet = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+if (bullet) {
+  list.push(bullet[1]);
+  return;
+}
+flushList();
+if (!line.trim()) {
+  nodes.push(<div key={`br-${nodes.length}`} className="h-2" />);
+  return;
+}
+nodes.push(<p key={`p-${nodes.length}`} className="mb-1 last:mb-0">{formatInline(line)}</p>);
+  });
+
+flushCode();
+flushList();
+flushTable();
+return <div className="chat-markdown">{nodes}</div>;
 }
 
 function formatInline(text) {
@@ -530,11 +530,10 @@ export default function Chatbot() {
             <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3" data-testid="chatbot-messages" aria-live="polite">
               {messages.map((message, index) => (
                 <div key={index} className={`group flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`relative max-w-[88%] px-3.5 py-2.5 rounded-2xl text-[13.5px] leading-relaxed ${
-                    message.role === "user"
-                      ? "bg-[#1E6BFF] text-white rounded-br-sm"
-                      : "bg-white/6 text-[#E7EBF3] rounded-bl-sm"
-                  }`}>
+                  <div className={`relative max-w-[88%] px-3.5 py-2.5 rounded-2xl text-[13.5px] leading-relaxed ${message.role === "user"
+                    ? "bg-[#1E6BFF] text-white rounded-br-sm"
+                    : "bg-white/6 text-[#E7EBF3] rounded-bl-sm"
+                    }`}>
                     <MarkdownMessage content={message.content} />
                     {message.role === "assistant" && !message.streaming && (
                       <button

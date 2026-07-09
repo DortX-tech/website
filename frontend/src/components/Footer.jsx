@@ -149,7 +149,7 @@ export default function Footer() {
 
         <div className="divider-line mt-6 mb-5" />
         <div className="flex flex-col md:flex-row justify-between gap-4 text-[12px] text-[#6B7385]">
-          <div>&copy; 2026 DortX Technologies. All Rights Reserved.</div>
+          <div>&copy; 2026 DortX. All Rights Reserved.</div>
           <div className="flex flex-wrap gap-5">
             <span>Empowering Business Through Technology</span>
           </div>

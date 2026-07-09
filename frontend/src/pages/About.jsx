@@ -28,6 +28,8 @@ function Hero() {
   );
 }
 
+
+
 /* — Why we started — */
 function Story() {
   return (
@@ -47,6 +49,9 @@ function Story() {
             <p>
               We thought the technology was rarely the actual problem. The missing piece was usually a different kind of conversation — one that begins with the business question, then carefully chooses the technology to match.
             </p>
+            <p>
+  That vision became DortX. Founded in July 2026 by Thrisha J C (Founder & CEO) and Venu P K (Co-Founder), DortX officially launched on <strong>7 July 2026</strong> with a mission to build intelligent AI, software, automation, and digital solutions that create lasting business value.
+</p>
             <p>
               So we started a company built around that conversation. A small team of engineers, designers, AI specialists and creative thinkers — bringing curiosity, transparency and care into every project we take on.
             </p>
