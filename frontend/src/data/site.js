@@ -1,4 +1,4 @@
-export const NAV_LINKS = [
+﻿export const NAV_LINKS = [
   { to: "/", label: "Home" },
   { to: "/about", label: "About" },
   { to: "/services", label: "Services" },
@@ -280,8 +280,18 @@ export const FOOTER_LINKS = [
 export const CONTACT = {
   support: "support@dortxtech.com",
   founder: "thrisha@dortxtech.com",
-  phone: "+91 81509 90329",
-  phoneHref: "tel:+918150990329",
+  
+  phones: [
+    {
+      number: "+91 99800 91281",
+      href: "tel:+919980091281",
+    },
+    {
+     number: "+91 81509 90329",
+      href: "tel:+918150990329",
+    },
+  ],
+  
   linkedin: "https://www.linkedin.com/company/dortxtech",
   instagram: "https://www.instagram.com/dortxtech",
 };

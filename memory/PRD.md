@@ -18,7 +18,7 @@ DortX Technologies is the official production website and admin platform for a p
 - Website: https://www.dortxtech.com
 - Support: support@dortxtech.com
 - Founder: thrisha@dortxtech.com
-- Phone: +91 81509 90329
+- Phone: +91 99800 91281 | +91 81509 90329
 
 ## Public Pages
 

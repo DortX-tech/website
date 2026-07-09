@@ -148,7 +148,21 @@ export default function PrivacyPolicy() {
               <div className="space-y-2">
                 <p><a href="mailto:support@dortxtech.com" className="text-[#4D8BFF] hover:text-white hover:underline underline-offset-4 transition">support@dortxtech.com</a></p>
                 <p><a href="mailto:thrisha@dortxtech.com" className="text-[#4D8BFF] hover:text-white hover:underline underline-offset-4 transition">thrisha@dortxtech.com</a></p>
-                <p><a href="tel:+918150990329" className="text-[#4D8BFF] hover:text-white">+91 81509 90329</a></p>
+                <p>
+  <a
+    href="tel:+919980091281"
+    className="text-[#4D8BFF] hover:text-white"
+  >
+    +91 99800 91281
+  </a>
+  {" | "}
+  <a
+    href="tel:+918150990329"
+    className="text-[#4D8BFF] hover:text-white"
+  >
+    +91 81509 90329
+  </a>
+</p>
               </div>
             </Section>
           </div>

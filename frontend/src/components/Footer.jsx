@@ -90,9 +90,18 @@ export default function Footer() {
               <a href={`mailto:${CONTACT.founder}`} className="text-[#9AA3B8] hover:text-white hover:underline underline-offset-4 flex items-center gap-2 transition">
                 <Mail size={13}/> {CONTACT.founder}
               </a>
-              <a href={CONTACT.phoneHref} className="text-[#9AA3B8] hover:text-white flex items-center gap-2">
-                <Phone size={13}/> {CONTACT.phone}
-              </a>
+             <div className="flex flex-col gap-1">
+  {CONTACT.phones.map((phone) => (
+    <a
+      key={phone.number}
+      href={phone.href}
+      className="text-[#9AA3B8] hover:text-white hover:underline underline-offset-4 flex items-center gap-2 transition"
+    >
+      <Phone size={13} />
+      {phone.number}
+    </a>
+  ))}
+</div>
             </div>
 
             <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
