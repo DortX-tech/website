@@ -3,8 +3,9 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, Mail, MessageSquare, Phone } from "lucide-react";
 import axios from "axios";
 import { CONTACT } from "@/data/site";
+import { API_URL } from "@/config/api";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "https://dortx-frontend.onrender.com"}/api`;
+const API = API_URL;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Contact() {

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Copy, MessageCircle, Send, Sparkles, X } from "lucide-react";
-import axios from "axios";
+import { Check, Copy, MessageCircle, RotateCcw, Send, Sparkles, X } from "lucide-react";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import Logo from "./Logo";
-
-const API = process.env.REACT_APP_BACKEND_URL || "https://api.dortxtech.com";
+import { API_URL, apiClient } from "@/config/api";
+import { getCompanyAssistantContextPatch, getCompanyAssistantReply } from "@/data/companyKnowledge";
 
 const SERVICE_OPTIONS = [
   "AI Agents",
@@ -23,41 +23,114 @@ const SERVICE_OPTIONS = [
   "Not sure yet",
 ];
 
-const QUICK_ACTIONS = [
-  "Build an AI Agent",
-  "Create a Website",
-  "Need Automation",
-  "Book Consultation",
-  "Talk to Sales",
-  "View Portfolio",
-  "Our Technologies",
-  "IoT Automation",
-  "Pricing",
-  "Contact Us",
+const SMART_QUICK_QUESTIONS = [
+  { label: "🏢 About DortX", prompt: "What is DortX?" },
+  { label: "🚀 Our Services", prompt: "What services do you provide?" },
+  { label: "👥 Meet Our Team", prompt: "Who is on the DortX team?" },
+  { label: "💼 Start a Project", prompt: "I want to start a project with DortX." },
+  { label: "💰 Pricing & Budget", prompt: "How does DortX pricing and budget work?" },
+  { label: "📅 Project Timeline", prompt: "How long does a typical DortX project take?" },
+  { label: "🤖 AI & Automation", prompt: "What AI and automation services does DortX provide?" },
+  { label: "💻 Website & Software Development", prompt: "Can DortX build websites and custom software?" },
+  { label: "📱 Mobile App Development", prompt: "Can DortX build mobile apps?" },
+  { label: "📞 Contact Our Team", prompt: "I want the DortX team to contact me." },
 ];
 
 const LEAD_FIELDS = [
-  { key: "company", label: "Company", question: "Which company are you representing? You can type 'skip' if this is personal." },
-  { key: "email", label: "Email", question: "What email should the DortX team use to contact you?" },
-  { key: "phone", label: "Phone", question: "What phone number can the team use? You can type 'skip' if you prefer email." },
-  { key: "country", label: "Country", question: "Which country are you based in?" },
-  { key: "budget", label: "Budget", question: "Do you have a budget range in mind?" },
-  { key: "project_type", label: "Project type", question: "What type of project is this?" },
-  { key: "timeline", label: "Timeline", question: "What timeline are you hoping for?" },
-  { key: "requirements", label: "Requirements", question: "Please describe your requirements in a few lines." },
-  { key: "preferred_contact_method", label: "Preferred contact", question: "How would you prefer DortX to contact you: email, phone, or WhatsApp?" },
+  { key: "preferred_contact_method", label: "Contact preference", required: true, question: "How would you prefer DortX to contact you: email, phone, or WhatsApp?" },
+  { key: "phone", label: "Phone number", required: true, question: "Great. Please enter your phone number." },
+  { key: "name", label: "Name", required: true, question: "Thank you. What name should the DortX team use when contacting you?" },
+  { key: "email", label: "Email", required: true, question: "Please share a valid email address so DortX can create your request record." },
+  { key: "company", label: "Company", required: false, question: "Which company are you representing? You can type 'skip' if this is personal." },
+  { key: "project_type", label: "Project type", required: false, question: "What type of project is this? You can type 'skip' if you are not sure yet." },
+  { key: "requirements", label: "Project details", required: true, question: "Briefly describe your project or requirement." },
+  { key: "budget", label: "Budget", required: false, question: "Do you have a budget range in mind? You can type 'skip' if not sure yet." },
+  { key: "timeline", label: "Timeline", required: false, question: "What timeline are you hoping for? You can type 'skip' if flexible." },
 ];
 
 const initialAssistantMessage = {
+  id: "initial-assistant",
   role: "assistant",
   content:
-    "👋 Welcome to DortX!\n\nI'm the DortX AI Assistant.\n\nBefore we begin, I'd love to know a little about you.\n\n**What is your name?**",
+    "👋 Hi! Welcome to DortX.\n\nI'm the DortX AI Assistant. I'm here to answer your questions about our company, services, projects, technologies, or anything else you'd like to know.\n\nBefore we get started, what should I call you?",
+  createdAt: new Date().toISOString(),
+  status: "received",
+};
+
+const freshInitialAssistantMessage = () => ({
+  ...initialAssistantMessage,
+  id: `initial-assistant-${Date.now()}`,
+  createdAt: new Date().toISOString(),
+});
+
+const makeMessage = (role, content, extra = {}) => ({
+  id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  role,
+  content,
+  createdAt: new Date().toISOString(),
+  status: role === "user" ? "sent" : "received",
+  ...extra,
+});
+
+const isStaleInitialGreeting = (content) => {
+  const text = String(content || "").toLowerCase();
+  return (
+    text.includes("what is your name?") ||
+    text.includes("you can ask me about the company") ||
+    (text.includes("welcome to dortx") && text.includes("technologies")) ||
+    (text.includes("hi! welcome to dortx.") && text.includes("**")) ||
+    text.includes("i'm the **dortx ai assistant**")
+  );
+};
+
+const normalizeMessages = (items) => (Array.isArray(items) && items.length ? items : [freshInitialAssistantMessage()]).map((message, index) => ({
+  ...message,
+  id: message.id || `${message.role || "message"}-${index}-${Date.now()}`,
+  content: index === 0 && message.role === "assistant" && isStaleInitialGreeting(message.content)
+    ? initialAssistantMessage.content
+    : message.content,
+  createdAt: message.createdAt || new Date().toISOString(),
+  status: message.status || (message.role === "user" ? "sent" : "received"),
+}));
+
+const formatTime = (value) => {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+};
+
+const dateKey = (value) => {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toDateString();
+};
+
+const dateLabel = (value) => {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return "Today";
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString([], { month: "short", day: "numeric", year: date.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+};
+
+const statusLabel = (message) => {
+  if (message.role === "user") {
+    if (message.status === "sending") return "Sending...";
+    if (message.status === "error") return "Error";
+    return "Sent";
+  }
+  if (message.status === "error") return "Error";
+  if (message.streaming) return message.content ? "Receiving..." : "AI is typing...";
+  return "Received";
 };
 
 const sid = () => {
   let session = localStorage.getItem("dortx-chat-sid");
   if (!session) {
-    session = `web-${ Date.now() } -${ Math.random().toString(36).slice(2, 8) } `;
+    session = `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     localStorage.setItem("dortx-chat-sid", session);
   }
   return session;
@@ -75,15 +148,116 @@ const saveJson = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
+const loadChatStage = () => {
+  const saved = localStorage.getItem("dortx-chat-stage");
+  const savedMemory = loadJson("dortx-chat-memory", { name: "" });
+  if (saved === "lead") return "lead";
+  if (savedMemory?.name) return "chat";
+  return "name";
+};
+
+const looksLikeName = (value) => {
+  const text = String(value || "").trim();
+  if (!text || text.length > 60) return false;
+  if (/[?@:/\\]|\d/.test(text)) return false;
+  const lowered = text.toLowerCase();
+  if (looksLikeConsultingRequest(text) || isBuyingIntent(text)) return false;
+  if (["hi", "hello", "hey", "help", "services", "pricing", "contact"].includes(lowered)) return false;
+  return /^[a-zA-Z][a-zA-Z.' -]{1,59}$/.test(text);
+};
+
+const withVisitorName = (reply, name) => {
+  const visitor = String(name || "").trim();
+  if (!visitor || !reply) return reply;
+  if (/^(hi|hello|nice to meet you|thanks|absolutely|that's)/i.test(reply)) return reply;
+  return `Absolutely, ${visitor}.\n\n${reply}`;
+};
+
 const isBuyingIntent = (text) => {
   const value = text.toLowerCase();
   return [
-    "book", "consult", "sales", "quote", "proposal", "hire", "start project",
-    "build for me", "contact me", "call me", "budget", "timeline",
+    "book", "book consultation", "consultation", "talk to sales", "hire",
+    "start project", "build for me", "contact me", "call me", "whatsapp me",
+    "send proposal", "proposal", "quotation", "quote", "estimate", "demo",
+    "callback", "call back", "project discussion", "schedule", "connect me",
   ].some((token) => value.includes(token));
 };
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+const normalizeContactMethod = (value) => {
+  const text = String(value || "").trim().toLowerCase();
+  if (text.includes("whatsapp") || text.includes("whats app")) return "WhatsApp";
+  if (text.includes("phone") || text.includes("call")) return "Phone";
+  if (text.includes("email") || text.includes("mail")) return "Email";
+  return "";
+};
+
+function isValidPhone(input, defaultCountry = "IN") {
+  const phoneNumber = parsePhoneNumberFromString(input, defaultCountry);
+  return phoneNumber ? phoneNumber.isValid() : false;
+}
+
+const isPhone = (value) => {
+  return isValidPhone(value, "IN");
+};
+
+const contactRequiresPhone = (lead = {}) => ["Phone", "WhatsApp"].includes(lead.preferred_contact_method);
+
+const SERVICE_MEMORY_PATTERNS = [
+  { service: "Website Development", pattern: /\b(website|web site|landing page|redesign|cms)\b/i },
+  { service: "Web Application", pattern: /\b(web app|web application|portal|dashboard app)\b/i },
+  { service: "Mobile App", pattern: /\b(mobile app|android|ios)\b/i },
+  { service: "ERP", pattern: /\b(erp|inventory|operations system)\b/i },
+  { service: "CRM", pattern: /\b(crm|lead management|sales pipeline)\b/i },
+  { service: "HRMS", pattern: /\b(hrms|payroll|attendance|employee management)\b/i },
+  { service: "SaaS", pattern: /\b(saas|subscription software)\b/i },
+  { service: "AI Chatbot", pattern: /\b(chatbot|chat bot|support bot)\b/i },
+  { service: "AI Agent", pattern: /\b(ai agent|agent|mcp|tool calling)\b/i },
+  { service: "AI Automation", pattern: /\b(ai automation|workflow automation|rag|llm|openai|claude|gemini)\b/i },
+  { service: "Data & Analytics", pattern: /\b(analytics|dashboard|reporting|bi|business intelligence|prediction)\b/i },
+  { service: "Marketing", pattern: /\b(seo|branding|marketing|growth|performance marketing)\b/i },
+  { service: "IoT & Industrial Automation", pattern: /\b(iot|iiot|plc|scada|hmi|esp32|arduino|raspberry|robot|sensor)\b/i },
+  { service: "Security / DevOps", pattern: /\b(security|cyber|devops|cloud|monitoring|maintenance)\b/i },
+];
+
+const deriveMemoryPatch = (text, current = {}) => {
+  const value = String(text || "");
+  const patch = {};
+  const contactOnly = /\b(contact|cntact|contat|conatct|email|phone|call|reach|whatsapp|mail)\b/i.test(value);
+  const serviceMatch = contactOnly ? null : SERVICE_MEMORY_PATTERNS.find(({ pattern }) => pattern.test(value));
+  if (serviceMatch) patch.service = serviceMatch.service;
+
+  const email = value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+  if (email) patch.email = email;
+
+  const phone = value.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0];
+  if (phone) patch.phone = phone.trim();
+
+  const budget = value.match(/\b(?:budget|cost|price|around|under|within)\s*(?:is|of|:)?\s*((?:INR|Rs\.?|USD|EUR|GBP|\$)?\s?[\w., -]{2,40})/i)?.[1];
+  if (budget) patch.budget = budget.trim();
+
+  const timeline = value.match(/\b(?:timeline|deadline|launch|deliver|within|in)\s*(?:is|by|:)?\s*([A-Za-z0-9 ,.-]{2,40})/i)?.[1];
+  if (timeline) patch.timeline = timeline.trim();
+
+  const businessType = value.match(/\b(?:for my|for our|we run|i run|business is|company is)\s+([A-Za-z0-9 &-]{2,60})/i)?.[1];
+  if (businessType) patch.business_type = businessType.trim();
+
+  if (value.length > 25 && looksLikeConsultingRequest(value)) {
+    patch.requirements = [current.requirements, value].filter(Boolean).slice(-2).join("\n");
+  }
+
+  return patch;
+};
+
+const looksLikeConsultingRequest = (text) => {
+  const value = text.toLowerCase();
+  return /[?]/.test(value) || [
+    "need", "want", "build", "create", "develop", "website", "app", "software",
+    "automation", "ai", "agent", "chatbot", "erp", "crm", "hrms", "iot",
+    "robot", "embedded", "seo", "pricing", "cost", "timeline", "service",
+  ].some((token) => value.includes(token));
+};
 
 function MarkdownMessage({ content }) {
   const lines = String(content || "").split("\n");
@@ -96,7 +270,7 @@ function MarkdownMessage({ content }) {
   const flushList = () => {
     if (!list.length) return;
     nodes.push(
-      <ul key={`ul - ${ nodes.length } `} className="my-2 ml-4 list-disc space-y-1">
+      <ul key={`ul-${nodes.length}`} className="my-2 ml-4 list-disc space-y-1">
         {list.map((item, index) => <li key={index}>{formatInline(item)}</li>)}
       </ul>
     );
@@ -110,7 +284,7 @@ function MarkdownMessage({ content }) {
     }
     const rows = table.filter((row) => !/^\s*\|?\s*-+/.test(row));
     nodes.push(
-      <div key={`tbl - ${ nodes.length } `} className="my-2 overflow-x-auto">
+      <div key={`tbl-${nodes.length}`} className="my-2 overflow-x-auto">
         <table className="min-w-full text-left text-[12px] border-separate border-spacing-y-1">
           <tbody>
             {rows.map((row, index) => (
@@ -130,7 +304,7 @@ function MarkdownMessage({ content }) {
   const flushCode = () => {
     if (!code.length) return;
     nodes.push(
-      <pre key={`code - ${ nodes.length } `} className="my-2 rounded-xl bg-black/35 border border-white/10 p-3 overflow-x-auto text-[12px] text-[#E7EBF3]">
+      <pre key={`code-${nodes.length}`} className="my-2 rounded-xl bg-black/35 border border-white/10 p-3 overflow-x-auto text-[12px] text-[#E7EBF3]">
         <code>{code.join("\n")}</code>
       </pre>
     );
@@ -139,43 +313,43 @@ function MarkdownMessage({ content }) {
 
   lines.forEach((line) => {
     if (line.trim().startsWith("```")) {
-if (inCode) {
-  flushCode();
-  inCode = false;
-} else {
-  flushList();
-  flushTable();
-  inCode = true;
-}
-return;
-}
-if (inCode) {
-  code.push(line);
-  return;
-}
-if (line.includes("|") && line.trim().startsWith("|")) {
-  flushList();
-  table.push(line);
-  return;
-}
-flushTable();
-const bullet = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
-if (bullet) {
-  list.push(bullet[1]);
-  return;
-}
-flushList();
-if (!line.trim()) {
-  nodes.push(<div key={`br-${nodes.length}`} className="h-2" />);
-  return;
-}
-nodes.push(<p key={`p-${nodes.length}`} className="mb-1 last:mb-0">{formatInline(line)}</p>);
+      if (inCode) {
+        flushCode();
+        inCode = false;
+      } else {
+        flushList();
+        flushTable();
+        inCode = true;
+      }
+      return;
+    }
+    if (inCode) {
+      code.push(line);
+      return;
+    }
+    if (line.includes("|") && line.trim().startsWith("|")) {
+      flushList();
+      table.push(line);
+      return;
+    }
+    flushTable();
+    const bullet = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+    if (bullet) {
+      list.push(bullet[1]);
+      return;
+    }
+    flushList();
+    if (!line.trim()) {
+      nodes.push(<div key={`br-${nodes.length}`} className="h-2" />);
+      return;
+    }
+    nodes.push(<p key={`p-${nodes.length}`} className="mb-1 last:mb-0">{formatInline(line)}</p>);
   });
 
-flushCode();
-flushList();
-flushTable();
-return <div className="chat-markdown">{nodes}</div>;
+  flushCode();
+  flushList();
+  flushTable();
+  return <div className="chat-markdown">{nodes}</div>;
 }
 
 function formatInline(text) {
@@ -199,22 +373,39 @@ function formatInline(text) {
 
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState(() => loadJson("dortx-chat-messages", [initialAssistantMessage]));
+  const [messages, setMessages] = useState(() => normalizeMessages(loadJson("dortx-chat-messages", [freshInitialAssistantMessage()])));
   const [memory, setMemory] = useState(() => loadJson("dortx-chat-memory", { name: "", service: "", lead: {} }));
-  const [stage, setStage] = useState(() => localStorage.getItem("dortx-chat-stage") || "name");
+  const [stage, setStage] = useState(loadChatStage);
   const [leadIndex, setLeadIndex] = useState(() => Number(localStorage.getItem("dortx-chat-lead-index") || 0));
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(null);
+  const [showNewMessages, setShowNewMessages] = useState(false);
   const abortRef = useRef(null);
   const scrollerRef = useRef(null);
   const inputRef = useRef(null);
+  const autoScrollRef = useRef(true);
 
-  const recentHistory = useMemo(() => messages.slice(-10).map(({ role, content }) => ({ role, content })), [messages]);
+  const recentHistory = useMemo(
+    () => messages
+      .filter(({ role, content }) => ["user", "assistant"].includes(role) && String(content || "").trim())
+      .slice(-10)
+      .map(({ role, content }) => ({ role, content })),
+    [messages]
+  );
 
   useEffect(() => {
     saveJson("dortx-chat-messages", messages.slice(-40));
-    if (scrollerRef.current) scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    if (autoScrollRef.current) {
+      requestAnimationFrame(() => {
+        scroller.scrollTop = scroller.scrollHeight;
+        setShowNewMessages(false);
+      });
+    } else if (open) {
+      setShowNewMessages(true);
+    }
   }, [messages, open, busy]);
 
   useEffect(() => {
@@ -230,31 +421,68 @@ export default function Chatbot() {
     if (open) setTimeout(() => inputRef.current?.focus(), 120);
   }, [open]);
 
-  const append = (message) => setMessages((current) => [...current, message]);
+  const handleScroll = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    const nearBottom = distanceFromBottom < 80;
+    autoScrollRef.current = nearBottom;
+    if (nearBottom) setShowNewMessages(false);
+  };
 
-  const updateLastAssistant = (chunk, replace = false) => {
+  const scrollToLatest = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    autoScrollRef.current = true;
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+    setShowNewMessages(false);
+  };
+
+  const append = (message) => {
+    const nextMessage = message.id ? message : makeMessage(message.role, message.content, message);
+    setMessages((current) => [...current, nextMessage]);
+    return nextMessage;
+  };
+
+  const patchMessage = (id, patch) => {
+    setMessages((current) => current.map((message) => message.id === id ? { ...message, ...patch } : message));
+  };
+
+  const updateLastAssistant = (id, chunk, replace = false) => {
     setMessages((current) => {
       const next = [...current];
-      const last = next[next.length - 1];
-      if (last?.role === "assistant" && last.streaming) {
-        next[next.length - 1] = { ...last, content: replace ? chunk : `${last.content}${chunk}` };
+      const index = next.findIndex((message) => message.id === id);
+      const target = next[index];
+      if (target?.role === "assistant" && target.streaming) {
+        next[index] = {
+          ...target,
+          content: replace ? chunk : `${target.content}${chunk}`,
+          status: "received",
+          receivedAt: target.receivedAt || new Date().toISOString(),
+        };
       }
       return next;
     });
   };
 
-  const finalizeAssistant = () => {
+  const finalizeAssistant = (id, status = "received") => {
     setMessages((current) => {
       const next = [...current];
-      const last = next[next.length - 1];
-      if (last?.role === "assistant" && last.streaming) {
-        next[next.length - 1] = { ...last, streaming: false };
+      const index = next.findIndex((message) => message.id === id);
+      const target = next[index];
+      if (target?.role === "assistant") {
+        next[index] = {
+          ...target,
+          streaming: false,
+          status,
+          receivedAt: target.receivedAt || new Date().toISOString(),
+        };
       }
       return next;
     });
   };
 
-  const requestStreamingReply = async (message) => {
+  const requestStreamingReply = async (message, effectiveMemory = memory, assistantMessageId) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -262,12 +490,13 @@ export default function Chatbot() {
     const payload = {
       session_id: sid(),
       message,
-      visitor_name: memory.name,
-      selected_service: memory.service,
+      visitor_name: effectiveMemory.name,
+      selected_service: effectiveMemory.service,
+      memory: { ...effectiveMemory, stage },
       history: recentHistory,
     };
 
-    const response = await fetch(`${API}/chat/stream`, {
+    const response = await fetch(`${API_URL}/chat/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -300,7 +529,7 @@ export default function Chatbot() {
           }
           if (chunk) {
             received = true;
-            updateLastAssistant(chunk);
+            updateLastAssistant(assistantMessageId, chunk);
           }
         });
       });
@@ -308,33 +537,40 @@ export default function Chatbot() {
     if (!received) throw new Error("empty stream");
   };
 
-  const requestSyncReply = async (message) => {
-    const { data } = await axios.post(`${API}/chat`, {
+  const requestSyncReply = async (message, effectiveMemory = memory) => {
+    const { data } = await apiClient.post("/chat", {
       session_id: sid(),
       message,
-      visitor_name: memory.name,
-      selected_service: memory.service,
+      visitor_name: effectiveMemory.name,
+      selected_service: effectiveMemory.service,
+      memory: { ...effectiveMemory, stage },
       history: recentHistory,
     }, { timeout: 50000 });
     return data.reply;
   };
 
-  const assistantReply = async (message) => {
-    append({ role: "assistant", content: "", streaming: true });
+  const assistantReply = async (message, effectiveMemory = memory, userMessageId = null) => {
+    if (userMessageId) patchMessage(userMessageId, { status: "sent", sentAt: new Date().toISOString() });
+    const assistantMessage = append(makeMessage("assistant", "", {
+      streaming: true,
+      status: "typing",
+      retryFor: message,
+    }));
     try {
-      await requestStreamingReply(message);
+      await requestStreamingReply(message, effectiveMemory, assistantMessage.id);
+      finalizeAssistant(assistantMessage.id, "received");
     } catch {
       try {
-        const reply = await requestSyncReply(message);
-        updateLastAssistant(reply || "I understood your question, but I could not form a complete response. Please send it once more.", true);
+        const reply = await requestSyncReply(message, effectiveMemory);
+        updateLastAssistant(assistantMessage.id, reply || "I understood your question, but I could not form a complete response. Please send it once more.", true);
+        finalizeAssistant(assistantMessage.id, "received");
       } catch {
-        updateLastAssistant(
-          "I’m sorry, the AI service is temporarily unavailable. I can still help with DortX services, AI, automation, websites, software development, pricing and contact details. Please try again in a moment, or contact **support@dortxtech.com**.",
+        updateLastAssistant(assistantMessage.id,
+          "I'm sorry, the AI service is temporarily unavailable. I can still help with DortX services, AI, automation, websites, software development, pricing and contact details. Please try again in a moment, or contact **support@dortxtech.com**.",
           true
         );
+        finalizeAssistant(assistantMessage.id, "error");
       }
-    } finally {
-      finalizeAssistant();
     }
   };
 
@@ -346,12 +582,54 @@ export default function Chatbot() {
     });
   };
 
-  const startLeadFlow = () => {
+  const leadProgress = (lead = {}) => [
+    lead.preferred_contact_method ? "✓ Contact preference selected" : "",
+    lead.phone ? "✓ Phone number received" : "",
+    lead.email ? "✓ Email received" : "",
+    (lead.name || memory.name) ? "✓ Name received" : "",
+    lead.requirements ? "✓ Project details received" : "",
+  ].filter(Boolean).join("\n");
+
+  const shouldSkipLeadField = (field, lead = {}, contextMemory = memory) => {
+    if (field.key === "phone") return !contactRequiresPhone(lead) && !lead.phone;
+    if (field.key === "name") return Boolean(lead.name || contextMemory.name);
+    if (field.key === "email") return isEmail(lead.email || "");
+    if (field.key === "project_type") return Boolean(lead.project_type || contextMemory.service);
+    return false;
+  };
+
+  const nextLeadIndex = (fromIndex, lead = {}, contextMemory = memory) => {
+    for (let index = fromIndex; index < LEAD_FIELDS.length; index += 1) {
+      if (!shouldSkipLeadField(LEAD_FIELDS[index], lead, contextMemory)) return index;
+    }
+    return -1;
+  };
+
+  const leadQuestion = (field, lead = {}) => {
+    if (field.key === "phone" && lead.preferred_contact_method === "WhatsApp") {
+      return "Great. Please enter the WhatsApp phone number DortX should use.";
+    }
+    return field.question;
+  };
+
+  const startLeadFlow = (contextMemory = memory) => {
+    const lead = {
+      ...(contextMemory.lead || {}),
+      name: contextMemory.lead?.name || contextMemory.name || "",
+      email: contextMemory.lead?.email || contextMemory.email || "",
+      phone: contextMemory.lead?.phone || contextMemory.phone || "",
+      project_type: contextMemory.lead?.project_type || contextMemory.service || "",
+      requirements: contextMemory.lead?.requirements || contextMemory.requirements || "",
+      budget: contextMemory.lead?.budget || contextMemory.budget || "",
+      timeline: contextMemory.lead?.timeline || contextMemory.timeline || "",
+    };
+    const firstIndex = nextLeadIndex(0, lead, contextMemory);
     setStage("lead");
-    setLeadIndex(0);
+    setLeadIndex(firstIndex === -1 ? 0 : firstIndex);
+    setMemory((current) => ({ ...current, lead }));
     append({
       role: "assistant",
-      content: `${memory.name ? `${memory.name}, ` : ""}I can collect the key details and connect you with the DortX team.\n\n${LEAD_FIELDS[0].question}`,
+      content: `${contextMemory.name ? `${contextMemory.name}, ` : ""}I can collect the key details and connect you with the DortX team.\n\n${firstIndex === -1 ? "Please confirm your details so I can submit them." : leadQuestion(LEAD_FIELDS[firstIndex], lead)}`,
     });
   };
 
@@ -362,9 +640,9 @@ export default function Chatbot() {
       `Preferred contact: ${lead.preferred_contact_method || "Not provided"}`,
     ].filter(Boolean).join("\n");
 
-    await axios.post(`${API}/chat/lead`, {
+    const response = await apiClient.post("/chat/lead", {
       session_id: sid(),
-      name: memory.name || lead.name || "Website visitor",
+      name: lead.name || memory.name,
       company: lead.company || undefined,
       email: lead.email,
       phone: lead.phone || undefined,
@@ -375,13 +653,41 @@ export default function Chatbot() {
       preferred_contact_method: lead.preferred_contact_method || undefined,
       requirements,
     }, { timeout: 25000 });
+    return response;
   };
 
   const handleLeadAnswer = async (answer) => {
     const field = LEAD_FIELDS[leadIndex];
-    const value = answer.toLowerCase() === "skip" ? "" : answer;
+    const rawValue = String(answer || "").trim();
+    const isSkip = rawValue.toLowerCase() === "skip";
+
+    if (!field) {
+      append({ role: "assistant", content: "I still need a few details before submitting your request." });
+      return;
+    }
+    if (isSkip && field.required) {
+      append({ role: "assistant", content: `${field.label} is required before I can submit your request. ${leadQuestion(field, memory.lead || {})}` });
+      return;
+    }
+
+    let value = isSkip ? "" : rawValue;
+    if (field.key === "preferred_contact_method") {
+      value = normalizeContactMethod(value);
+      if (!value) {
+        append({ role: "assistant", content: "Please choose one contact method: email, phone, or WhatsApp." });
+        return;
+      }
+    }
+    if (field.key === "phone" && !isPhone(value)) {
+      append({ role: "assistant", content: "Please enter a valid phone number, including the country code if outside India (e.g. +1 415 555 2671)." });
+      return;
+    }
     if (field.key === "email" && !isEmail(value)) {
-      append({ role: "assistant", content: "Please enter a valid email address so the DortX team can reach you." });
+      append({ role: "assistant", content: "Please enter a valid email address so DortX can create your request record." });
+      return;
+    }
+    if (field.key === "name" && value.length < 2) {
+      append({ role: "assistant", content: "Please enter your name before I submit the request." });
       return;
     }
     if (field.key === "requirements" && value.length < 10) {
@@ -389,32 +695,46 @@ export default function Chatbot() {
       return;
     }
 
-    const lead = { ...memory.lead, [field.key]: value };
-    setMemory((current) => ({ ...current, lead }));
+    const lead = {
+      ...(memory.lead || {}),
+      [field.key]: value,
+      name: field.key === "name" ? value : (memory.lead?.name || memory.name || ""),
+      project_type: field.key === "project_type" ? value : (memory.lead?.project_type || memory.service || ""),
+    };
+    setMemory((current) => ({
+      ...current,
+      name: field.key === "name" ? value : current.name,
+      lead,
+    }));
 
-    const nextIndex = leadIndex + 1;
-    if (nextIndex < LEAD_FIELDS.length) {
+    const nextIndex = nextLeadIndex(leadIndex + 1, lead, { ...memory, lead });
+    if (nextIndex !== -1) {
       setLeadIndex(nextIndex);
-      append({ role: "assistant", content: LEAD_FIELDS[nextIndex].question });
+      append({
+        role: "assistant",
+        content: `${leadProgress(lead)}\n\n${leadQuestion(LEAD_FIELDS[nextIndex], lead)}`.trim(),
+      });
       return;
     }
 
     setBusy(true);
     try {
-      await submitLead(lead);
+      append({ role: "assistant", content: `${leadProgress(lead)}\n\nSubmitting your request...` });
+      const response = await submitLead(lead);
+      if (![200, 201].includes(response?.status) || response?.data?.success === false) throw new Error("Lead submission failed");
       setStage("chat");
       setLeadIndex(0);
       append({
         role: "assistant",
         content:
-          "Thank you. I’ve shared your project details with the DortX team.\n\nThey can follow up using your preferred contact method. Meanwhile, I can still help you refine scope, features, architecture or timeline.",
+          `Thank you${lead.name ? `, ${lead.name}` : ""}! Your request has been successfully submitted to the DortX team. We'll contact you by ${String(lead.preferred_contact_method || "your preferred method").toLowerCase()} as soon as possible.`,
         actions: ["Refine project scope", "What should I prepare?", "Contact Us"],
       });
     } catch {
       append({
         role: "assistant",
         content:
-          "I could not submit the lead right now. Please email **support@dortxtech.com** ...or call **+91 99800 91281** or **+91 81509 90329**. I can still help you prepare the project brief here.",
+          "Sorry, I couldn't submit your request due to a temporary issue. Please try again in a few moments or contact us directly at **support@dortxtech.com** or **+91 81509 90329**. I have kept your details here so you do not need to retype them.",
       });
     } finally {
       setBusy(false);
@@ -426,49 +746,104 @@ export default function Chatbot() {
     if (!msg || busy) return;
 
     setInput("");
-    append({ role: "user", content: msg });
+    autoScrollRef.current = true;
+    const userMessage = append(makeMessage("user", msg, { status: "sending" }));
+    const memoryPatch = deriveMemoryPatch(msg, memory);
+    let effectiveMemory = {
+      ...memory,
+      ...memoryPatch,
+      lead: {
+        ...(memory.lead || {}),
+        ...Object.fromEntries(["email", "phone", "budget", "timeline", "requirements"].filter((key) => memoryPatch[key]).map((key) => [key, memoryPatch[key]])),
+      },
+    };
+    if (Object.keys(memoryPatch).length > 0) setMemory(effectiveMemory);
 
     if (stage === "name") {
-      const name = msg.split(/\s+/).slice(0, 4).join(" ");
-      setMemory((current) => ({ ...current, name }));
-      setStage("service");
-      askService(name);
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
+      if (looksLikeName(msg)) {
+        const name = msg.split(/\s+/).slice(0, 4).join(" ");
+        const namedMemory = { ...effectiveMemory, name, lead: { ...(effectiveMemory.lead || {}), name } };
+        setMemory(namedMemory);
+        setStage("chat");
+        append({
+          role: "assistant",
+          content: `Nice to meet you, ${name}! 😊\n\nHow can I help you today?`,
+        });
+        return;
+      }
+
+      const localContext = { ...effectiveMemory, history: recentHistory };
+      const localReply = getCompanyAssistantReply(msg, localContext);
+      append({
+        role: "assistant",
+        content: `${localReply || "I can help with that."}\n\nBefore we continue, what should I call you?`,
+      });
+      const contextPatch = getCompanyAssistantContextPatch(msg, localContext);
+      if (Object.keys(contextPatch).length > 0) setMemory((current) => ({ ...current, ...contextPatch }));
       return;
     }
 
+    if (stage !== "lead" && isBuyingIntent(msg)) {
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
+      startLeadFlow(effectiveMemory);
+      return;
+    }
+
+    if (stage !== "lead") {
+      const localContext = { ...effectiveMemory, history: recentHistory };
+      const localReply = getCompanyAssistantReply(msg, localContext);
+      if (localReply) {
+        patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
+        setStage("chat");
+        const contextPatch = getCompanyAssistantContextPatch(msg, localContext);
+        if (Object.keys(contextPatch).length > 0) {
+          effectiveMemory = { ...effectiveMemory, ...contextPatch };
+          setMemory(effectiveMemory);
+        }
+        append({
+          role: "assistant",
+          content: withVisitorName(localReply, effectiveMemory.name),
+        });
+        return;
+      }
+    }
+
     if (stage === "service") {
-      setMemory((current) => ({ ...current, service: msg }));
+      const serviceMemory = { ...effectiveMemory, service: msg };
+      setMemory(serviceMemory);
       setStage("chat");
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
       append({
         role: "assistant",
-        content: `Great, ${memory.name || "there"}. I’ll keep **${msg}** in mind.\n\nWhat would you like to know or plan first?`,
-        actions: QUICK_ACTIONS,
+        content: `Great, ${memory.name || "there"}. I'll keep **${msg}** in mind.\n\nWhat would you like to know or plan first?`,
       });
       return;
     }
 
     if (stage === "lead") {
+      patchMessage(userMessage.id, { status: "sent", sentAt: new Date().toISOString() });
       await handleLeadAnswer(msg);
       return;
     }
 
-    if (isBuyingIntent(msg)) {
-      startLeadFlow();
-      return;
-    }
-
     setBusy(true);
-    await assistantReply(msg);
+    await assistantReply(msg, effectiveMemory, userMessage.id);
     setBusy(false);
   };
 
   const onAction = (action) => {
-    if (["Book Consultation", "Talk to Sales"].includes(action)) {
-      append({ role: "user", content: action });
-      startLeadFlow();
-      return;
-    }
-    send(action);
+    if (busy) return;
+    const smartQuestion = SMART_QUICK_QUESTIONS.find((item) => item.label === action);
+    send(smartQuestion?.prompt || action);
+  };
+
+  const retryMessage = async (message) => {
+    if (!message?.retryFor || busy) return;
+    autoScrollRef.current = true;
+    setBusy(true);
+    await assistantReply(message.retryFor, memory);
+    setBusy(false);
   };
 
   const copyMessage = async (content, index) => {
@@ -479,6 +854,30 @@ export default function Chatbot() {
     } catch {
       setCopied(null);
     }
+  };
+
+  const resetChat = () => {
+    if (busy) return;
+    const confirmed = window.confirm("Start a new chat? This will clear the current conversation on this device.");
+    if (!confirmed) return;
+
+    const nextSession = `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem("dortx-chat-sid", nextSession);
+    localStorage.removeItem("dortx-chat-messages");
+    localStorage.removeItem("dortx-chat-memory");
+    localStorage.setItem("dortx-chat-stage", "name");
+    localStorage.setItem("dortx-chat-lead-index", "0");
+
+    abortRef.current?.abort();
+    abortRef.current = null;
+    autoScrollRef.current = true;
+    setMessages([freshInitialAssistantMessage()]);
+    setMemory({ name: "", service: "", lead: {} });
+    setStage("name");
+    setLeadIndex(0);
+    setInput("");
+    setCopied(null);
+    setShowNewMessages(false);
   };
 
   return (
@@ -525,64 +924,139 @@ export default function Chatbot() {
                 </div>
                 <div className="text-[11px] text-[#9AA3B8] flex items-center gap-1.5"><span className="dot-pulse" /> Business consulting online</div>
               </div>
+              <button
+                type="button"
+                onClick={resetChat}
+                disabled={busy}
+                title="Start new chat"
+                aria-label="Start new chat"
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 text-[11.5px] text-[#C9D2E0] transition hover:border-[#1E6BFF]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-45 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+              >
+                <RotateCcw size={12} />
+                <span className="hidden min-[390px]:inline">New Chat</span>
+              </button>
             </div>
 
-            <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3" data-testid="chatbot-messages" aria-live="polite">
-              {messages.map((message, index) => (
-                <div key={index} className={`group flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`relative max-w-[88%] px-3.5 py-2.5 rounded-2xl text-[13.5px] leading-relaxed ${message.role === "user"
-                    ? "bg-[#1E6BFF] text-white rounded-br-sm"
-                    : "bg-white/6 text-[#E7EBF3] rounded-bl-sm"
-                    }`}>
-                    <MarkdownMessage content={message.content} />
-                    {message.role === "assistant" && !message.streaming && (
-                      <button
-                        type="button"
-                        onClick={() => copyMessage(message.content, index)}
-                        className="absolute -right-8 top-2 hidden group-hover:flex w-6 h-6 items-center justify-center rounded-full bg-white/8 text-[#C9D2E0] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
-                        aria-label="Copy assistant message"
-                      >
-                        {copied === index ? <Check size={12} /> : <Copy size={12} />}
-                      </button>
-                    )}
-                    {message.actions?.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {message.actions.map((action) => (
-                          <button
-                            key={action}
-                            type="button"
-                            onClick={() => onAction(action)}
-                            className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/7 hover:bg-white/12 text-[#DCE6F7] border border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
-                          >
-                            {action}
-                          </button>
-                        ))}
+            <div
+              ref={scrollerRef}
+              onScroll={handleScroll}
+              className="relative flex-1 overflow-y-auto px-4 py-4 space-y-3"
+              data-testid="chatbot-messages"
+              aria-live="polite"
+            >
+              {messages.map((message, index) => {
+                const isUser = message.role === "user";
+                const previous = messages[index - 1];
+                const showDate = !previous || dateKey(previous.createdAt) !== dateKey(message.createdAt);
+                const isTyping = message.role === "assistant" && message.streaming && !message.content;
+                return (
+                  <div key={message.id || index}>
+                    {showDate && (
+                      <div className="sticky top-0 z-10 my-3 flex justify-center pointer-events-none">
+                        <span className="rounded-full bg-[#070B14]/85 border border-white/10 px-3 py-1 text-[10.5px] text-[#9AA3B8] shadow-lg backdrop-blur">
+                          {dateLabel(message.createdAt)}
+                        </span>
                       </div>
                     )}
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.18 }}
+                      className={`group flex ${isUser ? "justify-end" : "justify-start"}`}
+                    >
+                      <div className={`max-w-[88%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
+                        <div className={`px-1 text-[10.5px] font-medium ${isUser ? "text-[#BFD0FF]" : "text-[#9AA3B8]"}`}>
+                          {isUser ? "User" : "DortX AI"}
+                        </div>
+                        <div className={`relative px-3.5 py-2.5 rounded-2xl text-[13.5px] leading-relaxed shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] ${
+                          isUser
+                            ? "bg-[#1E6BFF] text-white rounded-br-sm"
+                            : message.status === "error"
+                              ? "bg-[#3A141A]/80 border border-[#F87171]/25 text-[#FFE5E5] rounded-bl-sm"
+                              : "bg-white/6 text-[#E7EBF3] rounded-bl-sm"
+                        }`}>
+                          {isTyping ? (
+                            <div className="flex items-center gap-2" role="status" aria-label="DortX AI is typing">
+                              <span className="text-[#C9D2E0]">DortX AI is typing</span>
+                              <span className="flex gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "120ms" }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "240ms" }} />
+                              </span>
+                            </div>
+                          ) : (
+                            <MarkdownMessage content={message.content} />
+                          )}
+                          {message.role === "assistant" && !message.streaming && message.content && (
+                            <button
+                              type="button"
+                              onClick={() => copyMessage(message.content, index)}
+                              className="absolute -right-8 top-2 hidden group-hover:flex w-6 h-6 items-center justify-center rounded-full bg-white/8 text-[#C9D2E0] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                              aria-label="Copy assistant message"
+                            >
+                              {copied === index ? <Check size={12} /> : <Copy size={12} />}
+                            </button>
+                          )}
+                          {message.actions?.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {message.actions.map((action) => (
+                                <button
+                                  key={action}
+                                  type="button"
+                                  onClick={() => onAction(action)}
+                                  disabled={busy}
+                                  className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/7 hover:bg-white/12 text-[#DCE6F7] border border-white/10 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                                >
+                                  {action}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {message.status === "error" && message.retryFor && (
+                            <button
+                              type="button"
+                              onClick={() => retryMessage(message)}
+                              disabled={busy}
+                              className="mt-3 text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white border border-white/15 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                            >
+                              Retry
+                            </button>
+                          )}
+                        </div>
+                        <div className={`px-1 flex items-center gap-1.5 text-[10.5px] ${isUser ? "text-[#9DB8FF]" : "text-[#7E8799]"}`}>
+                          <Check size={10} />
+                          <span>{statusLabel(message)}</span>
+                          <span>-</span>
+                          <span>{formatTime(message.receivedAt || message.sentAt || message.createdAt)}</span>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
-                </div>
-              ))}
-              {busy && (
-                <div className="flex justify-start" role="status" aria-label="DortX AI is thinking">
-                  <div className="bg-white/6 text-[#E7EBF3] px-3.5 py-2.5 rounded-2xl rounded-bl-sm flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "120ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: "240ms" }} />
-                  </div>
-                </div>
+                );
+              })}
+              {showNewMessages && (
+                <button
+                  type="button"
+                  onClick={scrollToLatest}
+                  className="sticky bottom-2 left-1/2 z-20 mx-auto flex -translate-x-0 rounded-full bg-[#1E6BFF] px-3 py-1.5 text-[11.5px] text-white shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                >
+                  New messages
+                </button>
               )}
             </div>
 
-            {stage === "chat" && (
+            {stage === "chat" && memory.name && (
               <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-                {QUICK_ACTIONS.slice(0, 6).map((suggestion) => (
+                {SMART_QUICK_QUESTIONS.map((question) => (
                   <button
-                    key={suggestion}
-                    data-testid={`chat-suggestion-${suggestion.slice(0, 10)}`}
-                    onClick={() => onAction(suggestion)}
-                    className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#C9D2E0] border border-white/8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
+                    key={question.label}
+                    type="button"
+                    data-testid={`chat-suggestion-${question.label.replace(/[^\w]+/g, "-").slice(0, 24)}`}
+                    onClick={() => onAction(question.label)}
+                    disabled={busy}
+                    className="text-[11.5px] px-2.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#C9D2E0] border border-white/8 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]"
                   >
-                    {suggestion}
+                    {question.label}
                   </button>
                 ))}
               </div>
@@ -618,7 +1092,7 @@ export default function Chatbot() {
                 <Send size={15} />
               </button>
             </form>
-            <div className="px-4 pb-3 text-[10.5px] text-[#6B7385]">Enter to send • Shift+Enter for a new line</div>
+            <div className="px-4 pb-3 text-[10.5px] text-[#6B7385]">Enter to send | Shift+Enter for a new line</div>
           </motion.div>
         )}
       </AnimatePresence>

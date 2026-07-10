@@ -3,7 +3,33 @@ import { CONTACT, FAQS, INDUSTRIES, MISSION, PROCESS_STEPS, TEAM, TECH_GROUPS, V
 const OFFICIAL_LAUNCH_ANSWER =
   "DortX Technologies officially launched on 7 July 2026. The company was founded with the vision of helping businesses solve real-world challenges through high-quality software development, automation, AI-driven solutions, IoT, and digital transformation.";
 
-const normalize = (value) => String(value || "").toLowerCase();
+const CONTACT_FALLBACKS = {
+  supportEmail: "support@dortxtech.com",
+  founderEmail: "thrisha@dortxtech.com",
+  phone: "+91 81509 90329",
+  phoneHref: "tel:+918150990329",
+};
+
+const supportEmail = CONTACT?.support || CONTACT_FALLBACKS.supportEmail;
+const founderEmail = CONTACT?.founder || CONTACT_FALLBACKS.founderEmail;
+const approvedPhone =
+  CONTACT?.phone ||
+  CONTACT?.phones?.find((item) => item?.number === CONTACT_FALLBACKS.phone)?.number ||
+  CONTACT_FALLBACKS.phone;
+const approvedPhoneHref =
+  CONTACT?.phoneHref ||
+  CONTACT?.phones?.find((item) => item?.number === approvedPhone)?.href ||
+  CONTACT_FALLBACKS.phoneHref;
+
+const normalize = (value) => String(value || "")
+  .toLowerCase()
+  .replace(/[^\w\s@.+-]/g, " ")
+  .replace(/\b(cntact|contat|conatct|contect|cantact)\b/g, "contact")
+  .replace(/\b(emial|e mail)\b/g, "email")
+  .replace(/\b(phn|fone)\b/g, "phone")
+  .replace(/\b(thrisha|trisha|thrisa)\b/g, "thrisha")
+  .replace(/\s+/g, " ")
+  .trim();
 
 const includesAny = (text, terms) => terms.some((term) => text.includes(term));
 
@@ -43,6 +69,12 @@ export const COMPANY_KNOWLEDGE = {
   difference:
     "DortX is different because the team stays small, quality-focused and transparent. We do not treat technology as a template. We start with the business problem, design carefully, build maintainable systems, communicate clearly and aim for long-term partnerships instead of one-off delivery.",
   contact: CONTACT,
+  safeContact: {
+    supportEmail,
+    founderEmail,
+    phone: approvedPhone,
+    phoneHref: approvedPhoneHref,
+  },
   values: VALUES,
   wings: WINGS,
   team: TEAM,
@@ -53,6 +85,15 @@ export const COMPANY_KNOWLEDGE = {
 };
 
 const teamSummary = () => TEAM.map((member) => `- **${member.name}**: ${member.role}`).join("\n");
+
+const founderContactReply = () =>
+  `Yes, you can contact Thrisha J C, Founder & CEO of DortX, at **${founderEmail}**. You can also reach DortX at **${supportEmail}** or **${approvedPhone}**.`;
+
+const teamContactReply = () =>
+  `You can contact the DortX team at **${supportEmail}** or call **${approvedPhone}**. For founder-related enquiries, email **${founderEmail}**.`;
+
+const generalContactReply = () =>
+  `You can contact DortX at **${supportEmail}** or call **${approvedPhone}**. For founder-related enquiries, email **${founderEmail}**.`;
 
 const servicesSummary = () => WINGS.map((wing) => {
   const services = wing.services.map((service) => service.title).join(", ");
@@ -74,11 +115,94 @@ const faqReply = (text) => {
 };
 
 const serviceRecommendation = (text) => {
+  if (detectContactIntent(text, {}) !== "") return "";
   const match = serviceAliases.find(({ terms }) => includesAny(text, terms));
   if (!match) return "";
   const wing = WINGS.find((item) => item.name === match.wing);
   return `For that need, I would usually recommend DortX's **${match.wing}** wing, especially **${match.service}**.\n\n${wing?.description || ""}\n\nIf you want, I can also help turn this into a project brief or connect you with the team for a consultation.`;
 };
+
+const recentContextText = (context = {}) => {
+  const historyText = Array.isArray(context.history)
+    ? context.history.slice(-6).map((item) => `${item.role || ""}: ${item.content || ""}`).join(" ")
+    : "";
+  return normalize(`${context.lastIntent || ""} ${context.lastEntity || ""} ${context.lastTopic || ""} ${historyText}`);
+};
+
+const hasFounderContext = (context = {}) => {
+  const value = recentContextText(context);
+  return (
+    context.lastEntity === "thrisha_jc" ||
+    context.lastIntent === "ceo_info" ||
+    includesAny(value, ["thrisha j c", "founder", "ceo", "chief executive", "founding engineer"])
+  );
+};
+
+const hasTeamContext = (context = {}) => {
+  const value = recentContextText(context);
+  return (
+    context.lastEntity === "team" ||
+    context.lastIntent === "team_info" ||
+    includesAny(value, ["current dortx team", "team page", "team from"])
+  );
+};
+
+export function detectContactIntent(message, context = {}) {
+  const text = normalize(message);
+  const wantsContact = includesAny(text, ["contact", "email", "phone", "call", "reach", "whatsapp", "mail"]);
+  const founderTerms = ["ceo", "founder", "thrisha", "chief executive", "her email", "her phone", "contact her", "reach her"];
+  const teamTerms = ["team", "them", "your team", "dortx team"];
+
+  if (
+    (wantsContact && includesAny(text, founderTerms)) ||
+    includesAny(text, ["i want ceo contact", "give ceo contact", "ceo contact details", "founder contact", "contact founder", "how can i reach thrisha", "may i get ceo contact"]) ||
+    (hasFounderContext(context) && includesAny(text, ["her", "she", "contact her", "her email", "her phone number", "may i contact her"]))
+  ) {
+    return "founder_contact";
+  }
+
+  if (
+    (wantsContact && includesAny(text, teamTerms)) ||
+    includesAny(text, ["how can i contact them", "contact the team", "team contact details", "how do i reach your team"])
+  ) {
+    return "team_contact";
+  }
+
+  if (wantsContact || includesAny(text, ["how can i contact you", "contact details"])) {
+    return "general_contact";
+  }
+
+  return "";
+}
+
+export function analyzeCompanyAssistantIntent(message, context = {}) {
+  const text = normalize(message);
+  const contactIntent = detectContactIntent(text, context);
+  if (contactIntent) {
+    return {
+      intent: contactIntent,
+      entity: contactIntent === "founder_contact" ? "thrisha_jc" : contactIntent === "team_contact" ? "team" : "dortx",
+      topic: "contact",
+    };
+  }
+  if (includesAny(text, ["ceo", "chief executive"])) return { intent: "ceo_info", entity: "thrisha_jc", topic: "leadership" };
+  if (includesAny(text, ["founder", "founded", "who started"])) return { intent: "founder_info", entity: "thrisha_jc", topic: "leadership" };
+  if (includesAny(text, ["team", "members", "leadership", "who works", "people"])) return { intent: "team_info", entity: "team", topic: "team" };
+  if (includesAny(text, ["services", "what services", "wings", "offer", "provide"])) return { intent: "services", entity: "services", topic: "services" };
+  if (includesAny(text, ["timeline", "how long"])) return { intent: "timelines", entity: "delivery", topic: "timeline" };
+  if (includesAny(text, ["pricing", "budget", "cost"])) return { intent: "pricing", entity: "pricing", topic: "pricing" };
+  if (includesAny(text, ["what is dortx", "about dortx", "what does dortx do", "who are you", "company"])) return { intent: "company_info", entity: "dortx", topic: "company" };
+  return { intent: "", entity: "", topic: "" };
+}
+
+export function getCompanyAssistantContextPatch(message, context = {}) {
+  const analysis = analyzeCompanyAssistantIntent(message, context);
+  const patch = {};
+  if (analysis.intent) patch.lastIntent = analysis.intent;
+  if (analysis.entity) patch.lastEntity = analysis.entity;
+  if (analysis.topic) patch.lastTopic = analysis.topic;
+  return patch;
+}
 
 const wingReply = (text) => {
   const wing = WINGS.find((item) => {
@@ -89,10 +213,15 @@ const wingReply = (text) => {
   return `**${wing.name}** is one of DortX's core service wings. ${wing.description}\n\nKey services include:\n${wing.services.map((service) => `- **${service.title}**: ${service.desc}`).join("\n")}`;
 };
 
-export function getCompanyAssistantReply(message) {
+export function getCompanyAssistantReply(message, context = {}) {
   const text = normalize(message);
 
   if (!text.trim()) return "";
+
+  const contactIntent = detectContactIntent(text, context);
+  if (contactIntent === "founder_contact") return founderContactReply();
+  if (contactIntent === "team_contact") return teamContactReply();
+  if (contactIntent === "general_contact") return generalContactReply();
 
   const asksLaunchDate =
     includesAny(text, ["when was dortx started", "when did dortx start", "when was dortx launched", "when did dortx launch", "officially launch", "official launch", "start date", "launch date"]) ||
@@ -134,10 +263,6 @@ export function getCompanyAssistantReply(message) {
   if (includesAny(text, ["why was dortx started", "why did you start", "company story", "story"])) return COMPANY_KNOWLEDGE.story;
   if (includesAny(text, ["what makes dortx different", "different", "why choose dortx", "why dortx"])) return COMPANY_KNOWLEDGE.difference;
   if (includesAny(text, ["where is dortx", "location", "located", "office", "address"])) return COMPANY_KNOWLEDGE.location;
-
-  if (includesAny(text, ["contact", "email", "phone", "call", "whatsapp"])) {
-    return `You can contact DortX at **${CONTACT.support}** or **${CONTACT.phone}**. You can also reach the founder at **${CONTACT.founder}**.`;
-  }
 
   if (includesAny(text, ["pricing", "budget", "cost"])) {
     return "DortX pricing depends on the scope, complexity, integrations, timeline and level of ongoing support needed. The team shares a transparent estimate after understanding the requirement, so there are no hidden fees or vague assumptions. If you want a formal quotation, I can collect the project details and connect you with the team.";
