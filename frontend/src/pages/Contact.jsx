@@ -85,44 +85,8 @@ export default function Contact() {
       </section>
 
       <section className="pb-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-          <div className="lg:col-span-5 space-y-4">
-            <div className="glass rounded-2xl p-5">
-              <Mail className="text-[#4D8BFF] mb-3" size={22} />
-              <div className="font-display text-white font-semibold">Write to us</div>
-              <a href={`mailto:${CONTACT.support}`} className="block mt-1 text-[#C9D2E0] text-[14.5px] rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
-                {CONTACT.support}
-              </a>
-              <a href={`mailto:${CONTACT.founder}`} className="block mt-0.5 text-[#9AA3B8] text-[13px] rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
-                Founder | {CONTACT.founder}
-              </a>
-            </div>
-
-            <div className="glass rounded-2xl p-5">
-              <MessageSquare className="text-[#4D8BFF] mb-3" size={22} />
-              <div className="font-display text-white font-semibold">Chat with DortX AI</div>
-              <p className="mt-1 text-[13.5px] text-[#9AA3B8]">
-                Use the floating chat button to ask anything about DortX, services, process, tech, and timelines.
-              </p>
-            </div>
-
-            <div className="glass rounded-2xl p-5">
-              <Phone className="text-[#4D8BFF] mb-3" size={22} />
-              <div className="font-display text-white font-semibold">Call us</div>
-              {CONTACT.phones.map((phone) => (
-  <div key={phone.number}>
-    <a
-      href={phone.href}
-      className="..."
-    >
-      {phone.number}
-    </a>
-  </div>
-))}
-              <p className="mt-1 text-[13.5px] text-[#9AA3B8]">For project enquiries and business conversations.</p>
-            </div>
-          </div>
-
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        
           <div className="lg:col-span-7">
             {done ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-10 text-center" role="status">
@@ -174,6 +138,43 @@ export default function Contact() {
                 </button>
               </form>
             )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+            <div className="glass rounded-2xl p-5">
+              <Mail className="text-[#4D8BFF] mb-3" size={22} />
+              <div className="font-display text-white font-semibold">Write to us</div>
+              <a href={`mailto:${CONTACT.support}`} className="block mt-1 text-[#C9D2E0] text-[14.5px] rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
+                {CONTACT.support}
+              </a>
+              <a href={`mailto:${CONTACT.founder}`} className="block mt-0.5 text-[#9AA3B8] text-[13px] rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4D8BFF]">
+                Founder | {CONTACT.founder}
+              </a>
+            </div>
+
+            <div className="glass rounded-2xl p-5">
+              <MessageSquare className="text-[#4D8BFF] mb-3" size={22} />
+              <div className="font-display text-white font-semibold">Chat with DortX AI</div>
+              <p className="mt-1 text-[13.5px] text-[#9AA3B8]">
+                Use the floating chat button to ask anything about DortX, services, process, tech, and timelines.
+              </p>
+            </div>
+
+            <div className="glass rounded-2xl p-5">
+              <Phone className="text-[#4D8BFF] mb-3" size={22} />
+              <div className="font-display text-white font-semibold">Call us</div>
+              {CONTACT.phones.map((phone) => (
+  <div key={phone.number}>
+    <a
+      href={phone.href}
+      className="..."
+    >
+      {phone.number}
+    </a>
+  </div>
+  
+))}
+              <p className="mt-1 text-[13.5px] text-[#9AA3B8]">For project enquiries and business conversations.</p>
+            </div>
           </div>
         </div>
       </section>
