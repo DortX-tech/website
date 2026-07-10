@@ -6,6 +6,7 @@ import re
 import uuid
 import logging
 import secrets
+import socket
 import smtplib
 import ssl
 from pathlib import Path
@@ -47,6 +48,7 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT") or ("465" if os.environ.get("SMTP_SE
 SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "thrisha@dortxtech.com")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 SMTP_SECURE = os.environ.get("SMTP_SECURE", "true").lower() in {"1", "true", "yes", "on"}
+SMTP_TIMEOUT = float(os.environ.get("SMTP_TIMEOUT", "15"))
 EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USERNAME or "thrisha@dortxtech.com")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "DortX Technologies")
 PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "https://www.dortxtech.com").rstrip("/")
@@ -1024,6 +1026,7 @@ def public_email_settings() -> dict:
         "host": SMTP_HOST,
         "port": SMTP_PORT,
         "secure": SMTP_SECURE,
+        "timeout": SMTP_TIMEOUT,
         "username": SMTP_USERNAME,
         "from_email": EMAIL_FROM,
         "from_name": EMAIL_FROM_NAME,
@@ -1038,16 +1041,75 @@ def smtp_error_message(error: Exception) -> str:
     return str(error) or error.__class__.__name__
 
 
+def smtp_mode_label(candidate: dict) -> str:
+    return "SSL/TLS" if candidate.get("secure") else "STARTTLS"
+
+
+def smtp_error_category(error: Exception) -> str:
+    if isinstance(error, socket.gaierror):
+        return "dns"
+    if isinstance(error, (socket.timeout, TimeoutError)):
+        return "timeout"
+    if isinstance(error, (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError, OSError)):
+        return "socket"
+    if isinstance(error, smtplib.SMTPAuthenticationError):
+        return "authentication"
+    if isinstance(error, smtplib.SMTPResponseException):
+        return "smtp_response"
+    if isinstance(error, smtplib.SMTPException):
+        return "smtp"
+    return "unknown"
+
+
+def smtp_error_details(error: Exception) -> dict:
+    details = {
+        "category": smtp_error_category(error),
+        "error_type": error.__class__.__name__,
+        "error": smtp_error_message(error),
+    }
+    if isinstance(error, OSError):
+        details["errno"] = getattr(error, "errno", None)
+        details["strerror"] = getattr(error, "strerror", "")
+    if isinstance(error, smtplib.SMTPResponseException):
+        details["smtp_code"] = getattr(error, "smtp_code", None)
+    return details
+
+
+def resolve_smtp_host(host: str, port: int) -> List[str]:
+    try:
+        records = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        addresses = list(dict.fromkeys([record[4][0] for record in records]))
+        logger.info("SMTP DNS resolved host=%s port=%s addresses=%s", host, port, ",".join(addresses) or "none")
+        return addresses
+    except socket.gaierror as error:
+        logger.warning("SMTP DNS resolution failed host=%s port=%s error=%s", host, port, smtp_error_details(error))
+        raise
+
+
 def open_smtp_connection(candidate: dict):
     context = ssl.create_default_context()
+    host = candidate["host"]
+    port = candidate["port"]
+    mode = smtp_mode_label(candidate)
+    resolve_smtp_host(host, port)
+    logger.info("Opening SMTP connection host=%s port=%s mode=%s timeout=%ss", host, port, mode, SMTP_TIMEOUT)
     if candidate["secure"]:
-        smtp = smtplib.SMTP_SSL(candidate["host"], candidate["port"], context=context, timeout=20)
+        smtp = smtplib.SMTP_SSL(host, port, context=context, timeout=SMTP_TIMEOUT)
     else:
-        smtp = smtplib.SMTP(candidate["host"], candidate["port"], timeout=20)
+        smtp = smtplib.SMTP(host, port, timeout=SMTP_TIMEOUT)
         smtp.ehlo()
         smtp.starttls(context=context)
         smtp.ehlo()
-    smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+    try:
+        smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+    except smtplib.SMTPAuthenticationError as error:
+        logger.warning("SMTP authentication failed host=%s port=%s mode=%s username=%s error=%s", host, port, mode, SMTP_USERNAME, smtp_error_details(error))
+        try:
+            smtp.quit()
+        except Exception:
+            pass
+        raise
+    logger.info("SMTP authenticated host=%s port=%s mode=%s username=%s", host, port, mode, SMTP_USERNAME)
     return smtp
 
 
@@ -1075,16 +1137,20 @@ def verify_smtp_connection() -> dict:
                 "message": f"Connected to Hostinger SMTP using {candidate['label']}.",
                 "checked_at": checked_at,
                 "active_transport": candidate,
-                "attempts": attempts + [{**candidate, "status": "connected"}],
+                "attempts": attempts + [{**candidate, "mode": smtp_mode_label(candidate), "status": "connected"}],
             }
         except Exception as error:
-            attempts.append({**candidate, "status": "failed", "error": smtp_error_message(error)})
-            logger.warning("SMTP verification failed for %s:%s (%s): %s", candidate["host"], candidate["port"], candidate["label"], smtp_error_message(error))
+            details = smtp_error_details(error)
+            attempts.append({**candidate, "mode": smtp_mode_label(candidate), "status": "failed", **details})
+            logger.warning(
+                "SMTP verification failed host=%s port=%s mode=%s label=%s category=%s error=%s",
+                candidate["host"], candidate["port"], smtp_mode_label(candidate), candidate["label"], details["category"], details["error"],
+            )
     return {
         **public_email_settings(),
         "connected": False,
         "status": "failed",
-        "message": "SMTP connection failed for Hostinger SMTPS 465 and STARTTLS 587 fallback.",
+        "message": "SMTP connection failed for Hostinger SMTPS 465 and STARTTLS 587 fallback. See attempts for DNS/socket/auth details.",
         "checked_at": checked_at,
         "active_transport": None,
         "attempts": attempts,
@@ -1376,21 +1442,34 @@ def send_email_smtp(to_email: str, subject: str, html: str, text: str) -> dict:
                 return {"message_id": message_id, "attempts": attempt, "transport": candidate, "send_attempts": send_attempts}
             except temporary_errors as error:
                 last_error = error
-                send_attempts.append({**candidate, "attempt": attempt, "status": "failed", "error": smtp_error_message(error)})
-                logger.warning("Temporary SMTP send failure on attempt %s via %s: %s", attempt, candidate["label"], smtp_error_message(error))
+                details = smtp_error_details(error)
+                send_attempts.append({**candidate, "mode": smtp_mode_label(candidate), "attempt": attempt, "status": "failed", **details})
+                logger.warning(
+                    "Temporary SMTP send failure attempt=%s host=%s port=%s mode=%s category=%s error=%s",
+                    attempt, candidate["host"], candidate["port"], smtp_mode_label(candidate), details["category"], details["error"],
+                )
                 continue
             except smtplib.SMTPResponseException as error:
                 last_error = error
-                send_attempts.append({**candidate, "attempt": attempt, "status": "failed", "error": smtp_error_message(error)})
+                details = smtp_error_details(error)
+                send_attempts.append({**candidate, "mode": smtp_mode_label(candidate), "attempt": attempt, "status": "failed", **details})
+                logger.warning(
+                    "SMTP response failure attempt=%s host=%s port=%s mode=%s category=%s error=%s",
+                    attempt, candidate["host"], candidate["port"], smtp_mode_label(candidate), details["category"], details["error"],
+                )
                 continue
             except Exception as error:
                 last_error = error
-                send_attempts.append({**candidate, "attempt": attempt, "status": "failed", "error": smtp_error_message(error)})
-                logger.warning("SMTP send failure on attempt %s via %s: %s", attempt, candidate["label"], smtp_error_message(error))
+                details = smtp_error_details(error)
+                send_attempts.append({**candidate, "mode": smtp_mode_label(candidate), "attempt": attempt, "status": "failed", **details})
+                logger.warning(
+                    "SMTP send failure attempt=%s host=%s port=%s mode=%s category=%s error=%s",
+                    attempt, candidate["host"], candidate["port"], smtp_mode_label(candidate), details["category"], details["error"],
+                )
                 continue
         if attempt < 3:
             import time
-            time.sleep(attempt * 1.5)
+            time.sleep(2 ** (attempt - 1))
     raise RuntimeError(smtp_error_message(last_error) if last_error else "Email send failed.")
 
 
@@ -1510,8 +1589,12 @@ class EmailService:
                 except Exception as error:
                     last_error = error
                     self._close_connection()
-                    attempts.append({**candidate, "attempt": attempt, "status": "failed", "error": smtp_error_message(error)})
-                    logger.warning("Email send failed on attempt %s via %s to %s: %s", attempt, candidate["label"], to_email, smtp_error_message(error))
+                    details = smtp_error_details(error)
+                    attempts.append({**candidate, "mode": smtp_mode_label(candidate), "attempt": attempt, "status": "failed", **details})
+                    logger.warning(
+                        "Email send failed attempt=%s recipient=%s host=%s port=%s mode=%s category=%s error=%s",
+                        attempt, to_email, candidate["host"], candidate["port"], smtp_mode_label(candidate), details["category"], details["error"],
+                    )
             if attempt < 3:
                 import time
                 time.sleep(2 ** (attempt - 1))
@@ -1684,23 +1767,22 @@ async def startup():
     await db.email_logs.create_index("type")
     email_service.start()
     await ensure_analytics_doc()
-    try:
-        smtp_status = await asyncio.to_thread(verify_smtp_connection)
-        await persist_email_health(smtp_status)
-        if smtp_status.get("connected"):
-            logger.info("SMTP startup verification succeeded: %s", smtp_status.get("message"))
-        else:
-            logger.warning("SMTP startup verification warning: %s", smtp_status.get("message"))
-    except Exception as error:
-        await persist_email_health({
-            **public_email_settings(),
-            "connected": False,
-            "status": "failed",
-            "message": f"SMTP startup verification failed: {smtp_error_message(error)}",
-            "checked_at": now_iso(),
-            "active_transport": None,
-        })
-        logger.warning("SMTP startup verification failed without stopping the app: %s", smtp_error_message(error))
+    await persist_email_health({
+        **public_email_settings(),
+        "connected": False,
+        "status": "not_checked",
+        "message": "SMTP verification is lazy. No SMTP network connection is attempted during application startup.",
+        "checked_at": None,
+        "active_transport": None,
+    })
+    logger.info(
+        "SMTP startup check skipped host=%s port=%s mode=%s configured=%s timeout=%ss",
+        SMTP_HOST,
+        SMTP_PORT,
+        "SSL/TLS" if SMTP_SECURE else "STARTTLS",
+        smtp_configured(),
+        SMTP_TIMEOUT,
+    )
 
 
 @app.on_event("shutdown")
