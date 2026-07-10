@@ -1,12 +1,133 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Loader2, Mail, MessageSquare, Phone } from "lucide-react";
+import { CheckCircle2, ChevronDown, Loader2, Mail, MessageSquare, Phone } from "lucide-react";
 import axios from "axios";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import { CONTACT } from "@/data/site";
 import { API_URL } from "@/config/api";
 
 const API = API_URL;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PROJECT_WINGS = [
+  "Software Development",
+  "AI Solutions & Automation",
+  "Data Intelligence & Analytics",
+  "Cloud & Infrastructure",
+  "IoT & Industrial Automation",
+  "Digital Marketing",
+];
+const PROJECT_TIMELINES = [
+  "ASAP",
+  "Within 1 Week",
+  "Within 2 Weeks",
+  "Within 1 Month",
+  "Within 2–3 Months",
+  "More than 3 Months",
+  "Just Exploring",
+];
+const BUDGET_OPTIONS = [
+  "Under ₹25,000",
+  "₹25,000 – ₹50,000",
+  "₹50,000 – ₹1,00,000",
+  "₹1,00,000 – ₹3,00,000",
+  "Above ₹3,00,000",
+  "Need Consultation",
+];
+
+function ThemedSelect({ id, testId, labelClass, labelText, value, placeholder, options, error, errorId, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(Math.max(0, options.indexOf(value)));
+  const rootRef = useRef(null);
+  const buttonRef = useRef(null);
+  const listboxId = `${id}-listbox`;
+
+  useEffect(() => {
+    const onPointerDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, []);
+
+  useEffect(() => {
+    if (open) setActiveIndex(Math.max(0, options.indexOf(value)));
+  }, [open, options, value]);
+
+  const choose = (nextValue) => {
+    onChange(nextValue);
+    setOpen(false);
+    buttonRef.current?.focus();
+  };
+
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpen(true);
+      setActiveIndex((current) => {
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        return (current + delta + options.length) % options.length;
+      });
+      return;
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (open) choose(options[activeIndex]);
+      else setOpen(true);
+    }
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <label htmlFor={id} className={labelClass}>{labelText}</label>
+      <button
+        ref={buttonRef}
+        id={id}
+        data-testid={testId}
+        type="button"
+        role="combobox"
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
+        className={`contact-field contact-select-trigger ${value ? "" : "text-[#6B7385]"}`}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={onKeyDown}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <ChevronDown size={16} className={`shrink-0 text-[#9AA3B8] transition ${open ? "rotate-180 text-[#4D8BFF]" : ""}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <div id={listboxId} role="listbox" aria-label={labelText.replace("*", "").trim()} className="contact-select-menu">
+          {options.map((option, index) => {
+            const selected = option === value;
+            const active = index === activeIndex;
+            return (
+              <button
+                key={option}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={`contact-select-option ${active ? "is-active" : ""} ${selected ? "is-selected" : ""}`}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => choose(option)}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {error && <p id={errorId} className="mt-1.5 text-[12px] text-red-300">{error}</p>}
+    </div>
+  );
+}
 
 export default function Contact() {
   const [form, setForm] = useState({
@@ -14,7 +135,9 @@ export default function Contact() {
     company: "",
     email: "",
     phone: "",
-    subject: "",
+    projectWing: "",
+    timeline: "",
+    budget: "",
     description: "",
   });
   const [errors, setErrors] = useState({});
@@ -37,6 +160,10 @@ export default function Contact() {
     } else if (!emailPattern.test(form.email.trim())) {
       next.email = "Enter a valid email address.";
     }
+    if (!form.phone || !isValidPhoneNumber(form.phone)) next.phone = "Enter a valid international phone number.";
+    if (!form.projectWing) next.projectWing = "Project wing is required.";
+    if (!form.timeline) next.timeline = "Project timeline is required.";
+    if (!form.budget) next.budget = "Estimated budget is required.";
     if (!form.description.trim()) next.description = "Message is required.";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -51,10 +178,15 @@ export default function Contact() {
     try {
       await axios.post(`${API}/leads`, {
         name: form.name.trim(),
+        fullName: form.name.trim(),
         company: form.company.trim() || null,
         email: form.email.trim(),
-        phone: form.phone.trim() || null,
-        subject: form.subject.trim() || null,
+        phone: form.phone || null,
+        projectWing: form.projectWing,
+        service: form.projectWing,
+        timeline: form.timeline,
+        budget: form.budget,
+        message: form.description.trim(),
         description: form.description.trim(),
       }, { timeout: 15000 });
       setDone(true);
@@ -105,7 +237,7 @@ export default function Contact() {
                   </div>
 
                   <div>
-                    <label htmlFor="contact-company" className={label}>Company <span className="text-[#6B7385]">(Optional)</span></label>
+                    <label htmlFor="contact-company" className={label}>Company Name <span className="text-[#6B7385]">(Optional)</span></label>
                     <input id="contact-company" data-testid="contact-company" autoComplete="organization" placeholder="Company name" className={input} value={form.company} onChange={(event) => setField("company", event.target.value)} />
                   </div>
 
@@ -116,18 +248,34 @@ export default function Contact() {
                   </div>
 
                   <div>
-                    <label htmlFor="contact-phone" className={label}>Phone <span className="text-[#6B7385]">(Optional)</span></label>
-                    <input id="contact-phone" data-testid="contact-phone" type="tel" autoComplete="tel" placeholder="+91 00000 00000" className={input} value={form.phone} onChange={(event) => setField("phone", event.target.value)} />
+                    <label htmlFor="contact-phone" className={label}>Phone Number *</label>
+                    <PhoneInput
+                      id="contact-phone"
+                      data-testid="contact-phone"
+                      international
+                      defaultCountry="IN"
+                      countryCallingCodeEditable={false}
+                      addInternationalOption={false}
+                      autoComplete="tel"
+                      placeholder="+91 00000 00000"
+                      className="contact-phone-input"
+                      value={form.phone}
+                      onChange={(value) => setField("phone", value || "")}
+                      aria-invalid={Boolean(errors.phone)}
+                      aria-describedby={errors.phone ? "contact-phone-error" : undefined}
+                    />
+                    {errors.phone && <p id="contact-phone-error" className={errorText}>{errors.phone}</p>}
                   </div>
+
+                  <ThemedSelect id="contact-project-wing" testId="contact-project-wing" labelClass={label} labelText="Project Wing *" value={form.projectWing} placeholder="Select project wing" options={PROJECT_WINGS} error={errors.projectWing} errorId="contact-project-wing-error" onChange={(value) => setField("projectWing", value)} />
+
+                  <ThemedSelect id="contact-timeline" testId="contact-timeline" labelClass={label} labelText="Project Timeline *" value={form.timeline} placeholder="Select timeline" options={PROJECT_TIMELINES} error={errors.timeline} errorId="contact-timeline-error" onChange={(value) => setField("timeline", value)} />
+
+                  <ThemedSelect id="contact-budget" testId="contact-budget" labelClass={label} labelText="Estimated Budget *" value={form.budget} placeholder="Select budget" options={BUDGET_OPTIONS} error={errors.budget} errorId="contact-budget-error" onChange={(value) => setField("budget", value)} />
                 </div>
 
                 <div>
-                  <label htmlFor="contact-subject" className={label}>Subject <span className="text-[#6B7385]">(Optional)</span></label>
-                  <input id="contact-subject" data-testid="contact-subject" placeholder="What should we help with?" className={input} value={form.subject} onChange={(event) => setField("subject", event.target.value)} />
-                </div>
-
-                <div>
-                  <label htmlFor="contact-description" className={label}>Message *</label>
+                  <label htmlFor="contact-description" className={label}>Project Description *</label>
                   <textarea id="contact-description" data-testid="contact-description" required rows={5} aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "contact-description-error" : undefined} placeholder="Tell us about your project or business problem." className={`${input} resize-none min-h-[140px]`} value={form.description} onChange={(event) => setField("description", event.target.value)} />
                   {errors.description && <p id="contact-description-error" className={errorText}>{errors.description}</p>}
                 </div>

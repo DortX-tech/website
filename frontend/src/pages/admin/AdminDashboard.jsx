@@ -220,20 +220,20 @@ function buildStageNotes(stage, values) {
 
 function buildAgreementPayload(lead, values) {
   const clauses = values?.clauses_enabled || DEFAULT_CLAUSES;
-  const projectTitle = values?.project_title || values?.project_name || lead?.subject || lead?.service || "DortX Software Project";
-  const clientDetails = [lead?.name, lead?.company, lead?.email, lead?.phone, values?.address].filter(Boolean).join("\n");
+  const projectTitle = values?.project_title || values?.project_name || lead?.subject || lead?.projectWing || lead?.service || "DortX Software Project";
+  const clientDetails = [lead?.fullName || lead?.name, lead?.company, lead?.email, lead?.phone, values?.address].filter(Boolean).join("\n");
   return {
     lead_id: lead?.id,
-    client_name: values?.client_name || lead?.name || "",
+    client_name: values?.client_name || lead?.fullName || lead?.name || "",
     company: values?.company || lead?.company || "",
     email: values?.email || lead?.email || "",
     phone: values?.phone || lead?.phone || "",
     address: values?.address || "",
     project_title: projectTitle,
     project_name: projectTitle,
-    service_wing: values?.service_wing || lead?.service || "",
-    project_type: values?.service_wing || lead?.service || "",
-    project_description: values?.project_description || lead?.description || "",
+    service_wing: values?.service_wing || lead?.projectWing || lead?.service || "",
+    project_type: values?.service_wing || lead?.projectWing || lead?.service || "",
+    project_description: values?.project_description || lead?.message || lead?.description || "",
     scope_of_work: values?.scope_of_work || "",
     project_scope: values?.scope_of_work || "",
     deliverables: values?.deliverables || "",
@@ -552,13 +552,13 @@ export default function AdminDashboard() {
     const stage = LEAD_JOURNEY[journeyIndex(selected.status)];
     const existing = selected?.crm_workflow?.[stage.status]?.data || {};
     const agreementDefaults = stage.status === "agreement_generated" ? {
-      client_name: selected?.name || "",
+      client_name: selected?.fullName || selected?.name || "",
       company: selected?.company || "",
       email: selected?.email || "",
       phone: selected?.phone || "",
-      project_title: selected?.subject || selected?.service || "DortX Software Project",
-      service_wing: selected?.service || "",
-      project_description: selected?.description || "",
+      project_title: selected?.subject || selected?.projectWing || selected?.service || "DortX Software Project",
+      service_wing: selected?.projectWing || selected?.service || "",
+      project_description: selected?.message || selected?.description || "",
       project_timeline: selected?.timeline || "",
       warranty_period: "30 days defect warranty and support period",
       special_notes: "",
@@ -1250,7 +1250,7 @@ export default function AdminDashboard() {
           <motion.div initial={{ y: 30, scale: 0.98 }} animate={{ y: 0, scale: 1 }} onClick={(e) => e.stopPropagation()} className="glass-strong rounded-2xl max-w-5xl w-full p-6 max-h-[88vh] overflow-y-auto" data-testid="lead-detail-modal">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="font-display text-[22px] font-semibold text-white">{selected?.name || "Lead"}</div>
+                <div className="font-display text-[22px] font-semibold text-white">{selected?.fullName || selected?.name || "Lead"}</div>
                 {selected?.email ? (
                   <a href={`mailto:${selected.email}`} className="text-[13.5px] text-[#4D8BFF] hover:text-white hover:underline underline-offset-4 transition">{selected.email}</a>
                 ) : (
@@ -1392,16 +1392,19 @@ function LeadWorkflow({ lead, draft, saving, message, onDraftChange, onComplete,
       <div className="space-y-4">
         <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
           <div className="grid sm:grid-cols-2 gap-4 text-[13.5px]">
+            <Info l="Full Name" v={lead?.fullName || lead?.name}/>
             <Info l="Company" v={lead?.company}/>
+            <Info l="Business Email" v={lead?.email}/>
             <Info l="Phone" v={lead?.phone}/>
-            <Info l="Service" v={lead?.service}/>
-            <Info l="Subject" v={lead?.subject}/>
+            <Info l="Project Wing" v={lead?.projectWing || lead?.service}/>
+            <Info l="Timeline" v={lead?.timeline}/>
             <Info l="Budget" v={lead?.budget}/>
-            <Info l="Created" v={formatDate(lead?.created_at, "datetime")}/>
+            <Info l="Subject" v={lead?.subject}/>
+            <Info l="Created" v={formatDate(lead?.createdAt || lead?.created_at, "datetime")}/>
           </div>
           <div className="mt-4">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-[#6B7385] mb-2">Description</div>
-            <p className="text-[14px] text-[#C9D2E0] whitespace-pre-wrap leading-relaxed">{lead?.description || "-"}</p>
+            <div className="text-[11px] uppercase tracking-[0.14em] text-[#6B7385] mb-2">Project Description</div>
+            <p className="text-[14px] text-[#C9D2E0] whitespace-pre-wrap leading-relaxed">{lead?.message || lead?.description || "-"}</p>
           </div>
         </div>
 
@@ -1532,7 +1535,7 @@ function AgreementBuilder({ lead, draft, onDraftChange, onPreview }) {
 
       <div className="grid md:grid-cols-2 gap-3">
         {[
-          ["client_name", "Client Name", lead?.name],
+          ["client_name", "Client Name", lead?.fullName || lead?.name],
           ["company", "Company", lead?.company],
           ["email", "Email", lead?.email],
           ["phone", "Phone", lead?.phone],

@@ -156,13 +156,16 @@ def now_iso() -> str:
 
 class LeadCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
+    fullName: Optional[str] = Field(None, max_length=100)
     company: Optional[str] = Field(None, max_length=200)
     email: EmailStr
     phone: Optional[str] = Field(None, max_length=30)
     subject: Optional[str] = Field(None, max_length=200)
     service: Optional[str] = Field(None, max_length=100)
+    projectWing: Optional[str] = Field(None, max_length=100)
     budget: Optional[str] = Field(None, max_length=50)
     description: str = Field(..., min_length=10, max_length=5000)
+    message: Optional[str] = Field(None, max_length=5000)
     timeline: Optional[str] = Field(None, max_length=100)
     file_name: Optional[str] = None
     file_path: Optional[str] = None
@@ -174,6 +177,7 @@ class Lead(LeadCreate):
     status: str = "new"
     status_history: List[Dict[str, Any]] = Field(default_factory=list)
     created_at: str = Field(default_factory=now_iso)
+    createdAt: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
 
@@ -1344,7 +1348,13 @@ async def send_test_email(payload: EmailTestPayload = Body(default_factory=Email
 # --- Leads / Contact ---
 @api.post("/leads", response_model=Lead, status_code=201)
 async def create_lead(payload: LeadCreate):
-    lead = Lead(**payload.model_dump())
+    lead_data = payload.model_dump()
+    lead_data["fullName"] = lead_data.get("fullName") or lead_data.get("name")
+    lead_data["projectWing"] = lead_data.get("projectWing") or lead_data.get("service")
+    lead_data["service"] = lead_data.get("service") or lead_data.get("projectWing")
+    lead_data["message"] = lead_data.get("message") or lead_data.get("description")
+    lead_data["createdAt"] = lead_data.get("createdAt") or now_iso()
+    lead = Lead(**lead_data)
     lead.status_history = [status_history_entry("", "new", {"name": "System"}, "Lead received")]
     await db.leads.insert_one(lead.model_dump())
     logger.info(f"New lead: {lead.email} - {lead.subject or lead.service or 'Contact form'}")
@@ -1376,8 +1386,8 @@ async def create_lead_with_file(
         file_path = str(dest)
 
     lead = Lead(
-        name=name, email=email, description=description, company=company,
-        phone=phone, subject=subject, service=service, budget=budget, timeline=timeline,
+        name=name, fullName=name, email=email, description=description, message=description, company=company,
+        phone=phone, subject=subject, service=service, projectWing=service, budget=budget, timeline=timeline,
         file_name=file_name, file_path=file_path,
     )
     lead.status_history = [status_history_entry("", "new", {"name": "System"}, "Lead received")]

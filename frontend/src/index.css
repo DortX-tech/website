@@ -578,6 +578,79 @@ select:-moz-autofill {
   box-shadow: 0 0 0 2px rgba(30, 107, 255, 0.2);
 }
 
+.contact-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+  min-height: 48px;
+  height: 48px;
+  -webkit-text-fill-color: currentColor;
+}
+
+.contact-select-trigger:focus {
+  color: var(--dx-heading);
+  border-color: var(--dx-blue-light);
+  box-shadow: 0 0 0 2px rgba(30, 107, 255, 0.2);
+}
+
+.contact-select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 40;
+  max-height: min(18rem, 52vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(77, 139, 255, 0.28);
+  border-radius: 0.75rem;
+  background: #0F172A;
+  color: #F7FAFF;
+  padding: 0.35rem;
+  box-shadow: 0 18px 44px -22px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.contact-select-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.contact-select-menu::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+.contact-select-menu::-webkit-scrollbar-thumb {
+  background: rgba(77, 139, 255, 0.45);
+  border-radius: 999px;
+}
+
+.contact-select-option {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  border-radius: 0.625rem;
+  padding: 0.65rem 0.8rem;
+  text-align: left;
+  color: #E7EBF3;
+  font-size: 14.5px;
+  line-height: 1.35;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.contact-select-option:hover,
+.contact-select-option.is-active {
+  background: rgba(30, 107, 255, 0.22);
+  color: #FFFFFF;
+}
+
+.contact-select-option.is-selected {
+  background: rgba(77, 139, 255, 0.28);
+  color: #FFFFFF;
+}
+
 .contact-phone-input {
   --PhoneInputCountryFlag-height: 1.05rem;
   --PhoneInputCountrySelectArrow-color: var(--dx-text-muted);
@@ -585,6 +658,8 @@ select:-moz-autofill {
   --PhoneInput-color--focus: var(--dx-blue-light);
   width: 100%;
   min-height: 48px;
+  height: 48px;
+  box-sizing: border-box;
   background-color: var(--dx-input-bg);
   border: 1px solid var(--dx-border);
   border-radius: 0.75rem;
