@@ -95,6 +95,16 @@ const LEGACY_STATUS_MAP = {
   delivered: "completed",
 };
 const STATUS_LABELS = LEAD_JOURNEY.reduce((acc, stage) => ({ ...acc, [stage.status]: stage.label }), {
+  draft: "Draft",
+  sent: "Sent",
+  viewed: "Viewed",
+  signed_by_client: "Signed by Client",
+  signed_by_dortx: "Signed by DortX",
+  completed: "Completed",
+  archived: "Archived",
+  sent_to_client: "Sent",
+  waiting_dortx_signature: "Signed by Client",
+  executed: "Completed",
   not_started: "Not Started",
   testing: "Testing",
   on_hold: "On Hold",
@@ -243,26 +253,32 @@ function buildAgreementPayload(lead, values) {
     timeline: values?.project_timeline || lead?.timeline || "",
     support_duration: values?.support_duration || values?.warranty_period || "30 days post-launch support",
     support_period: values?.support_duration || values?.warranty_period || "30 days post-launch support",
-    warranty_period: values?.warranty_period || "30 days defect warranty and support period",
+    warranty_period: values?.warranty_period || "30 days free bug fixing. New features are billed separately.",
     special_notes: values?.special_notes || "",
     milestones: values?.milestones || "",
+    project_start_date: values?.project_start_date || "",
+    expected_completion_date: values?.expected_completion_date || values?.expected_delivery_date || "",
     expected_delivery_date: values?.expected_delivery_date || "",
     project_cost: values?.project_cost || "",
     total_project_cost: values?.project_cost || "",
-    advance_payment: values?.advance_payment || "",
-    remaining_amount: values?.remaining_amount || "",
-    payment_schedule: values?.payment_schedule || "Advance payment before project kickoff and balance payment before final handover unless otherwise agreed in writing.",
+    advance_payment: values?.advance_payment || values?.advance_paid || "",
+    advance_paid: values?.advance_paid || values?.advance_payment || "",
+    remaining_amount: values?.remaining_amount || values?.balance_amount || "",
+    balance_amount: values?.balance_amount || values?.remaining_amount || "",
+    payment_schedule: values?.payment_schedule || "50% Advance and 50% Before Final Delivery.",
     additional_charges: values?.additional_charges || "",
     late_payment_terms: values?.late_payment_terms || "Late payments may pause delivery timelines until dues are cleared.",
     currency: values?.currency || "INR",
     clauses_enabled: clauses,
     confidentiality: clauses.confidentiality ? "Both parties agree to protect confidential project, business and technical information shared during the engagement." : "",
-    intellectual_property: clauses.intellectual_property ? "Final approved deliverables and agreed source code ownership transfer according to the accepted commercial terms after payment completion." : "",
+    intellectual_property: clauses.intellectual_property ? "Ownership transfers only after full payment. DortX retains reusable frameworks and internal libraries." : "",
     change_request_policy: clauses.change_request_policy ? "Changes outside the accepted scope require written approval and may affect pricing and delivery timelines." : "",
     refund_policy: clauses.refund_policy ? "Refunds are not available for completed work, booked resources, approved milestones, third-party costs, or work already delivered unless DortX Technologies approves an exception in writing." : "",
-    cancellation_policy: clauses.cancellation_policy ? "Cancellation requests must be communicated in writing. Work completed, booked resources and third-party costs remain payable." : "",
-    governing_law: clauses.governing_law ? "This agreement is governed by applicable laws in India." : "",
-    limitation_of_liability: clauses.limitation_of_liability ? "DortX Technologies is not liable for indirect, incidental, consequential, special, punitive, business interruption, data loss, or lost-profit damages. Total liability is limited to amounts paid for the affected service." : "",
+    cancellation_policy: clauses.cancellation_policy ? "Either party may terminate with written notice. Client must pay for completed work." : "",
+    client_responsibilities: "The client will provide timely approvals, content, access, feedback and business inputs required for delivery.",
+    force_majeure: "Neither party is liable for delays or failures caused by events beyond reasonable control.",
+    governing_law: clauses.governing_law ? "Karnataka, India" : "",
+    limitation_of_liability: clauses.limitation_of_liability ? "Maximum liability is limited to total project value." : "",
     client_responsibilities: "The client will provide timely approvals, content, access, feedback and business inputs required for delivery.",
     dortx_responsibilities: "DortX Technologies will deliver the agreed scope with professional care, transparent communication and reasonable technical diligence.",
     client_details: clientDetails,
@@ -560,7 +576,16 @@ export default function AdminDashboard() {
       service_wing: selected?.projectWing || selected?.service || "",
       project_description: selected?.message || selected?.description || "",
       project_timeline: selected?.timeline || "",
-      warranty_period: "30 days defect warranty and support period",
+      warranty_period: "30 days free bug fixing. New features are billed separately.",
+      payment_schedule: "50% Advance and 50% Before Final Delivery.",
+      revision_policy: "Maximum 3 revisions. Additional revisions are chargeable.",
+      intellectual_property: "Ownership transfers only after full payment. DortX retains reusable frameworks and internal libraries.",
+      confidentiality: "Both parties agree to protect confidential information.",
+      cancellation_policy: "Either party may terminate with written notice. Client must pay for completed work.",
+      client_responsibilities: "The client will provide timely approvals, content, access, feedback and business inputs required for delivery.",
+      force_majeure: "Neither party is liable for delays or failures caused by events beyond reasonable control.",
+      governing_law: "Karnataka, India",
+      limitation_of_liability: "Maximum liability is limited to total project value.",
       special_notes: "",
       currency: "INR",
       clauses_enabled: DEFAULT_CLAUSES,
@@ -1513,8 +1538,16 @@ function AgreementBuilder({ lead, draft, onDraftChange, onPreview }) {
     ["scope_of_work", "Scope of Work", "textarea"],
     ["deliverables", "Deliverables", "textarea"],
     ["project_timeline", "Project Timeline", "text"],
-    ["project_cost", "Project Cost"],
+    ["project_start_date", "Project Start Date", "date"],
+    ["expected_completion_date", "Expected Completion Date", "date"],
+    ["project_cost", "Total Project Cost", "text"],
+    ["advance_paid", "Advance Paid", "text"],
+    ["balance_amount", "Balance Amount", "text"],
+    ["payment_schedule", "Payment Terms", "textarea"],
+    ["revision_policy", "Revision Policy", "textarea"],
     ["warranty_period", "Warranty / Support Period", "text"],
+    ["client_responsibilities", "Client Responsibilities", "textarea"],
+    ["force_majeure", "Force Majeure", "textarea"],
     ["special_notes", "Special Notes", "textarea"],
   ];
 
@@ -1555,7 +1588,7 @@ function AgreementBuilder({ lead, draft, onDraftChange, onPreview }) {
             {type === "textarea" ? (
               <textarea value={draft?.[key] || ""} onChange={(event) => onDraftChange(key, event.target.value)} className="contact-field mt-2 min-h-[92px]" placeholder={label}/>
             ) : (
-              <input value={draft?.[key] || ""} onChange={(event) => onDraftChange(key, event.target.value)} className="contact-field mt-2" placeholder={label}/>
+              <input type={type === "date" ? "date" : "text"} value={draft?.[key] || ""} onChange={(event) => onDraftChange(key, event.target.value)} className="contact-field mt-2" placeholder={label}/>
             )}
           </label>
         ))}
@@ -1595,13 +1628,16 @@ function AgreementPreviewModal({ lead, draft, onClose }) {
   const legalSections = [
     ["Scope of Work", agreement.scope_of_work || agreement.project_scope],
     ["Deliverables", agreement.deliverables || agreement.included_deliverables],
-    ["Timeline", agreement.project_timeline || agreement.timeline],
-    ["Payment Terms", `Project Cost: ${agreement.project_cost || "-"} ${agreement.currency || ""}\nAdvance: ${agreement.advance_payment || "-"}\nRemaining: ${agreement.remaining_amount || "-"}\nPayment Schedule: ${agreement.payment_schedule || "-"}\nLate Payment Terms: ${agreement.late_payment_terms || "-"}`],
+    ["Timeline & Milestones", `Project Start Date: ${agreement.project_start_date || "-"}\nExpected Completion Date: ${agreement.expected_completion_date || agreement.expected_delivery_date || "-"}\nTimeline: ${agreement.project_timeline || agreement.timeline || "-"}\nMilestones: ${agreement.milestones || "-"}`],
+    ["Pricing & Payment Terms", `Total Project Cost: ${agreement.project_cost || agreement.total_project_cost || "-"} ${agreement.currency || ""}\nAdvance Paid: ${agreement.advance_paid || agreement.advance_payment || "-"}\nBalance Amount: ${agreement.balance_amount || agreement.remaining_amount || "-"}\nPayment Schedule: ${agreement.payment_schedule || "50% Advance and 50% Before Final Delivery."}`],
+    ["Revision Policy", agreement.revision_policy || "Maximum 3 revisions. Additional revisions are chargeable."],
     ["Confidentiality", agreement.confidentiality],
     ["Intellectual Property", agreement.intellectual_property],
-    ["Warranty", agreement.warranty_period],
-    ["Privacy Policy", "DortX Technologies will handle client information, project materials, account details, and contact data for lawful project delivery, communication, billing, support, and compliance purposes."],
-    ["Terms & Conditions", `The client agrees to the DortX Technologies engagement terms, service responsibilities, approval requirements, payment obligations, change request policy, cancellation policy and refund policy contained in this Agreement.\n\nChange Requests: ${agreement.change_request_policy || "-"}\nCancellation: ${agreement.cancellation_policy || "-"}\nRefund Policy: ${agreement.refund_policy || "-"}`],
+    ["Support & Warranty", agreement.warranty_period],
+    ["Client Responsibilities", agreement.client_responsibilities],
+    ["Termination", agreement.cancellation_policy],
+    ["Limitation of Liability", agreement.limitation_of_liability],
+    ["Force Majeure", agreement.force_majeure],
     ["Governing Law", agreement.governing_law],
   ];
 
@@ -1715,7 +1751,7 @@ function AgreementAdminReview({ lead, onLeadRefresh }) {
 
   const locked = Boolean(agreement?.locked || (agreement?.client_signed && agreement?.dortx_signed));
   const canSign = Boolean(agreement?.id && agreement?.client_signed && !agreement?.dortx_signed);
-  const canResend = Boolean(agreement?.id && !agreement?.client_signed && agreement?.email_status !== "sent");
+  const canResend = Boolean(agreement?.id && !agreement?.client_signed && !locked);
   const deliveryStatus = agreement?.email_status || "draft";
 
   const uploadFounderSignature = (event) => {
@@ -1760,9 +1796,9 @@ function AgreementAdminReview({ lead, onLeadRefresh }) {
     setLoading(true);
     setMessage("");
     try {
-      const response = await adminApiClient.post(`/agreements/${agreement.id}/send`);
-      setAgreement(response.data);
-      setMessage(`Agreement email sent to ${response.data?.email_recipient || response.data?.email || "client"}.`);
+      const response = await adminApiClient.post(`/admin/agreements/${agreement.id}/resend-email`);
+      setAgreement(response.data?.agreement || response.data);
+      setMessage(`Agreement email queued for ${response.data?.agreement?.email || agreement.email || "client"}.`);
       await onLeadRefresh?.();
       await load();
     } catch (error) {
@@ -1778,6 +1814,10 @@ function AgreementAdminReview({ lead, onLeadRefresh }) {
     if (!agreement?.id) return;
     setMessage("");
     try {
+      if (!agreement?.pdf_path) {
+        const generated = await adminApiClient.post(`/agreements/${agreement.id}/generate-pdf`);
+        setAgreement(generated.data);
+      }
       const response = await adminApiClient.get(`/documents/agreement/${agreement.id}/download`, { responseType: "blob" });
       downloadBlob(response.data, `agreement-${agreement.id}.pdf`);
     } catch (error) {

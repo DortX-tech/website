@@ -5,9 +5,9 @@ import Logo from "@/components/Logo";
 import { BACKEND_URL, apiClient } from "@/config/api";
 
 const CONFIRMATIONS = [
-  ["read_understood_entire_agreement", "I confirm that I have carefully read and understood this Agreement."],
-  ["agree_all_terms_and_clauses", "I agree to the Terms & Conditions, Privacy Policy, payment obligations and responsibilities described in this Agreement."],
-  ["accurate_information_electronic_consent", "I understand that my electronic signature constitutes my legal acceptance of this Agreement."],
+  ["read_understood_entire_agreement", "I have read, understood and agree to this Project Services Agreement, including the project scope, deliverables, payment terms, revisions, timelines, intellectual property, confidentiality and governing law."],
+  ["agree_all_terms_and_clauses", "I agree to DortX Technologies' Terms & Conditions, Privacy Policy and Cookie Policy, and confirm that I am authorised to enter into this agreement on behalf of myself or my organisation."],
+  ["accurate_information_electronic_consent", "I understand that my electronic signature is legally binding and confirms my acceptance of all terms contained in this agreement."],
 ];
 
 const SERVICE_WING_FALLBACK = "Software Development";
@@ -24,7 +24,14 @@ function formatDate(value, mode = "date") {
 }
 
 function statusText(value) {
-  const status = String(value || "pending").replace(/_/g, " ");
+  const mapped = {
+    sent_to_client: "sent",
+    waiting_dortx_signature: "signed by client",
+    executed: "completed",
+    signed_by_client: "signed by client",
+    signed_by_dortx: "signed by DortX",
+  };
+  const status = String(mapped[value] || value || "pending").replace(/_/g, " ");
   return status.replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
@@ -144,7 +151,7 @@ export default function PublicAgreement() {
         client_designation: clientDesignation,
       });
       setAgreement(response.data);
-      setNotice("Your signature has been recorded. Status: Waiting for DortX Signature.");
+      setNotice("Agreement Signed Successfully");
     } catch (signError) {
       console.error("Agreement signature failed", signError);
       setNotice(signError?.response?.data?.detail || "Could not sign the agreement. Please try again.");
@@ -191,6 +198,27 @@ export default function PublicAgreement() {
 
           <div className="pt-10">
             {notice && <div className="mb-6 rounded-xl border border-[#1E6BFF]/20 bg-[#EAF1FF] px-4 py-3 text-[13.5px] text-[#18335E]">{notice}</div>}
+            {clientSigned && (
+              <div className="mb-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-[0_18px_50px_rgba(16,185,129,0.14)]">
+                <div className="flex items-center gap-2 font-display text-[24px] font-semibold text-[#0F172A]">
+                  <CheckCircle2 size={22} className="text-emerald-600"/> Agreement Signed Successfully
+                </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <DocumentMeta label="Agreement Number" value={agreement.agreement_number || agreement.id}/>
+                  <DocumentMeta label="Client Name" value={agreement.client_signature?.client_name || agreement.client_name}/>
+                  <DocumentMeta label="Project Name" value={agreement.project_title || agreement.project_name}/>
+                  <DocumentMeta label="Signing Date & Time" value={formatDate(agreement.client_signed_at, "datetime")}/>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <a href={`${BACKEND_URL}/api/public/agreements/${agreement.id}/download`} className="inline-flex items-center gap-2 rounded-full bg-[#0F172A] px-5 py-3 text-[13px] font-semibold text-white hover:bg-[#1E293B]">
+                    <Download size={15}/> Download Signed Agreement
+                  </a>
+                  <a href="/" className="inline-flex items-center gap-2 rounded-full border border-[#CBD5E1] bg-white px-5 py-3 text-[13px] font-semibold text-[#0F172A] hover:border-[#1E6BFF]/40">
+                    Return to Website
+                  </a>
+                </div>
+              </div>
+            )}
 
             <div className="border-y border-[#D1D5DB] py-5">
               <p className="text-[16px] leading-[1.8] text-[#374151]">
@@ -210,6 +238,8 @@ export default function PublicAgreement() {
                   ["Email", agreement.email],
                   ["Phone", agreement.phone],
                   ["Address", agreement.address],
+                  ["Representative Name", agreement.representative_name || agreement.clientInformation?.representativeName],
+                  ["Designation", agreement.designation || agreement.clientInformation?.designation],
                 ]}/>
               </LegalSection>
 
@@ -228,12 +258,18 @@ export default function PublicAgreement() {
               </LegalSection>
 
               <LegalSection title="Timeline">
-                <p>The anticipated timeline for the project is {valueOrDash(agreement.project_timeline || agreement.timeline)}. Delivery timelines depend on timely client inputs, approvals, access credentials, content, third-party service availability and payment milestone completion. Material delays in client-side dependencies may extend delivery schedules.</p>
+                <p>Project Start Date: {valueOrDash(agreement.project_start_date || agreement.start_date)}. Expected Completion Date: {valueOrDash(agreement.expected_completion_date || agreement.expected_delivery_date)}.</p>
+                <p>The anticipated timeline for the project is {valueOrDash(agreement.project_timeline || agreement.timeline)}. Milestones: {valueOrDash(agreement.milestones)}. Delivery timelines depend on timely client inputs, approvals, access credentials, content, third-party service availability and payment milestone completion.</p>
               </LegalSection>
 
               <LegalSection title="Payment Terms">
-                <p>The total project value is {valueOrDash(agreement.project_cost || agreement.total_project_cost)} {agreement.currency || ""}. The Client agrees to pay the required advance, milestone amounts and remaining balance according to the payment terms stated in this Agreement. Unless otherwise agreed in writing, final handover, deployment or release of transferable assets may be withheld until all outstanding dues are cleared.</p>
+                <p>The total project value is {valueOrDash(agreement.project_cost || agreement.total_project_cost)} {agreement.currency || ""}. Advance Paid: {valueOrDash(agreement.advance_paid || agreement.advance_payment)}. Balance Amount: {valueOrDash(agreement.balance_amount || agreement.remaining_amount)}.</p>
+                <p>Default payment terms are 50% Advance and 50% Before Final Delivery unless otherwise agreed in writing. {agreement.payment_schedule || ""}</p>
                 <p>Taxes, payment gateway charges, third-party subscription costs, hosting charges, domain fees, marketplace fees, external API costs and other non-DortX expenses are payable by the Client unless expressly included in the project value.</p>
+              </LegalSection>
+
+              <LegalSection title="Revision Policy">
+                <p>{agreement.revision_policy || "Maximum 3 revisions are included. Additional revisions are chargeable."}</p>
               </LegalSection>
 
               <LegalSection title="Confidentiality">
@@ -241,24 +277,31 @@ export default function PublicAgreement() {
               </LegalSection>
 
               <LegalSection title="Intellectual Property">
-                <p>Ownership of final approved project deliverables and agreed source code transfers to the Client only after complete payment has been received by DortX Technologies. Pre-existing DortX frameworks, reusable components, internal tools, open-source packages and third-party assets remain subject to their original ownership and license terms.</p>
+                <p>{agreement.intellectual_property || "Ownership transfers only after full payment. DortX retains reusable frameworks and internal libraries."}</p>
               </LegalSection>
 
               <LegalSection title="Warranty">
-                <p>DortX Technologies shall provide warranty coverage for the selected support or warranty period: {valueOrDash(agreement.warranty_period || agreement.support_duration || agreement.support_period)}. Warranty applies only to reproducible defects in agreed deliverables and does not include new features, third-party failures, client-side changes, hosting outages, misuse, unauthorized modifications or out-of-scope enhancements.</p>
+                <p>{agreement.warranty_period || agreement.support_duration || agreement.support_period || "30 days free bug fixing. New features are billed separately."}</p>
               </LegalSection>
 
-              <LegalSection title="Privacy Policy">
-                <p>DortX Technologies may process client information, project materials, credentials, business data and contact details for lawful purposes connected to project delivery, support, billing, compliance, communication and record keeping. DortX Technologies shall apply reasonable safeguards to protect such information and shall not intentionally disclose client data except as necessary for delivery, support, legal compliance or authorized third-party service use.</p>
+              <LegalSection title="Client Responsibilities">
+                <p>{agreement.client_responsibilities || "The Client shall provide accurate requirements, timely approvals, content, data, credentials, access, feedback and business decisions required for delivery."}</p>
               </LegalSection>
 
-              <LegalSection title="Terms & Conditions">
-                <p>The Client agrees to provide accurate requirements, timely feedback, approvals, content, credentials, third-party access and business inputs reasonably required for delivery. Change requests outside the accepted scope require written approval and may affect cost, timeline, architecture and delivery responsibilities.</p>
-                <p>Cancellation must be requested in writing. Completed work, committed resources, approved milestones, third-party expenses and non-recoverable costs remain payable. Refunds are not available for completed work, booked resources, approved milestones, third-party costs or work already delivered unless DortX Technologies approves an exception in writing.</p>
+              <LegalSection title="Termination">
+                <p>{agreement.cancellation_policy || "Either party may terminate with written notice. Client must pay for completed work."}</p>
+              </LegalSection>
+
+              <LegalSection title="Limitation of Liability">
+                <p>{agreement.limitation_of_liability || "Maximum liability is limited to total project value."}</p>
+              </LegalSection>
+
+              <LegalSection title="Force Majeure">
+                <p>{agreement.force_majeure || "Neither party is liable for delays or failures caused by events beyond reasonable control, including natural disasters, war, strikes, internet outages, government actions, platform outages, or third-party service disruptions."}</p>
               </LegalSection>
 
               <LegalSection title="Governing Law">
-                <p>This Agreement shall be governed by the laws of India. Any disputes arising from this Agreement shall be subject to competent courts in Bengaluru, Karnataka, India.</p>
+                <p>This Agreement shall be governed by the laws of Karnataka, India. Any disputes arising from this Agreement shall be subject to competent courts in Bengaluru, Karnataka, India.</p>
               </LegalSection>
 
               <LegalSection title="Digital Signatures">
@@ -293,9 +336,9 @@ export default function PublicAgreement() {
 
               <DortxExecution agreement={agreement} dortxSigned={dortxSigned}/>
 
-              {locked && agreement?.pdf_path && (
+              {agreement?.id && (
                 <a href={`${BACKEND_URL}/api/public/agreements/${agreement.id}/download`} className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#1E6BFF]/25 bg-[#0A0F1C] px-5 py-3 text-[13px] font-semibold text-white hover:bg-[#111827]">
-                  <Download size={15}/> Download signed PDF
+                  <Download size={15}/> Download Agreement PDF
                 </a>
               )}
             </div>
@@ -330,7 +373,8 @@ function ContractHeader({ agreement }) {
         <div className="grid gap-2 text-left md:justify-end md:text-right">
           <HeaderMeta label="Agreement Number" value={agreement.agreement_number || agreement.id}/>
           <HeaderMeta label="Status" value={statusText(agreement.status)}/>
-          <HeaderMeta label="Created Date" value={formatDate(agreement.created_at)}/>
+          <HeaderMeta label="Generated Date" value={formatDate(agreement.created_at)}/>
+          <HeaderMeta label="Effective Date" value={formatDate(agreement.effective_date || agreement.project_start_date || agreement.created_at)}/>
           <HeaderMeta label="Version" value="1.0"/>
         </div>
       </div>

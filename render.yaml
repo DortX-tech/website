@@ -24,6 +24,22 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+      - key: SMTP_HOST
+        value: smtp.hostinger.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USERNAME
+        value: thrisha@dortxtech.com
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_SECURE
+        value: "true"
+      - key: EMAIL_FROM
+        value: thrisha@dortxtech.com
+      - key: EMAIL_FROM_NAME
+        value: DortX Technologies
+      - key: PUBLIC_SITE_URL
+        value: https://www.dortxtech.com
       - key: UPLOAD_DIR
         value: uploads
       - key: CORS_ORIGINS
